@@ -11,6 +11,10 @@
 
 #include <cstdint>
 #include <chrono>
+#include <expected>
+#include <cstddef>
+#include <string>
+#include <vector>
 
 namespace server {
 
@@ -40,4 +44,3 @@ struct ServerConfig {
 }
 
 #endif /* SERVERCONFIG_HPP_ */
-

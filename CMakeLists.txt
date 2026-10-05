@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.23)
 
 project(RType VERSION 1.0 DESCRIPTION "R-Type multiplayer game" LANGUAGES CXX)
 
@@ -43,7 +43,7 @@ target_link_libraries(rtype_asio INTERFACE Threads::Threads)
 add_library(rtype-protocol INTERFACE)
 target_include_directories(rtype-protocol INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(rtype-protocol INTERFACE rtype_asio bitsery)
-target_compile_features(rtype-protocol INTERFACE cxx_std_20)
+target_compile_features(rtype-protocol INTERFACE cxx_std_23)
 
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/GameEngine/*.cpp")
@@ -52,7 +52,7 @@ target_include_directories(rtype_engine PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/GameEngine/ECS/Managers"
 )
-target_compile_features(rtype_engine PUBLIC cxx_std_20)
+target_compile_features(rtype_engine PUBLIC cxx_std_23)
 
 file(GLOB_RECURSE SERVER_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/server/*.cpp"
@@ -64,10 +64,6 @@ file(GLOB_RECURSE SERVER_HEADERS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/include/server/*.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/server/*.hxx")
 
-# Make every directory below include/server available for both flat includes
-# (e.g. "ServerConfig.hpp") and tree-qualified includes
-# (e.g. "common/ServerConfig.hpp"). CONFIGURE_DEPENDS makes CMake re-run when
-# files are added in a new nested folder.
 set(SERVER_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/include")
 foreach(header IN LISTS SERVER_HEADERS)
     get_filename_component(header_dir "${header}" DIRECTORY)
@@ -78,7 +74,7 @@ list(REMOVE_DUPLICATES SERVER_INCLUDE_DIRS)
 add_executable(server ${SERVER_SOURCES})
 target_include_directories(server PRIVATE ${SERVER_INCLUDE_DIRS})
 target_link_libraries(server PRIVATE rtype_engine rtype-protocol)
-target_compile_features(server PRIVATE cxx_std_20)
+target_compile_features(server PRIVATE cxx_std_23)
 
 option(RTYPE_BUILD_CLIENT "Build the SFML client" ON)
 if(RTYPE_BUILD_CLIENT)
@@ -96,7 +92,7 @@ if(RTYPE_BUILD_CLIENT)
     add_executable(r-type_client src/main.cpp)
     target_include_directories(r-type_client PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
     target_link_libraries(r-type_client PRIVATE rtype_engine sfml-graphics sfml-window sfml-audio sfml-system)
-    target_compile_features(r-type_client PRIVATE cxx_std_20)
+    target_compile_features(r-type_client PRIVATE cxx_std_23)
 endif()
 
 foreach(target IN ITEMS rtype_engine server)

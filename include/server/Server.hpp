@@ -11,7 +11,11 @@
 
 #include <atomic>
 #include <asio.hpp>
-#include "ServerConfig.hpp"
+#include "common/ServerConfig.hpp"
+#include "lobby/SessionRegistry.hpp"
+#include "lobby/RoomManager.hpp"
+#include "net/TcpServer.hpp"
+#include "net/UdpServer.hpp"
 
 namespace server {
 
@@ -40,4 +44,3 @@ class Server {
 }
 
 #endif /* SERVER_HPP_ */
-
