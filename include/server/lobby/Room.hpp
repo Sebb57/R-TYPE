@@ -27,13 +27,13 @@ class Room {
         void removePlayer(PlayerSlot);
         [[nodiscard]] bool isFull() const;
         [[nodiscard]] bool isEmpty() const;
-        [[nodiscard]] SessionToken host() const;
+        [[nodiscard]] SessionToken getHost() const;
         void promoteNextHost();
         void start();
         void stop();
         void push(InboundEvent);
-        [[nodiscard]] RoomState state() const;
-        [[nodiscard]] RoomInfo info() const;
+        [[nodiscard]] RoomState getState() const;
+        [[nodiscard]] RoomInfo getInfo() const;
 
     private:
         RoomId _id;

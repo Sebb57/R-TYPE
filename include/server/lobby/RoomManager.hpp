@@ -18,10 +18,9 @@
 #include "server/lobby/SessionRegistry.hpp"
 #include "server/lobby/Room.hpp"
 
-namespace server { class TcpConnection; }
-
 namespace server {
 
+class TcpConnection;
 struct JoinResult { RoomId room; SessionToken token; PlayerSlot slot; };
 
 class RoomManager {
