@@ -9,16 +9,21 @@
 #ifndef PHYSICSSYSTEM_HPP_
     #define PHYSICSSYSTEM_HPP_
 
-    #include "World.hpp"
+    #include "Chronometer.hpp"
+    #include "GameEngine/ECS/Components/Transform.hpp"
+    #include "GameEngine/ECS/Components/Velocity.hpp"
+    #include "GameEngine/ECS/World.hpp"
 
-namespace Orbyte {
-
+namespace OrByte {
 
 class PhysicsSystem {
+    Chronometer _chrono;
     World& _world;
 
+    void _handleVelocity(Transform* transform, int entity, double deltaTime);
+
     public:
-        PhysicsSystem(World& world) : _world(world) {}
+        PhysicsSystem(World& world);
         ~PhysicsSystem() = default;
 
         void update();

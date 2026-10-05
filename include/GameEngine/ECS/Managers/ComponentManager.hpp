@@ -5,45 +5,46 @@
 
 class ComponentManager
 {
-public:
-    ComponentManager() = default;
-    ~ComponentManager() = default;
+    std::map<ComponentType, std::map<int, std::unique_ptr<IComponent>>> _globalComponents;
 
-    template <typename T, typename ... Args>
-    void addComponentToEntity(int entityId, Args&& ... args) {
-        ComponentType type = T::Type;
-        auto component = std::make_unique<T>(std::forward<Args>(args)...);
-        globalComponents[type][entityId] = std::move(component);
-    }
+    public:
+        ComponentManager() = default;
+        ~ComponentManager() = default;
 
-    //exemple d'utilisation : addComponentToEntity<Transform>(entityId, Vector2(0, 0), Vector2(1, 1), 0.0f); car Transform a un constructeur qui prend ces paramètres : KK Alexis 
+        template <typename T, typename ... Args>
+        void addComponentToEntity(int entityId, Args&& ... args) {
+            ComponentType type = T::Type;
+            auto component = std::make_unique<T>(std::forward<Args>(args)...);
 
-    template <typename T>
-    void removeComponentFromEntity(int entityId) {
-        ComponentType type = T::Type;
-        auto it = globalComponents.find(type);
-        if (it != globalComponents.end()) {
-            it->second.erase(entityId);
+            this->_globalComponents[type][entityId] = std::move(component);
         }
-    }
 
-    template <typename T>
-    T* getComponent(int entityId) {
-        ComponentType type = T::Type;
-        auto it = globalComponents.find(type);
-        if (it != globalComponents.end()) {
-            auto entityIt = it->second.find(entityId);
-            if (entityIt != it->second.end()) {
-                return static_cast<T*>(entityIt->second.get());
+        //exemple d'utilisation : addComponentToEntity<Transform>(entityId, Vector2(0, 0), Vector2(1, 1), 0.0f); car Transform a un constructeur qui prend ces paramètres : KK Alexis 
+
+        template <typename T>
+        void removeComponentFromEntity(int entityId) {
+            ComponentType type = T::Type;
+
+            auto it = this->_globalComponents.find(type);
+            if (it != this->_globalComponents.end()) {
+                it->second.erase(entityId);
             }
         }
-        return nullptr;
-    }
 
-    void removeAllComponentsFromEntity(int entityId);
+        template <typename T>
+        T* getComponent(int entityId) {
+            ComponentType type = T::Type;
 
+            auto it = this->_globalComponents.find(type);
+            if (it != this->_globalComponents.end()) {
+                auto entityIt = it->second.find(entityId);
+                if (entityIt != it->second.end()) {
+                    return static_cast<T*>(entityIt->second.get());
+                }
+            }
 
-private:
-    std::map<ComponentType, std::map<int, std::unique_ptr<IComponent>>> globalComponents;
+            return nullptr;
+        }
+
+        void removeAllComponentsFromEntity(int entityId);
 };
-

@@ -24,6 +24,7 @@ public:
     int createEntity();
     void destroyEntity(int entityId);
     bool entityExists(int entityId) const;
+    std::vector<int> getExistingEntities() const;
 
     template <typename T, typename ... Args>
     void addComponentToEntity(int entityId, Args&& ... args) {

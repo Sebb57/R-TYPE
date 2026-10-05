@@ -8,14 +8,18 @@
 #include "GameEngine/ECS/World.hpp"
 
 int World::createEntity() {
-    return entityManager.createEntity();
+    return this->entityManager.createEntity();
 }
 
 void World::destroyEntity(int entityId) {
-    entityManager.destroyEntity(entityId);
-    componentManager.removeAllComponentsFromEntity(entityId);
+    this->entityManager.destroyEntity(entityId);
+    this->componentManager.removeAllComponentsFromEntity(entityId);
 }
 
 bool World::entityExists(int entityId) const {
-    return entityManager.entityExists(entityId);
+    return this->entityManager.entityExists(entityId);
+}
+
+std::vector<int> World::getExistingEntities() const {
+    return this->entityManager.getExistingEntities();
 }
