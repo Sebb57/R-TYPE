@@ -2,18 +2,18 @@
 ** EPITECH PROJECT, 2026
 ** RType
 ** File description:
-** PhysicsSystem.cpp
+** PhysicSystem.cpp
 */
 
-#include "GameEngine/Systems/PhysicsSystem.hpp"
+#include "GameEngine/Systems/PhysicSystem.hpp"
 #include <vector>
 
-OrByte::PhysicsSystem::PhysicsSystem(World& world) : _world(world)
+OrByte::PhysicSystem::PhysicSystem(World& world) : _world(world)
 {
     this->_chrono.reset();
 }
 
-void OrByte::PhysicsSystem::_handleVelocity(Transform* transform, int entity, double deltaTime)
+void OrByte::PhysicSystem::_handleVelocity(Transform* transform, int entity, double deltaTime)
 {
     Velocity* velocity = this->_world.getComponent<Velocity>(entity);
     if (velocity == nullptr)
@@ -23,7 +23,7 @@ void OrByte::PhysicsSystem::_handleVelocity(Transform* transform, int entity, do
     transform->position.y += velocity->velocity.y * deltaTime;
 }
 
-void OrByte::PhysicsSystem::update()
+void OrByte::PhysicSystem::update()
 {
     double deltaTime = this->_chrono.getElapsedTime();
     this->_chrono.reset();
