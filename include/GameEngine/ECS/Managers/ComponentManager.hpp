@@ -10,15 +10,35 @@ public:
     ~ComponentManager() = default;
 
     template <typename T, typename ... Args>
-    void addComponentToEntity(int entityId, Args&& ... args);
+    void addComponentToEntity(int entityId, Args&& ... args) {
+        ComponentType type = T::Type;
+        auto component = std::make_unique<T>(std::forward<Args>(args)...);
+        globalComponents[type][entityId] = std::move(component);
+    }
 
     //exemple d'utilisation : addComponentToEntity<Transform>(entityId, Vector2(0, 0), Vector2(1, 1), 0.0f); car Transform a un constructeur qui prend ces paramètres : KK Alexis 
 
     template <typename T>
-    void removeComponentFromEntity(int entityId);
+    void removeComponentFromEntity(int entityId) {
+        ComponentType type = T::Type;
+        auto it = globalComponents.find(type);
+        if (it != globalComponents.end()) {
+            it->second.erase(entityId);
+        }
+    }
 
     template <typename T>
-    T* getComponent(int entityId);
+    T* getComponent(int entityId) {
+        ComponentType type = T::Type;
+        auto it = globalComponents.find(type);
+        if (it != globalComponents.end()) {
+            auto entityIt = it->second.find(entityId);
+            if (entityIt != it->second.end()) {
+                return static_cast<T*>(entityIt->second.get());
+            }
+        }
+        return nullptr;
+    }
 
     void removeAllComponentsFromEntity(int entityId);
 

@@ -1,4 +1,4 @@
-#include "EntityManager.hpp"
+#include "GameEngine/ECS/Managers/EntityManager.hpp"
 
 EntityManager::EntityManager() : nextEntityId(-1) {}
 
