@@ -1,5 +1,5 @@
 #pragma once
-#include "IComponent.hpp"
+#include "../Components/IComponent.hpp"
 #include <map>
 #include <memory>
 
