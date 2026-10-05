@@ -1,5 +1,5 @@
 #pragma once
-#include "IComponent.hpp"
+#include "GameEngine/ECS/Components/IComponent.hpp"
 #include "Managers/EntityManager.hpp"
 #include "Managers/ComponentManager.hpp"
 
