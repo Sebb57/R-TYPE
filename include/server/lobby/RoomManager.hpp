@@ -6,8 +6,8 @@
  * @date 2026-10-05
 **/
 
-#ifndef ROOMMANAGER_HPP_
-#define ROOMMANAGER_HPP_
+#ifndef SERVER_LOBBY_ROOMMANAGER_HPP
+#define SERVER_LOBBY_ROOMMANAGER_HPP
 
 #include <unordered_map>
 #include <memory>
@@ -28,8 +28,8 @@ class RoomManager {
         RoomManager(SessionRegistry&, OutgoingSink, const ServerConfig&);
 
         std::vector<RoomInfo> list() const;
-        Result<JoinResult> create(std::shared_ptr<TcpConnection>, std::string roomName, std::uint8_t maxPlayers);
-        Result<JoinResult> join(std::shared_ptr<TcpConnection>, RoomId);
+        Result<JoinResult> create(const std::shared_ptr<TcpConnection>&, std::string roomName, std::uint8_t maxPlayers);
+        Result<JoinResult> join(const std::shared_ptr<TcpConnection>&, RoomId);
         Result<void> startGame(SessionToken requester);
 
         void leave(SessionToken, LeaveReason);
@@ -45,6 +45,6 @@ class RoomManager {
         const ServerConfig& _conf;
 };
 
-}
+} // namespace server
 
-#endif /* ROOMMANAGER_HPP_ */
+#endif // SERVER_LOBBY_ROOMMANAGER_HPP

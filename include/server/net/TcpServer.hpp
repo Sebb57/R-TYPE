@@ -6,8 +6,8 @@
  * @date 2026-10-05
 **/
 
-#ifndef TCPSERVER_HPP_
-#define TCPSERVER_HPP_
+#ifndef SERVER_NET_TCPSERVER_HPP
+#define SERVER_NET_TCPSERVER_HPP
 
 #include <asio.hpp>
 #include <memory>
@@ -35,6 +35,6 @@ class TcpServer {
         std::vector<std::weak_ptr<TcpConnection>> _live;
 };
 
-}
+} // namespace server
 
-#endif /* TCPSERVER_HPP_ */
+#endif // SERVER_NET_TCPSERVER_HPP

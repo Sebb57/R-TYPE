@@ -6,8 +6,8 @@
  * @date 2026-10-05
 **/
 
-#ifndef SESSIONREGISTRY_HPP_
-#define SESSIONREGISTRY_HPP_
+#ifndef SERVER_LOBBY_SESSIONREGISTRY_HPP
+#define SERVER_LOBBY_SESSIONREGISTRY_HPP
 
 #include <asio.hpp>
 #include <memory>
@@ -49,6 +49,6 @@ class SessionRegistry {
         SessionToken _nextToken = 1;
 };
 
-}
+} // namespace server
 
-#endif /* SESSIONREGISTRY_HPP_ */
+#endif // SERVER_LOBBY_SESSIONREGISTRY_HPP

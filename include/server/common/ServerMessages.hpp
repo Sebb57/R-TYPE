@@ -6,8 +6,8 @@
  * @date 2026-10-05
 **/
 
-#ifndef SERVERMESSAGES_HPP_
-#define SERVERMESSAGES_HPP_
+#ifndef SERVER_COMMON_SERVERMESSAGES_HPP
+#define SERVER_COMMON_SERVERMESSAGES_HPP
 
 #include <cstdint>
 #include <functional>
@@ -45,6 +45,6 @@ struct OutboundMessage {
 };
 using OutgoingSink = std::function<void(OutboundMessage&&)>;
 
-}
+} // namespace server
 
-#endif /* SERVERMESSAGES_HPP_ */
+#endif // SERVER_COMMON_SERVERMESSAGES_HPP

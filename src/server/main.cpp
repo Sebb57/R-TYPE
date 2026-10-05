@@ -7,13 +7,15 @@
 **/
 
 #include "Server.hpp"
+#include <exception>
 #include <iostream>
+#include "ServerConfig.hpp"
 #include "constants.hpp"
 
 int main()
 {
     try {
-        server::ServerConfig config;
+        server::ServerConfig const config;
         server::Server server(config);
         server.run();
         return RType::SUCCESS;

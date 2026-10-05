@@ -25,6 +25,8 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
         void send(const Buffer&);
         void close();
         std::optional<SessionToken> session() const;
+        [[nodiscard]] const std::string& username() const { return _username; }
+        void setSession(SessionToken token) { _token = token; }
 
     private:
         void readFrameLength();
@@ -44,6 +46,6 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
         ServerConfig _conf;
 };
 
-}
+} // namespace server
 
 #endif /* TCPCONNECTION_HPP_ */

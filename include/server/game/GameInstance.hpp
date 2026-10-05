@@ -6,8 +6,8 @@
  * @date 2026-10-05
 **/
 
-#ifndef GAMEINSTANCE_HPP_
-#define GAMEINSTANCE_HPP_
+#ifndef SERVER_GAME_GAMEINSTANCE_HPP
+#define SERVER_GAME_GAMEINSTANCE_HPP
 
 #include <atomic>
 #include <memory>
@@ -46,6 +46,6 @@ class GameInstance {
         std::jthread _thread;
 };
 
-}
+} // namespace server
 
-#endif /* GAMEINSTANCE_HPP_ */
+#endif // SERVER_GAME_GAMEINSTANCE_HPP

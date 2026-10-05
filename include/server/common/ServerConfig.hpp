@@ -6,8 +6,8 @@
  * @date 2026-10-05
 **/
 
-#ifndef SERVERCONFIG_HPP_
-#define SERVERCONFIG_HPP_
+#ifndef SERVER_COMMON_SERVERCONFIG_HPP
+#define SERVER_COMMON_SERVERCONFIG_HPP
 
 #include <cstdint>
 #include <chrono>
@@ -41,6 +41,6 @@ struct ServerConfig {
     std::chrono::seconds handshakeTimeout{5};
 };
 
-}
+} // namespace server
 
-#endif /* SERVERCONFIG_HPP_ */
+#endif // SERVER_COMMON_SERVERCONFIG_HPP

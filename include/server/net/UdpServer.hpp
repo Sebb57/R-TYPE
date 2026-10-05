@@ -6,8 +6,8 @@
  * @date 2026-10-05
 **/
 
-#ifndef UDPSERVER_HPP_
-#define UDPSERVER_HPP_
+#ifndef SERVER_NET_UDPSERVER_HPP
+#define SERVER_NET_UDPSERVER_HPP
 
 #include <asio.hpp>
 #include <memory>
@@ -39,6 +39,6 @@ class UdpServer {
         RoomManager& _rooms;
 };
 
-}
+} // namespace server
 
-#endif /* UDPSERVER_HPP_ */
+#endif // SERVER_NET_UDPSERVER_HPP
