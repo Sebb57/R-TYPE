@@ -5,12 +5,28 @@
 ** PhysicSystem.cpp
 */
 
+#include "GameEngine/ECS/Components/Orbit.hpp"
+#include "GameEngine/ECS/Components/Velocity.hpp"
 #include "GameEngine/Systems/PhysicSystem.hpp"
+#include <cmath>
 #include <vector>
 
 OrByte::PhysicSystem::PhysicSystem(World& world) : _world(world)
 {
     this->_chrono.reset();
+}
+
+void OrByte::PhysicSystem::_handleOrbit(Transform* transform, int entity, double deltaTime)
+{
+    Orbit* orbit = this->_world.getComponent<Orbit>(entity);
+    if (orbit == nullptr)
+        return;
+
+    Vector2 center = orbit->target ? orbit->target->position : orbit->center;
+
+    orbit->angle += (orbit->angleSpeed * deltaTime);
+    transform->position.x = center.x + std::cos(orbit->angle) * orbit->radius;
+    transform->position.y = center.y + std::sin(orbit->angle) * orbit->radius;
 }
 
 void OrByte::PhysicSystem::_handleVelocity(Transform* transform, int entity, double deltaTime)
@@ -35,5 +51,6 @@ void OrByte::PhysicSystem::update()
             continue;
 
         this->_handleVelocity(transform, entity, deltaTime);
+        this->_handleOrbit(transform, entity, deltaTime);
     }
 }
