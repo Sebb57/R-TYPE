@@ -2,11 +2,12 @@
 
 enum class ComponentType
 {
-    Transform,
-    Sprite,
     Collider,
-    Velocity,
     Health,
+    Orbit,
+    Sprite,
+    Transform,
+    Velocity,
 };
 
 class IComponent

@@ -2,33 +2,33 @@
 ** EPITECH PROJECT, 2026
 ** RType
 ** File description:
-** PhysicsSystem.hpp
+** PhysicSystem.hpp
 */
 
 #pragma once
-#ifndef PHYSICSSYSTEM_HPP_
-    #define PHYSICSSYSTEM_HPP_
+#ifndef PHYSICSYSTEM_HPP_
+    #define PHYSICSYSTEM_HPP_
 
     #include "Chronometer.hpp"
     #include "GameEngine/ECS/Components/Transform.hpp"
-    #include "GameEngine/ECS/Components/Velocity.hpp"
     #include "GameEngine/ECS/World.hpp"
 
 namespace OrByte {
 
-class PhysicsSystem {
+class PhysicSystem {
     Chronometer _chrono;
     World& _world;
 
+    void _handleOrbit(Transform* transform, int entity, double deltaTime);
     void _handleVelocity(Transform* transform, int entity, double deltaTime);
 
     public:
-        PhysicsSystem(World& world);
-        ~PhysicsSystem() = default;
+        PhysicSystem(World& world);
+        ~PhysicSystem() = default;
 
         void update();
 };
 
 }
 
-#endif /* PHYSICSSYSTEM_HPP_ */
+#endif /* PHYSICSYSTEM_HPP_ */
