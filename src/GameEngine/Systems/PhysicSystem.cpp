@@ -6,6 +6,7 @@
 */
 
 #include "GameEngine/ECS/Components/Orbit.hpp"
+#include "GameEngine/ECS/Components/Spiral.hpp"
 #include "GameEngine/ECS/Components/Velocity.hpp"
 #include "GameEngine/Systems/PhysicSystem.hpp"
 #include <cmath>
@@ -27,6 +28,20 @@ void OrByte::PhysicSystem::_handleOrbit(Transform* transform, int entity, double
     orbit->angle += (orbit->angleSpeed * deltaTime);
     transform->position.x = center.x + std::cos(orbit->angle) * orbit->radius;
     transform->position.y = center.y + std::sin(orbit->angle) * orbit->radius;
+}
+
+void OrByte::PhysicSystem::_handleSpiral(Transform* transform, int entity, double deltaTime)
+{
+    Spiral* spiral = this->_world.getComponent<Spiral>(entity);
+    if (spiral == nullptr)
+        return;
+
+    Vector2 center = spiral->target ? spiral->target->position : spiral->center;
+
+    spiral->angle += (spiral->angleSpeed * deltaTime);
+    spiral->radius += spiral->expandSpeed * deltaTime;
+    transform->position.x = center.x + std::cos(spiral->angle) * spiral->radius;
+    transform->position.y = center.y + std::sin(spiral->angle) * spiral->radius;
 }
 
 void OrByte::PhysicSystem::_handleVelocity(Transform* transform, int entity, double deltaTime)
@@ -52,5 +67,6 @@ void OrByte::PhysicSystem::update()
 
         this->_handleVelocity(transform, entity, deltaTime);
         this->_handleOrbit(transform, entity, deltaTime);
+        this->_handleSpiral(transform, entity, deltaTime);
     }
 }
