@@ -5,8 +5,8 @@
 ** HealthSystem.cpp
 */
 
+#include "GameEngine/ECS/Components/AddHealth.hpp"
 #include "GameEngine/ECS/Components/Poison.hpp"
-#include "GameEngine/ECS/Components/RegenHealth.hpp"
 #include "GameEngine/ECS/Components/RemoveHealth.hpp"
 #include "GameEngine/ECS/Components/Wither.hpp"
 #include "GameEngine/Systems/HealthSystem.hpp"
@@ -81,16 +81,16 @@ void OrByte::HealthSystem::_handleWither(Health* health, int entity)
     }
 }
 
-void OrByte::HealthSystem::_handleRegenHealth(Health* health, int entity)
+void OrByte::HealthSystem::_handleAddHealth(Health* health, int entity)
 {
-    RegenHealth* regen = this->_world.getComponent<RegenHealth>(entity);
-    if (regen == nullptr)
+    AddHealth* ah = this->_world.getComponent<AddHealth>(entity);
+    if (ah == nullptr)
         return;
 
-    health->currentHealth += regen->regenAmount;
+    health->currentHealth += ah->regenAmount;
     if (health->currentHealth > health->maxHealth)
         health->currentHealth = health->maxHealth;
-    this->_world.removeComponentFromEntity<RegenHealth>(entity);
+    this->_world.removeComponentFromEntity<AddHealth>(entity);
 }
 
 void OrByte::HealthSystem::_handleRemoveHealth(Health* health, int entity)
@@ -117,7 +117,7 @@ void OrByte::HealthSystem::update()
         this->_handleWither(health, entity);
 
         // Handle regen
-        this->_handleRegenHealth(health, entity);
+        this->_handleAddHealth(health, entity);
 
         // Handle death
         if (this->_handleDeath(health, entity))

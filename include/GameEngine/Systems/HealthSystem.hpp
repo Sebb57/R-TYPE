@@ -24,8 +24,8 @@ class HealthSystem {
     bool _handleDeath(Health* health, int entity);
     void _handlePoison(Health* health, int entity);
     void _handleWither(Health* health, int entity);
-    void _handleRegenHealth(Health* health, int entity);
     void _handleRemoveHealth(Health* health, int entity);
+    void _handleAddHealth(Health* health, int entity);
 
     public:
         HealthSystem(World& world);

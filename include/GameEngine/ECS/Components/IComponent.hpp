@@ -2,6 +2,7 @@
 
 enum class ComponentType
 {
+    AddHealth,
     Collider,
     Health,
     Orbit,
