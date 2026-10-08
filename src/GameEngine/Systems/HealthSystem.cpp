@@ -8,6 +8,7 @@
 #include "GameEngine/ECS/Components/Poison.hpp"
 #include "GameEngine/ECS/Components/RegenHealth.hpp"
 #include "GameEngine/ECS/Components/RemoveHealth.hpp"
+#include "GameEngine/ECS/Components/Wither.hpp"
 #include "GameEngine/Systems/HealthSystem.hpp"
 #include <vector>
 #include <iostream>
@@ -53,6 +54,33 @@ void OrByte::HealthSystem::_handlePoison(Health* health, int entity)
     }
 }
 
+void OrByte::HealthSystem::_handleWither(Health* health, int entity)
+{
+    Wither* wither = this->_world.getComponent<Wither>(entity);
+    if (wither == nullptr)
+        return;
+
+    if (this->_witherCooldowns.contains(entity)) {
+        double cooldown = this->_witherCooldowns[entity].getElapsedTime();
+
+        if (cooldown >= wither->cooldown) {
+            health->currentHealth -= wither->damage;
+            wither->duration -= wither->cooldown;
+
+            if (wither->cooldown > wither->duration) {
+                this->_witherCooldowns.erase(entity);
+                this->_world.removeComponentFromEntity<Wither>(entity);
+                return;
+            }
+
+            this->_witherCooldowns[entity].reset();
+        }
+    } else {
+        this->_witherCooldowns[entity] = Chronometer();
+        this->_witherCooldowns[entity].reset();
+    }
+}
+
 void OrByte::HealthSystem::_handleRegenHealth(Health* health, int entity)
 {
     RegenHealth* regen = this->_world.getComponent<RegenHealth>(entity);
@@ -86,6 +114,7 @@ void OrByte::HealthSystem::update()
         // Handle damage
         this->_handleRemoveHealth(health, entity);
         this->_handlePoison(health, entity);
+        this->_handleWither(health, entity);
 
         // Handle regen
         this->_handleRegenHealth(health, entity);

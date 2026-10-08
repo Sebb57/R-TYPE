@@ -12,6 +12,7 @@ enum class ComponentType
     Sprite,
     Transform,
     Velocity,
+    Wither,
 };
 
 class IComponent
