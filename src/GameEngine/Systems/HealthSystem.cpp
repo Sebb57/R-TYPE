@@ -5,6 +5,7 @@
 ** HealthSystem.cpp
 */
 
+#include "GameEngine/ECS/Components/Poison.hpp"
 #include "GameEngine/ECS/Components/RegenHealth.hpp"
 #include "GameEngine/ECS/Components/RemoveHealth.hpp"
 #include "GameEngine/Systems/HealthSystem.hpp"
@@ -21,6 +22,35 @@ bool OrByte::HealthSystem::_handleDeath(Health* health, int entity)
         return true;
     }
     return false;
+}
+
+void OrByte::HealthSystem::_handlePoison(Health* health, int entity)
+{
+    Poison* poison = this->_world.getComponent<Poison>(entity);
+    if (poison == nullptr)
+        return;
+
+    if (this->_poisonCooldowns.contains(entity)) {
+        double cooldown = this->_poisonCooldowns[entity].getElapsedTime();
+
+        if (cooldown >= poison->cooldown) {
+            health->currentHealth -= poison->damage;
+            if (health->currentHealth < 1)
+                health->currentHealth = 1;
+            poison->duration -= poison->cooldown;
+
+            if (poison->cooldown > poison->duration) {
+                this->_poisonCooldowns.erase(entity);
+                this->_world.removeComponentFromEntity<Poison>(entity);
+                return;
+            }
+
+            this->_poisonCooldowns[entity].reset();
+        }
+    } else {
+        this->_poisonCooldowns[entity] = Chronometer();
+        this->_poisonCooldowns[entity].reset();
+    }
 }
 
 void OrByte::HealthSystem::_handleRegenHealth(Health* health, int entity)
@@ -53,8 +83,14 @@ void OrByte::HealthSystem::update()
         if (health == nullptr)
             continue;
 
-        this->_handleRegenHealth(health, entity);
+        // Handle damage
         this->_handleRemoveHealth(health, entity);
+        this->_handlePoison(health, entity);
+
+        // Handle regen
+        this->_handleRegenHealth(health, entity);
+
+        // Handle death
         if (this->_handleDeath(health, entity))
             continue;
     }

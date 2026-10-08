@@ -5,6 +5,7 @@ enum class ComponentType
     Collider,
     Health,
     Orbit,
+    Poison,
     RegenHealth,
     RemoveHealth,
     Spiral,

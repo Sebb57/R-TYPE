@@ -9,15 +9,19 @@
 #ifndef HEALTHSYSTEM_HPP_
     #define HEALTHSYSTEM_HPP_
 
+    #include "Chronometer.hpp"
     #include "GameEngine/ECS/World.hpp"
     #include "GameEngine/ECS/Components/Health.hpp"
+    #include <unordered_map>
 
 namespace OrByte {
 
 class HealthSystem {
     World& _world;
+    std::unordered_map<int, Chronometer> _poisonCooldowns;
 
     bool _handleDeath(Health* health, int entity);
+    void _handlePoison(Health* health, int entity);
     void _handleRegenHealth(Health* health, int entity);
     void _handleRemoveHealth(Health* health, int entity);
 
