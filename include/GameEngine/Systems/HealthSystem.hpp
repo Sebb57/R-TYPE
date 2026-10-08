@@ -20,12 +20,14 @@ class HealthSystem {
     World& _world;
     std::unordered_map<int, Chronometer> _poisonCooldowns;
     std::unordered_map<int, Chronometer> _witherCooldowns;
+    std::unordered_map<int, Chronometer> _regenCooldowns;
 
     bool _handleDeath(Health* health, int entity);
+    void _handleRemoveHealth(Health* health, int entity);
     void _handlePoison(Health* health, int entity);
     void _handleWither(Health* health, int entity);
-    void _handleRemoveHealth(Health* health, int entity);
     void _handleAddHealth(Health* health, int entity);
+    void _handleRegenHealth(Health* health, int entity);
 
     public:
         HealthSystem(World& world);

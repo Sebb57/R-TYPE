@@ -7,6 +7,7 @@
 
 #include "GameEngine/ECS/Components/AddHealth.hpp"
 #include "GameEngine/ECS/Components/Poison.hpp"
+#include "GameEngine/ECS/Components/RegenHealth.hpp"
 #include "GameEngine/ECS/Components/RemoveHealth.hpp"
 #include "GameEngine/ECS/Components/Wither.hpp"
 #include "GameEngine/Systems/HealthSystem.hpp"
@@ -23,6 +24,16 @@ bool OrByte::HealthSystem::_handleDeath(Health* health, int entity)
         return true;
     }
     return false;
+}
+
+void OrByte::HealthSystem::_handleRemoveHealth(Health* health, int entity)
+{
+    RemoveHealth* rh = this->_world.getComponent<RemoveHealth>(entity);
+    if (rh == nullptr)
+        return;
+
+    health->currentHealth -= rh->hitDamage;
+    this->_world.removeComponentFromEntity<RemoveHealth>(entity);
 }
 
 void OrByte::HealthSystem::_handlePoison(Health* health, int entity)
@@ -93,14 +104,33 @@ void OrByte::HealthSystem::_handleAddHealth(Health* health, int entity)
     this->_world.removeComponentFromEntity<AddHealth>(entity);
 }
 
-void OrByte::HealthSystem::_handleRemoveHealth(Health* health, int entity)
+void OrByte::HealthSystem::_handleRegenHealth(Health* health, int entity)
 {
-    RemoveHealth* rh = this->_world.getComponent<RemoveHealth>(entity);
-    if (rh == nullptr)
+    RegenHealth* regen = this->_world.getComponent<RegenHealth>(entity);
+    if (regen == nullptr)
         return;
 
-    health->currentHealth -= rh->hitDamage;
-    this->_world.removeComponentFromEntity<RemoveHealth>(entity);
+    if (this->_regenCooldowns.contains(entity)) {
+        double cooldown = this->_regenCooldowns[entity].getElapsedTime();
+
+        if (cooldown >= regen->cooldown) {
+            health->currentHealth += regen->regenAmount;
+            if (health->currentHealth > health->maxHealth)
+                health->currentHealth = health->maxHealth;
+            regen->duration -= regen->cooldown;
+
+            if (regen->cooldown > regen->duration) {
+                this->_regenCooldowns.erase(entity);
+                this->_world.removeComponentFromEntity<RegenHealth>(entity);
+                return;
+            }
+
+            this->_regenCooldowns[entity].reset();
+        }
+    } else {
+        this->_regenCooldowns[entity] = Chronometer();
+        this->_regenCooldowns[entity].reset();
+    }
 }
 
 void OrByte::HealthSystem::update()
@@ -118,6 +148,7 @@ void OrByte::HealthSystem::update()
 
         // Handle regen
         this->_handleAddHealth(health, entity);
+        this->_handleRegenHealth(health, entity);
 
         // Handle death
         if (this->_handleDeath(health, entity))
