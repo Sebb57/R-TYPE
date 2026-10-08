@@ -17,7 +17,11 @@ struct Health : public IComponent
 
     Health() = default;
     Health(int initHealth) : currentHealth(initHealth), maxHealth(initHealth) {}
-    Health(int current, int max) : currentHealth(current), maxHealth(max) {}
+    Health(int current, int max) : currentHealth(current), maxHealth(max)
+    {
+        if (this->currentHealth > this->maxHealth)
+            this->currentHealth = this->maxHealth;
+    }
 
     int currentHealth{100};
     int maxHealth{100};
