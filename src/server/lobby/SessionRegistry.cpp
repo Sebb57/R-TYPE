@@ -7,6 +7,7 @@
 **/
 
 #include <random>
+#include <ranges>
 #include "server/lobby/SessionRegistry.hpp"
 #include "ServerConfig.hpp"
 
@@ -25,11 +26,9 @@ server::SessionToken generateRandomToken()
 
 server::Session& server::SessionRegistry::create(RoomId room, PlayerSlot slot, std::string username, std::weak_ptr<TcpConnection> tcp)
 {
-    SessionToken token = this->_nextToken++;
-
-    while (token == 0 || this->_sessions.contains(token)) {
+    SessionToken token = generateRandomToken();
+    while (token == 0 || this->_sessions.contains(token))
         token = generateRandomToken();
-    }
 
     auto [it, inserted] = this->_sessions.emplace(token, Session(token, room, slot, std::move(username), std::move(tcp), std::nullopt, Clock::now(), std::nullopt));
     return it->second;
@@ -47,6 +46,8 @@ bool server::SessionRegistry::bindEndpoint(SessionToken token, const asio::ip::u
     if (session == nullptr)
         return false;
 
+    if (session->udp && *session->udp != endpoint)
+        return false;
     session->udp = endpoint;
     session->lastSeen = Clock::now();
     return true;
@@ -99,4 +100,14 @@ bool server::SessionRegistry::allBound(RoomId room) const
             return false;
     }
     return found;
+}
+
+std::vector<const server::Session*> server::SessionRegistry::sessionsIn(RoomId room) const
+{
+    std::vector<const Session*> result;
+    for (const auto& [token, session] : _sessions)
+        if (session.room == room)
+            result.push_back(&session);
+    std::ranges::sort(result, {}, [](const Session* session) { return session->slot; });
+    return result;
 }

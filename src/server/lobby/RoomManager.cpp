@@ -8,6 +8,7 @@
 
 #include "server/lobby/RoomManager.hpp"
 #include "server/net/TcpConnection.hpp"
+#include "protocol/TcpProtocol.hpp"
 #include <algorithm>
 #include <ranges>
 #include <cctype>
@@ -43,7 +44,7 @@ server::Result<server::JoinResult> server::RoomManager::create(const std::shared
         return std::unexpected(LobbyError::TooManyRooms);
 
     RoomId id = this->_nextId++;
-    if (id == 0) 
+    while (id == 0 || this->_rooms.contains(id))
         id = this->_nextId++;
 
     auto& session = this->_sessions.create(id, 0, connection->username(), connection);
@@ -70,8 +71,7 @@ server::Result<server::JoinResult> server::RoomManager::join(const std::shared_p
     if (room.isFull())
         return std::unexpected(LobbyError::RoomFull);
 
-    const PlayerSlot candidate = room.getInfo().players;
-    auto& session = this->_sessions.create(id, candidate, connection->username(), connection);
+    auto& session = this->_sessions.create(id, 0, connection->username(), connection);
     auto slot = room.addPlayer(session.token);
     if (!slot) {
         this->_sessions.erase(session.token);
@@ -102,6 +102,10 @@ server::Result<void> server::RoomManager::startGame(SessionToken requester)
     if (room.getInfo().players < 2 || !this->_sessions.allBound(session->room))
         return std::unexpected(LobbyError::PlayersNotReady);
     room.start();
+    const Buffer started{static_cast<Byte>(Type::GameStarted)};
+    for (const Session* player : this->_sessions.sessionsIn(session->room))
+        if (auto connection = player->tcp.lock())
+            connection->send(started);
     return {};
 }
 
@@ -124,6 +128,28 @@ void server::RoomManager::leave(SessionToken token, LeaveReason reason)
         }
     }
     this->_sessions.erase(token);
+    if (this->_rooms.contains(id))
+        this->notifyRoom(id);
+}
+
+void server::RoomManager::notifyRoom(RoomId id)
+{
+    const auto roomIt = this->_rooms.find(id);
+    if (roomIt == this->_rooms.end())
+        return;
+    const RoomInfo info = roomIt->second->getInfo();
+    const auto host = roomIt->second->slotOf(roomIt->second->getHost()).value_or(0);
+    Buffer message{static_cast<Byte>(Type::RoomUpdate), host, info.players};
+    const auto sessions = this->_sessions.sessionsIn(id);
+    for (const Session* session : sessions) {
+        message.push_back(session->slot);
+        TcpProtocol::appendString(message, session->username);
+        message.push_back(session->udp.has_value() ? 1 : 0);
+    }
+    for (const Session* session : sessions) {
+        if (auto connection = session->tcp.lock())
+            connection->send(message);
+    }
 }
 
 void server::RoomManager::push(RoomId id, InboundEvent event)
@@ -133,10 +159,21 @@ void server::RoomManager::push(RoomId id, InboundEvent event)
         it->second->push(std::move(event));
 }
 
+void server::RoomManager::refreshRoom(RoomId id)
+{
+    notifyRoom(id);
+}
+
 void server::RoomManager::sweep(Clock::time_point now)
 {
-    for (SessionToken token : this->_sessions.timedOut(now, this->_conf.clientTimeout))
-        this->leave(token, LeaveReason::Timeout);
+    for (SessionToken token : this->_sessions.timedOut(now, this->_conf.clientTimeout)) {
+        const Session* session = this->_sessions.find(token);
+        if (session == nullptr)
+            continue;
+        const auto room = this->_rooms.find(session->room);
+        if (room != this->_rooms.end() && room->second->getState() == RoomState::Running)
+            this->leave(token, LeaveReason::Timeout);
+    }
 
     for (auto it = this->_rooms.begin(); it != this->_rooms.end();) {
         it->second->refresh();

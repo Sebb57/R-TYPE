@@ -34,10 +34,12 @@ class RoomManager {
 
         void leave(SessionToken, LeaveReason);
         void push(RoomId, InboundEvent);
+        void refreshRoom(RoomId);
         void sweep(Clock::time_point now);
         void stopAll();
 
     private:
+        void notifyRoom(RoomId);
         std::unordered_map<RoomId, std::unique_ptr<Room>> _rooms;
         RoomId _nextId = 1;
         SessionRegistry& _sessions;

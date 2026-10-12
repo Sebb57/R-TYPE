@@ -43,6 +43,7 @@ class SessionRegistry {
         [[nodiscard]] std::vector<SessionToken> timedOut(Clock::time_point now, std::chrono::seconds timeout) const;
         [[nodiscard]] std::vector<asio::ip::udp::endpoint> endpointsOf(RoomId, const Target&) const;
         [[nodiscard]] bool allBound(RoomId) const;
+        [[nodiscard]] std::vector<const Session*> sessionsIn(RoomId) const;
 
     private:
         std::unordered_map<SessionToken, Session> _sessions;

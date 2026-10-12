@@ -36,8 +36,9 @@ struct Target {
     PlayerSlot slot = 0;
 };
 
-struct SnapshotDto { std::vector<Byte> data; };
-struct GameEventDto { std::vector<Byte> data; };
+struct EntityDto { std::uint32_t id = 0; std::uint8_t type = 0; std::int16_t x = 0; std::int16_t y = 0; std::uint8_t flags = 0; };
+struct SnapshotDto { std::uint32_t tick = 0; std::vector<EntityDto> entities; };
+struct GameEventDto { std::uint32_t eventId = 0; std::uint8_t eventType = 0; std::uint32_t entityId = 0; std::uint32_t extra = 0; };
 struct OutboundMessage {
     RoomId room;
     Target target;
