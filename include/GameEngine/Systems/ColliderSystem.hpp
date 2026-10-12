@@ -23,8 +23,15 @@ struct AABB {
     float bottom;
 };
 
+struct Circle {
+    Vector2 center;
+    float radius;
+};
+
 struct CollisionEntity {
     int entity;
+    Collider* collider;
+    Transform* transform;
     AABB box;
 };
 
@@ -33,6 +40,9 @@ class ColliderSystem {
     
     bool checkCollision(Collider* colliderA, Collider* colliderB, Transform* transformA, Transform* transformB);
     AABB getAABB(const Collider& collider, const Transform& transform);
+    Circle getCircle(const Collider& collider, const Transform& transform);
+    bool intersects(const Circle& a, const Circle& b);
+    bool intersects(const Circle& circle, const AABB& box);
     bool intersects(const AABB& a, const AABB& b);
     
     public:
