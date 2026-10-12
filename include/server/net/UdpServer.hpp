@@ -14,6 +14,7 @@
 #include "server/common/ServerConfig.hpp"
 #include "server/common/ServerMessages.hpp"
 #include "server/lobby/SessionRegistry.hpp"
+#include "protocol/UdpProtocol.hpp"
 
 namespace server {
 
@@ -31,12 +32,18 @@ class UdpServer {
         void doReceive();
         void onDatagram(const asio::ip::udp::endpoint&, std::size_t);
         void sendRaw(const asio::ip::udp::endpoint&, std::shared_ptr<const Buffer>);
+        void onHello(Session&, const asio::ip::udp::endpoint&);
+        void onInput(Session&, const UdpHeader&, std::size_t);
+        void onPing(Session&, const UdpHeader&, std::size_t);
 
         asio::ip::udp::socket _socket;
         Buffer _rx = Buffer(1500);
         asio::ip::udp::endpoint _sender;
         SessionRegistry& _sessions;
         RoomManager& _rooms;
+        std::uint16_t _port;
+        std::uint8_t _tickRate;
+        std::uint8_t _snapshotRate;
 };
 
 } // namespace server

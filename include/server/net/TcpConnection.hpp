@@ -24,9 +24,9 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
         void start();
         void send(const Buffer&);
         void close();
-        std::optional<SessionToken> session() const;
+        [[nodiscard]] std::optional<SessionToken> session() const { return _token; }
         [[nodiscard]] const std::string& username() const { return _username; }
-        void setSession(SessionToken token) { _token = token; }
+        void setSession(SessionToken token) { this->_token = token; }
 
     private:
         void readFrameLength();
@@ -42,6 +42,7 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
         std::string _username;
         std::optional<SessionToken> _token;
         std::deque<Buffer> _writeQueue;
+        bool _closeAfterWrite = false;
         RoomManager& _rooms;
         ServerConfig _conf;
 };
