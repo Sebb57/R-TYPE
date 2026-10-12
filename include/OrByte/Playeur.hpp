@@ -9,10 +9,10 @@ namespace RType {
         public:
             Playeur(World *world);
             ~Playeur();
-            CreateServeurComponent(World *world);
-            CreateClientComponent(World *world);
+            void CreateServeurComponent(World *world);
+            void CreateClientComponent(World *world);
         private:
-            size_t ID;
+            int ID;
     };
 }
 
