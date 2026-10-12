@@ -1,6 +1,16 @@
+/*
+** EPITECH PROJECT, 2026
+** RType
+** File description:
+** Transform.hpp
+*/
+
 #pragma once
-#include "IComponent.hpp"
-#include "../Utils.hpp"
+#ifndef TRANSFORM_HPP_
+    #define TRANSFORM_HPP_
+
+    #include "IComponent.hpp"
+    #include "../Utils.hpp"
 
 struct Transform : public IComponent
 {
@@ -14,3 +24,5 @@ struct Transform : public IComponent
     Vector2 scale{1.0f, 1.0f};
     float rotation{0.0f};
 };
+
+#endif /* TRANSFORM_HPP_ */
