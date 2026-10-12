@@ -1,19 +1,31 @@
+/*
+** EPITECH PROJECT, 2026
+** RType
+** File description:
+** EntityManager.hpp
+*/
+
 #pragma once
-#include "../Components/IComponent.hpp"
-#include <map>
-#include <memory>
+#ifndef ENTITYMANAGER_HPP_
+    #define ENTITYMANAGER_HPP_
 
-class EntityManager
-{
-public:
-    EntityManager();
-    ~EntityManager() = default;
+    #include "GameEngine/ECS/Components/IComponent.hpp"
+    #include <map>
+    #include <memory>
+    #include <vector>
 
-    int createEntity();
-    void destroyEntity(int entityId);
-    bool entityExists(int entityId) const;
+class EntityManager {
+    int _nextEntityId;
+    std::map<int, bool> _entities;
+        
+    public:
+        EntityManager();
+        ~EntityManager() = default;
 
-private:
-    int nextEntityId;
-    std::map<int, bool> entities;
+        int createEntity();
+        void destroyEntity(int entityId);
+        bool entityExists(int entityId) const;
+        std::vector<int> getExistingEntities() const;
 };
+
+#endif /* ENTITYMANAGER_HPP_ */
