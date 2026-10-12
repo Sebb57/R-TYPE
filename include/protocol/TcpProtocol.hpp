@@ -14,7 +14,7 @@
 #include <string>
 #include <cstddef>
 #include <vector>
-#include "ServerConfig.hpp"
+#include "server/common/ServerConfig.hpp"
 
 namespace server {
 

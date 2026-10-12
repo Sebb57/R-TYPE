@@ -30,7 +30,8 @@ server::Session& server::SessionRegistry::create(RoomId room, PlayerSlot slot, s
     while (token == 0 || this->_sessions.contains(token))
         token = generateRandomToken();
 
-    auto [it, inserted] = this->_sessions.emplace(token, Session(token, room, slot, std::move(username), std::move(tcp), std::nullopt, Clock::now(), std::nullopt));
+    auto [it, inserted] = this->_sessions.emplace(token, Session(token, room, slot,
+        std::move(username), std::move(tcp), std::nullopt, Clock::now(), std::nullopt, std::nullopt));
     return it->second;
 }
 

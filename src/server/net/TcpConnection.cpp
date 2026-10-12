@@ -11,12 +11,32 @@
 #include "protocol/TcpProtocol.hpp"
 #include <array>
 #include <algorithm>
+#include <iostream>
 #include <utility>
 #include <cctype>
 
 namespace {
 
 constexpr std::size_t kMaxWriteQueue = 128;
+
+const char* typeName(server::Type type)
+{
+    switch (type) {
+        case server::Type::Connect: return "CONNECT";
+        case server::Type::ConnectOk: return "CONNECT_OK";
+        case server::Type::ListRooms: return "LIST_ROOMS";
+        case server::Type::RoomList: return "ROOM_LIST";
+        case server::Type::CreateRoom: return "CREATE_ROOM";
+        case server::Type::JoinRoom: return "JOIN_ROOM";
+        case server::Type::RoomJoined: return "ROOM_JOINED";
+        case server::Type::RoomUpdate: return "ROOM_UPDATE";
+        case server::Type::LeaveRoom: return "LEAVE_ROOM";
+        case server::Type::StartGame: return "START_GAME";
+        case server::Type::GameStarted: return "GAME_STARTED";
+        case server::Type::Error: return "ERROR";
+    }
+    return "UNKNOWN";
+}
 
 bool validUsername(const std::string& name)
 {
@@ -40,6 +60,11 @@ void server::TcpConnection::start()
     if (!this->_socket.is_open())
         return;
 
+    asio::error_code endpointError;
+    const auto endpoint = this->_socket.remote_endpoint(endpointError);
+    if (!endpointError)
+        std::cerr << "[TCP] connected peer=" << endpoint << '\n';
+
     this->_deadline.expires_after(this->_conf.handshakeTimeout);
     auto self = this->shared_from_this();
     this->_deadline.async_wait([self](const asio::error_code& error) {
@@ -53,6 +78,11 @@ void server::TcpConnection::send(const Buffer& message)
 {
     if (!this->_socket.is_open() || message.empty() || message.size() > MaxFrameSize)
         return;
+    std::cerr << "[TCP] sent type=" << typeName(static_cast<server::Type>(message.front()))
+        << " bytes=" << message.size();
+    if (!this->_username.empty())
+        std::cerr << " user=" << this->_username;
+    std::cerr << '\n';
     if (this->_writeQueue.size() >= kMaxWriteQueue) {
         this->close();
         return;
@@ -73,6 +103,13 @@ void server::TcpConnection::close()
 {
     if (!this->_socket.is_open())
         return;
+
+    asio::error_code endpointError;
+    const auto endpoint = this->_socket.remote_endpoint(endpointError);
+    std::cerr << "[TCP] disconnected user=" << (this->_username.empty() ? "<unauthenticated>" : this->_username);
+    if (!endpointError)
+        std::cerr << " peer=" << endpoint;
+    std::cerr << '\n';
 
     asio::error_code ignored;
     this->_deadline.cancel(ignored);
@@ -131,6 +168,14 @@ void server::TcpConnection::onFrame(const Buffer& frame)
     }
 
     const auto type = static_cast<server::Type>(frame.front());
+    asio::error_code endpointError;
+    const auto endpoint = this->_socket.remote_endpoint(endpointError);
+    std::cerr << "[TCP] received type=" << typeName(type) << " bytes=" << frame.size();
+    if (!this->_username.empty())
+        std::cerr << " user=" << this->_username;
+    if (!endpointError)
+        std::cerr << " peer=" << endpoint;
+    std::cerr << '\n';
     Buffer payload(frame.begin() + 1, frame.end());
     std::size_t offset = 0;
 
@@ -139,6 +184,7 @@ void server::TcpConnection::onFrame(const Buffer& frame)
         this->send(Buffer{static_cast<Byte>(server::Type::Error), 10});
     };
     auto sendError = [this](LobbyError error) {
+        std::cerr << "[TCP] lobby error user=" << this->_username << " code=" << static_cast<unsigned>(error) << '\n';
         this->send(Buffer{static_cast<Byte>(server::Type::Error), static_cast<uint8_t>(error)});
     };
 
@@ -158,6 +204,7 @@ void server::TcpConnection::onFrame(const Buffer& frame)
         }
         this->_username = std::move(name);
         this->_state = State::Lobby;
+        std::cerr << "[TCP] authenticated user=" << this->_username << '\n';
         asio::error_code ignored;
         this->_deadline.cancel(ignored);
         this->send(Buffer{static_cast<Byte>(server::Type::ConnectOk)});
@@ -202,6 +249,8 @@ void server::TcpConnection::onFrame(const Buffer& frame)
             response.push_back(result->slot);
             TcpProtocol::appendU16(response, this->_conf.udpPort);
             this->send(response);
+            if (this->_rooms.isRunning(result->room))
+                this->send(Buffer{static_cast<Byte>(server::Type::GameStarted)});
             this->_rooms.refreshRoom(result->room);
             return;
         }
@@ -224,6 +273,8 @@ void server::TcpConnection::onFrame(const Buffer& frame)
             response.push_back(result->slot);
             TcpProtocol::appendU16(response, this->_conf.udpPort);
             this->send(response);
+            if (this->_rooms.isRunning(result->room))
+                this->send(Buffer{static_cast<Byte>(server::Type::GameStarted)});
             this->_rooms.refreshRoom(result->room);
             return;
         }
@@ -239,8 +290,8 @@ void server::TcpConnection::onFrame(const Buffer& frame)
     }
     if (type == server::Type::StartGame && payload.empty() && this->_token) {
         auto result = this->_rooms.startGame(*this->_token);
-        if (!result) { sendError(result.error()); return; }
-        this->send(Buffer{static_cast<Byte>(server::Type::GameStarted)});
+        if (!result)
+            sendError(result.error());
         return;
     }
     badRequest();

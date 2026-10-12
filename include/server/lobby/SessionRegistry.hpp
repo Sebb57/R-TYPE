@@ -31,6 +31,7 @@ struct Session {
     std::optional<asio::ip::udp::endpoint> udp;
     Clock::time_point lastSeen;
     std::optional<std::uint32_t> lastInputSeq;
+    std::optional<std::uint8_t> lastInputKeys;
 };
 
 class SessionRegistry {

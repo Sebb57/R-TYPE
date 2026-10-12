@@ -12,7 +12,7 @@
 namespace RType {
 
 inline constexpr int SUCCESS = 0;
-inline constexpr int FAILURE = 0;
+inline constexpr int FAILURE = 84;
 
 } // namespace RType;
 

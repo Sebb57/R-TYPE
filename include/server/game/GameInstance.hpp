@@ -11,12 +11,17 @@
 
 #include <atomic>
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <thread>
 #include "BoundedQueue.hpp"
 #include "server/common/ServerMessages.hpp"
 
 class World;
+namespace OrByte {
+class HealthSystem;
+class PhysicSystem;
+}
 
 namespace server {
 
@@ -33,7 +38,7 @@ class GameInstance {
     private:
         void run(std::stop_token);
         void applyInbound();
-        void update(float dtSeconds);
+        void update();
         [[nodiscard]] SnapshotDto makeSnapshot(std::uint32_t tick);
         void emit(Target, std::variant<SnapshotDto, GameEventDto>);
 
@@ -41,10 +46,13 @@ class GameInstance {
         unsigned _tickRate;
         unsigned _snapshotRate;
         std::unique_ptr<World> _world;
+        std::unique_ptr<OrByte::HealthSystem> _healthSystem;
+        std::unique_ptr<OrByte::PhysicSystem> _physicSystem;
         BoundedQueue<InboundEvent> _inbox{256};
         OutgoingSink _sink;
-        // Latest validated input state per player, consumed by the future ECS input system.
         std::unordered_map<PlayerSlot, std::uint8_t> _playerInputs;
+        std::unordered_map<PlayerSlot, int> _playerEntities;
+        std::optional<std::size_t> _lastSnapshotCount;
         std::atomic<bool> _finished{false};
         std::jthread _thread;
 };

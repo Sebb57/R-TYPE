@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <ranges>
 #include <cctype>
+#include <iostream>
 #include <utility>
 
 server::RoomManager::RoomManager(SessionRegistry& sessions, OutgoingSink sink, const ServerConfig& conf)
@@ -53,6 +54,7 @@ server::Result<server::JoinResult> server::RoomManager::create(const std::shared
     room->setPlayerName(0, connection->username());
     this->_rooms.emplace(id, std::move(room));
     connection->setSession(token);
+    std::cerr << "[ROOM] created id=" << id << " name=" << name << " host=" << connection->username() << '\n';
     return JoinResult(id, token, 0);
 }
 
@@ -66,7 +68,7 @@ server::Result<server::JoinResult> server::RoomManager::join(const std::shared_p
         return std::unexpected(LobbyError::RoomNotFound);
 
     Room& room = *it->second;
-    if (room.getState() != RoomState::Lobby) 
+    if (room.getState() == RoomState::Finished)
         return std::unexpected(LobbyError::AlreadyStarted);
     if (room.isFull())
         return std::unexpected(LobbyError::RoomFull);
@@ -81,6 +83,10 @@ server::Result<server::JoinResult> server::RoomManager::join(const std::shared_p
     session.slot = *slot;
     room.setPlayerName(*slot, connection->username());
     connection->setSession(session.token);
+    if (room.getState() == RoomState::Running)
+        room.push(PlayerJoined(*slot, connection->username()));
+    std::cerr << "[ROOM] joined id=" << id << " slot=" << static_cast<unsigned>(*slot)
+        << " user=" << connection->username() << " players=" << static_cast<unsigned>(room.getInfo().players) << '\n';
     return JoinResult(id, session.token, *slot);
 }
 
@@ -99,14 +105,21 @@ server::Result<void> server::RoomManager::startGame(SessionToken requester)
         return std::unexpected(LobbyError::AlreadyStarted);
     if (room.getHost() != requester)
         return std::unexpected(LobbyError::NotHost);
-    if (room.getInfo().players < 2 || !this->_sessions.allBound(session->room))
+    if (!this->_sessions.allBound(session->room))
         return std::unexpected(LobbyError::PlayersNotReady);
     room.start();
+    std::cerr << "[ROOM] started id=" << session->room << " players=" << static_cast<unsigned>(room.getInfo().players) << '\n';
     const Buffer started{static_cast<Byte>(Type::GameStarted)};
     for (const Session* player : this->_sessions.sessionsIn(session->room))
         if (auto connection = player->tcp.lock())
             connection->send(started);
     return {};
+}
+
+bool server::RoomManager::isRunning(RoomId id) const
+{
+    const auto room = this->_rooms.find(id);
+    return room != this->_rooms.end() && room->second->getState() == RoomState::Running;
 }
 
 void server::RoomManager::leave(SessionToken token, LeaveReason reason)
@@ -117,6 +130,9 @@ void server::RoomManager::leave(SessionToken token, LeaveReason reason)
 
     const RoomId id = session->room;
     const PlayerSlot slot = session->slot;
+    const std::string username = session->username;
+    std::cerr << "[ROOM] leaving id=" << id << " slot=" << static_cast<unsigned>(slot)
+        << " user=" << username << " reason=" << static_cast<unsigned>(reason) << '\n';
 
     auto it = this->_rooms.find(id);
     if (it != this->_rooms.end()) {

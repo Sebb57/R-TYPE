@@ -22,6 +22,8 @@ constexpr std::uint16_t UdpMagic = 0x6767;
 constexpr std::uint8_t UdpVersion = 1;
 
 enum class UdpType : std::uint8_t { Hello = 1, HelloAck, Input, Snapshot, Event, Ping, Pong, Disconnect };
+enum class EntityType : std::uint8_t { Unknown = 0, Player = 1 };
+constexpr std::uint8_t EntitySlotMask = 0x03;
 
 struct UdpHeader {
     std::uint16_t magic = UdpMagic;

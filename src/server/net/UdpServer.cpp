@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <iostream>
 
 server::UdpServer::UdpServer(asio::io_context& io, SessionRegistry& sessions, RoomManager& rooms, const ServerConfig& config)
     : _socket(io), _sessions(sessions), _rooms(rooms), _port(config.udpPort),
@@ -79,6 +80,8 @@ void server::UdpServer::onHello(Session& session, const asio::ip::udp::endpoint&
 {
     if (!this->_sessions.bindEndpoint(session.token, from))
         return;
+    std::cerr << "[UDP] bound user=" << session.username << " room=" << session.room
+        << " slot=" << static_cast<unsigned>(session.slot) << " peer=" << from << '\n';
     this->_rooms.refreshRoom(session.room);
     Buffer payload{session.slot, this->_tickRate, this->_snapshotRate};
     auto bytes = std::make_shared<const Buffer>(UdpProtocol::encode(UdpType::HelloAck, 0, 0, payload));
@@ -92,7 +95,14 @@ void server::UdpServer::onInput(Session& session, const UdpHeader& header, std::
         return;
     session.lastInputSeq = header.sequence;
     this->_sessions.touch(session.token, Clock::now());
-    this->_rooms.push(session.room, PlayerInput{session.slot, static_cast<std::uint8_t>(this->_rx[UdpHeaderSize] & 0x1f)});
+    const std::uint8_t keys = static_cast<std::uint8_t>(this->_rx[UdpHeaderSize] & 0x1f);
+    if (!session.lastInputKeys || *session.lastInputKeys != keys) {
+        std::cerr << "[UDP] input user=" << session.username << " room=" << session.room
+            << " slot=" << static_cast<unsigned>(session.slot) << " seq=" << header.sequence
+            << " keys=" << static_cast<unsigned>(keys) << '\n';
+        session.lastInputKeys = keys;
+    }
+    this->_rooms.push(session.room, PlayerInput(session.slot, keys));
 }
 
 void server::UdpServer::onPing(Session& session, const UdpHeader& header, std::size_t size)
@@ -132,7 +142,16 @@ void server::UdpServer::send(const OutboundMessage& message)
         UdpProtocol::appendU32(payload, event.extra);
     }
     auto bytes = std::make_shared<const Buffer>(UdpProtocol::encode(type, sequence, 0, payload));
-    for (const auto& endpoint : this->_sessions.endpointsOf(message.room, message.target))
+    const auto endpoints = this->_sessions.endpointsOf(message.room, message.target);
+    if (const auto* snapshot = std::get_if<SnapshotDto>(&message.payload)) {
+        auto previous = this->_lastSnapshotCounts.find(message.room);
+        if (previous == this->_lastSnapshotCounts.end() || previous->second != snapshot->entities.size()) {
+            std::cerr << "[UDP] snapshot room=" << message.room << " tick=" << snapshot->tick
+                << " entities=" << snapshot->entities.size() << " clients=" << endpoints.size() << '\n';
+            this->_lastSnapshotCounts[message.room] = snapshot->entities.size();
+        }
+    }
+    for (const auto& endpoint : endpoints)
         this->sendRaw(endpoint, bytes);
 }
 

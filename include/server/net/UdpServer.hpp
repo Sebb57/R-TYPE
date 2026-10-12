@@ -10,7 +10,9 @@
 #define SERVER_NET_UDPSERVER_HPP
 
 #include <asio.hpp>
+#include <cstddef>
 #include <memory>
+#include <unordered_map>
 #include "server/common/ServerConfig.hpp"
 #include "server/common/ServerMessages.hpp"
 #include "server/lobby/SessionRegistry.hpp"
@@ -44,6 +46,7 @@ class UdpServer {
         std::uint16_t _port;
         std::uint8_t _tickRate;
         std::uint8_t _snapshotRate;
+        std::unordered_map<RoomId, std::size_t> _lastSnapshotCounts;
 };
 
 } // namespace server

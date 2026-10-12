@@ -31,6 +31,7 @@ class RoomManager {
         Result<JoinResult> create(const std::shared_ptr<TcpConnection>&, std::string roomName, std::uint8_t maxPlayers);
         Result<JoinResult> join(const std::shared_ptr<TcpConnection>&, RoomId);
         Result<void> startGame(SessionToken requester);
+        [[nodiscard]] bool isRunning(RoomId) const;
 
         void leave(SessionToken, LeaveReason);
         void push(RoomId, InboundEvent);

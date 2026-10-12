@@ -24,7 +24,7 @@ server::Room::Room(RoomId id, std::string name, std::uint8_t maxPlayers, Session
 
 std::optional<server::PlayerSlot> server::Room::addPlayer(SessionToken token)
 {
-    if (token == 0 || this->_state != RoomState::Lobby || this->isFull() || this->contains(token))
+    if (token == 0 || this->_state == RoomState::Finished || this->isFull() || this->contains(token))
         return std::nullopt;
     for (PlayerSlot slot = 0; slot < this->_maxPlayers; ++slot) {
         if (!this->_slots[slot]) {
