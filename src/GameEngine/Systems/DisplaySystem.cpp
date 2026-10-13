@@ -14,7 +14,7 @@ void OrByte::DisplaySystem::_handleSprite(Transform* transform, int entity)
     if (sprite == nullptr)
         return;
 
-    this->_graphic.drawImage(*transform, sprite->texturePath);
+    this->_graphic.drawImage(*transform, sprite->size, sprite->texturePath);
 }
 
 void OrByte::DisplaySystem::update()
