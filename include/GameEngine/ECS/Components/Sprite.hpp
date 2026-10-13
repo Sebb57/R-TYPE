@@ -1,6 +1,18 @@
+/*
+** EPITECH PROJECT, 2026
+** RType
+** File description:
+** Sprite.hpp
+*/
+
 #pragma once
-#include "IComponent.hpp"
-#include <string>
+#ifndef SPRITE_HPP_
+    #define SPRITE_HPP_
+
+    #include "GameEngine/ECS/Components/IComponent.hpp"
+    #include <string>
+
+namespace OrByte {
 
 struct Sprite : public IComponent
 {
@@ -10,3 +22,7 @@ struct Sprite : public IComponent
 
     std::string texturePath;
 };
+
+}
+
+#endif /* SPRITE_HPP_ */
