@@ -6,6 +6,7 @@
 */
 
 #include "GameEngine/ECS/Components/Orbit.hpp"
+#include "GameEngine/ECS/Components/Sinus.hpp"
 #include "GameEngine/ECS/Components/Spiral.hpp"
 #include "GameEngine/ECS/Components/Velocity.hpp"
 #include "GameEngine/Systems/PhysicSystem.hpp"
@@ -28,6 +29,19 @@ void OrByte::PhysicSystem::_handleOrbit(Transform* transform, int entity, double
     orbit->angle += (orbit->angleSpeed * deltaTime);
     transform->position.x = center.x + std::cos(orbit->angle) * orbit->radius;
     transform->position.y = center.y + std::sin(orbit->angle) * orbit->radius;
+}
+
+void OrByte::PhysicSystem::_handleSinus(Transform* transform, int entity, double deltaTime)
+{
+    Sinus* sinus = this->_world.getComponent<Sinus>(entity);
+    if (sinus == nullptr)
+        return;
+
+    Vector2 center = sinus->target ? sinus->target->position : sinus->center;
+
+    sinus->curr += (sinus->speed * deltaTime);
+    transform->position.x = center.x;
+    transform->position.y = center.y + std::sin(sinus->curr * M_PI * 2) * sinus->distance;
 }
 
 void OrByte::PhysicSystem::_handleSpiral(Transform* transform, int entity, double deltaTime)
@@ -66,6 +80,7 @@ void OrByte::PhysicSystem::update()
             continue;
 
         this->_handleVelocity(transform, entity, deltaTime);
+        this->_handleSinus(transform, entity, deltaTime);
         this->_handleOrbit(transform, entity, deltaTime);
         this->_handleSpiral(transform, entity, deltaTime);
     }

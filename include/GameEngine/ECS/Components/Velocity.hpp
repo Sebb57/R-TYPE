@@ -1,6 +1,18 @@
+/*
+** EPITECH PROJECT, 2026
+** RType
+** File description:
+** Velocity.hpp
+*/
+
 #pragma once
-#include "IComponent.hpp"
-#include "../Utils.hpp"
+#ifndef VELOCITY_HPP_
+    #define VELOCITY_HPP_
+
+    #include "IComponent.hpp"
+    #include "../Utils.hpp"
+
+namespace OrByte {
 
 struct Velocity : public IComponent
 {
@@ -11,3 +23,7 @@ struct Velocity : public IComponent
 
     Vector2 velocity{0.0f, 0.0f};
 };
+
+}
+
+#endif /* VELOCITY_HPP_ */

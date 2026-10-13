@@ -13,6 +13,8 @@
     #include "Transform.hpp"
     #include "../Utils.hpp"
 
+namespace OrByte {
+
 struct Orbit : public IComponent
 {
     inline static constexpr ComponentType Type = ComponentType::Orbit;
@@ -31,5 +33,7 @@ struct Orbit : public IComponent
     float angle = 0.0F;
     float angleSpeed = 0.0F;
 };
+
+}
 
 #endif /* ORBIT_HPP_ */

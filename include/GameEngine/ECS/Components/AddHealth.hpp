@@ -11,6 +11,8 @@
 
     #include "IComponent.hpp"
 
+namespace OrByte {
+
 struct AddHealth : public IComponent
 {
     inline static constexpr ComponentType Type = ComponentType::AddHealth;
@@ -20,5 +22,7 @@ struct AddHealth : public IComponent
 
     int regenAmount{100};
 };
+
+}
 
 #endif /* ADDHEALTH_HPP_ */

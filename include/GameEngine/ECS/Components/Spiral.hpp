@@ -13,6 +13,8 @@
     #include "Transform.hpp"
     #include "../Utils.hpp"
 
+namespace OrByte {
+
 struct Spiral : public IComponent
 {
     inline static constexpr ComponentType Type = ComponentType::Spiral; 
@@ -32,5 +34,7 @@ struct Spiral : public IComponent
     float angle = 0.0F;
     float angleSpeed = 0.0F;
 };
+
+}
 
 #endif /* SPIRAL_HPP_ */
