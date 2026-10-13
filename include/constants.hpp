@@ -19,6 +19,9 @@ inline constexpr int FPS_LIMIT = 60;
 inline constexpr int SERVER_WINDOW_X = 1920;
 inline constexpr int SERVER_WINDOW_Y = 1080;
 
+inline constexpr const char *FONT_DEFAULT = "assets/fonts/NotoSans-Regular.ttf";
+inline constexpr const char *SPRITE_PLAYER = "assets/sprites/player.png";
+
 };
 
 #endif /* CONSTANTS_HPP_ */
