@@ -77,10 +77,10 @@ foreach(header IN LISTS SERVER_HEADERS)
 endforeach()
 list(REMOVE_DUPLICATES SERVER_INCLUDE_DIRS)
 
-add_executable(server ${SERVER_SOURCES})
-target_include_directories(server PRIVATE ${SERVER_INCLUDE_DIRS})
-target_link_libraries(server PRIVATE rtype_engine rtype-protocol)
-target_compile_features(server PRIVATE cxx_std_23)
+add_executable(r-type_server ${SERVER_SOURCES})
+target_include_directories(r-type_server PRIVATE ${SERVER_INCLUDE_DIRS})
+target_link_libraries(r-type_server PRIVATE rtype_engine rtype-protocol)
+target_compile_features(r-type_server PRIVATE cxx_std_23)
 
 set(SFML_BUILD_GRAPHICS ON CACHE BOOL "" FORCE)
 set(SFML_BUILD_WINDOW ON CACHE BOOL "" FORCE)
@@ -105,7 +105,7 @@ target_include_directories(r-type_client PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/in
 target_link_libraries(r-type_client PRIVATE rtype_engine rtype-protocol rtype_sfml sfml-audio)
 target_compile_features(r-type_client PRIVATE cxx_std_23)
 
-foreach(target IN ITEMS rtype_engine server r-type_client)
+foreach(target IN ITEMS rtype_engine r-type_server r-type_client)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
