@@ -144,11 +144,11 @@ void server::UdpServer::send(const OutboundMessage& message)
     auto bytes = std::make_shared<const Buffer>(UdpProtocol::encode(type, sequence, 0, payload));
     const auto endpoints = this->_sessions.endpointsOf(message.room, message.target);
     if (const auto* snapshot = std::get_if<SnapshotDto>(&message.payload)) {
-        auto previous = this->_lastSnapshotCounts.find(message.room);
-        if (previous == this->_lastSnapshotCounts.end() || previous->second != snapshot->entities.size()) {
+        auto previous = this->_lastSnapshotClients.find(message.room);
+        if (previous == this->_lastSnapshotClients.end() || previous->second != endpoints.size()) {
             std::cerr << "[UDP] snapshot room=" << message.room << " tick=" << snapshot->tick
                 << " entities=" << snapshot->entities.size() << " clients=" << endpoints.size() << '\n';
-            this->_lastSnapshotCounts[message.room] = snapshot->entities.size();
+            this->_lastSnapshotClients[message.room] = endpoints.size();
         }
     }
     for (const auto& endpoint : endpoints)

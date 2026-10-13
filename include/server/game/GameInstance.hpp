@@ -14,10 +14,11 @@
 #include <map>
 #include <memory>
 #include <optional>
-#include <string>
 #include <unordered_map>
 #include <thread>
 #include "BoundedQueue.hpp"
+#include "Chronometer.hpp"
+#include "GameEngine/ECS/Utils.hpp"
 #include "protocol/UdpProtocol.hpp"
 #include "server/common/ServerMessages.hpp"
 
@@ -41,15 +42,23 @@ class GameInstance {
 
     private:
         using InputHandler = std::function<void(PlayerSlot slot, int entity, bool pressed)>;
+        using HoldHandler = std::function<void(PlayerSlot slot, int entity)>;
 
         void run(std::stop_token);
         void bindInputs();
-        [[nodiscard]] InputHandler logInput(std::string action) const;
         void applyInbound();
         void handle(const PlayerJoined& event);
         void handle(const PlayerLeft& event);
         void handle(const PlayerInput& event);
         void update();
+        void holdInputs();
+        void steer(PlayerSlot slot, int entity);
+        void fire(PlayerSlot slot, int entity);
+        void keepPlayersInBounds();
+        void removeOutOfBounds();
+        int spawn(EntityType type, Vector2 position, Vector2 size, Vector2 velocity);
+        void despawn(int entity);
+        [[nodiscard]] bool isHeld(PlayerSlot slot, InputKey key) const;
         [[nodiscard]] SnapshotDto makeSnapshot(std::uint32_t tick);
         void emit(Target, std::variant<SnapshotDto, GameEventDto>);
 
@@ -62,9 +71,12 @@ class GameInstance {
         BoundedQueue<InboundEvent> _inbox{256};
         OutgoingSink _sink;
         std::map<InputKey, InputHandler> _inputHandlers;
+        std::map<InputKey, HoldHandler> _holdHandlers;
         std::unordered_map<PlayerSlot, std::uint8_t> _playerInputs;
         std::unordered_map<PlayerSlot, int> _playerEntities;
-        std::optional<std::size_t> _lastSnapshotCount;
+        std::unordered_map<PlayerSlot, OrByte::Chronometer> _fireClocks;
+        std::unordered_map<int, EntityType> _types;
+        std::optional<std::size_t> _lastPlayerCount;
         std::atomic<bool> _finished{false};
         std::jthread _thread;
 };

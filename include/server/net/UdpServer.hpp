@@ -46,7 +46,7 @@ class UdpServer {
         std::uint16_t _port;
         std::uint8_t _tickRate;
         std::uint8_t _snapshotRate;
-        std::unordered_map<RoomId, std::size_t> _lastSnapshotCounts;
+        std::unordered_map<RoomId, std::size_t> _lastSnapshotClients;
 };
 
 } // namespace server

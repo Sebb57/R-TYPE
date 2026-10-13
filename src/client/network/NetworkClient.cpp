@@ -359,9 +359,11 @@ void client::NetworkClient::onUdpPacket(const server::Buffer& packet)
         (this->*handler->second)(packet);
 }
 
-void client::NetworkClient::onHelloAck(const server::Buffer&)
+void client::NetworkClient::onHelloAck(const server::Buffer& packet)
 {
     std::scoped_lock lock(this->_mutex);
+    if (packet.size() >= server::UdpHeaderSize + 3 && packet[server::UdpHeaderSize + 2] != 0)
+        this->_view.snapshotRate = packet[server::UdpHeaderSize + 2];
     this->_view.udpReady = true;
     this->_view.status = "Ready, waiting for the host to start";
 }

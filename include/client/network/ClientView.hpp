@@ -55,6 +55,7 @@ struct ClientView {
     std::uint64_t token = 0;
     std::uint16_t udpPort = 0;
     std::uint8_t slot = 0;
+    std::uint8_t snapshotRate = 20;
 };
 
 } // namespace client

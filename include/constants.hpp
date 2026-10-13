@@ -20,7 +20,16 @@ inline constexpr int SERVER_WINDOW_X = 1920;
 inline constexpr int SERVER_WINDOW_Y = 1080;
 
 inline constexpr const char *FONT_DEFAULT = "assets/fonts/NotoSans-Regular.ttf";
-inline constexpr const char *SPRITE_PLAYER = "assets/sprites/player.png";
+inline constexpr const char *SPRITE_PLAYER = "assets/sprites/thanks.png";
+inline constexpr const char *SPRITE_PROJECTILE = "assets/sprites/thanks.png";
+
+inline constexpr float PLAYER_WIDTH = 130.0f;
+inline constexpr float PLAYER_HEIGHT = 100.0f;
+inline constexpr float PLAYER_SPEED = 600.0f;
+inline constexpr float PROJECTILE_WIDTH = 52.0f;
+inline constexpr float PROJECTILE_HEIGHT = 40.0f;
+inline constexpr float PROJECTILE_SPEED = 1400.0f;
+inline constexpr double FIRE_RATE = 6.0;
 
 };
 
