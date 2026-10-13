@@ -6,9 +6,9 @@
  * @date 2026-10-12
 **/
 
-// #include "Component.hpp"
 #include "constants.hpp"
-#include "GameEngine/SFML.hpp"
+#include "GameEngine/ECS/Utils.hpp"
+#include "plugins/SFML.hpp"
 #include <cmath>
 #include <iostream>
 #include <queue>
@@ -16,56 +16,34 @@
 #include <thread>
 
 namespace {
-
-template <typename T>
-T getAnchorPoint(Layout::Transform transform, T windowSize)
-{
-    T res;
-
-    switch (transform.AnchX) {
-        case (Layout::AnchorX::LEFT):
-            res.x = 0;
-            break;
-        case (Layout::AnchorX::MID):
-            res.x = windowSize.x / 2;
-            break;
-        case (Layout::AnchorX::RIGHT):
-            res.x = windowSize.x;
-            break;
+    Vector2 getWindowRatio(const sf::Vector2u windowSize)
+    {
+        return { static_cast<float>(windowSize.x) / static_cast<float>(OrByte::constants::SERVER_WINDOW_X),
+                static_cast<float>(windowSize.y) / static_cast<float>(OrByte::constants::SERVER_WINDOW_Y) };
     }
-    switch (transform.AnchY) {
-        case (Layout::AnchorY::TOP):
-            res.y = 0;
-            break;
-        case (Layout::AnchorY::MID):
-            res.y = windowSize.y / 2;
-            break;
-        case (Layout::AnchorY::BOTTOM):
-            res.y = windowSize.y;
-            break;
+
+    sf::Vector2f getPositionFromRatio(const Vector2 position, const Vector2 windowRatio)
+    {
+        return { position.x * windowRatio.y, position.y * windowRatio.y };
     }
-    return res;
+
+    sf::Vector2f getSizeFromRatio(const Vector2 size, const Vector2 windowRatio)
+    {
+        return { size.x * windowRatio.y, size.y * windowRatio.y };
+    }
+
+    sf::Color colorNormalize(const OrByte::RGBA color)
+    {
+        return sf::Color(
+            color.r,
+            color.g,
+            color.b,
+            color.a
+        );
+    }
 }
 
-inline sf::Vector2f getPosFromTransform(Layout::Rect rect, sf::Vector2u windowSize, sf::Vector2u anchorPoint)
-{
-    return {anchorPoint.x + rect.x * windowSize.x + rect.offsetX, anchorPoint.y + rect.y * windowSize.y + rect.offsetY};
-}
-
-inline sf::Vector2f getSizeFromTransform(Layout::Rect rect, sf::Vector2u windowSize)
-{
-    return {windowSize.x * rect.x + rect.offsetX, windowSize.y * rect.y + rect.offsetY};
-}
-
-sf::Color colorNormalize(Layout::Color color)
-{
-    return sf::Color(color.r, color.g, color.b, color.a);
-}
-
-}
-
-
-void Layout::SFML::open(const std::size_t width, const std::size_t height, std::string title)
+void OrByte::SFML::open(const std::size_t width, const std::size_t height, std::string title)
 {
     if (this->_isOpen)
         return;
@@ -79,7 +57,7 @@ void Layout::SFML::open(const std::size_t width, const std::size_t height, std::
     this->_isOpen = true;
 }
 
-void Layout::SFML::close()
+void OrByte::SFML::close()
 {
     if (!this->_isOpen)
         return;
@@ -88,7 +66,7 @@ void Layout::SFML::close()
     this->_isOpen = false;
 }
 
-std::queue<Layout::Event> Layout::SFML::listen() const
+std::queue<OrByte::Event> OrByte::SFML::listen() const
 {
     std::queue<Event> events;
     sf::Event sfmlEvent;
@@ -284,14 +262,14 @@ std::queue<Layout::Event> Layout::SFML::listen() const
     return events;
 }
 
-void Layout::SFML::clear() const
+void OrByte::SFML::clear() const
 {
     if (!this->_isOpen || !this->_window)
         return;
     this->_window->clear(sf::Color::Black);
 }
 
-void Layout::SFML::update()
+void OrByte::SFML::update()
 {
     if (!this->_isOpen || !this->_window)
         return;
@@ -303,48 +281,47 @@ void Layout::SFML::update()
     this->_nextFrameTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000 / constants::FPS_LIMIT);
 }
 
-void Layout::SFML::drawRectangle(Transform transform, Options options) const
+void OrByte::SFML::drawRectangle(const Transform& transform, Vector2 size, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor) const
 {
     sf::RectangleShape rectangle;
 
     if (!this->_isOpen || !this->_window)
         return;
-    sf::Vector2u windowSize = this->_window->getSize();
-    sf::Vector2u anchorPoint = getAnchorPoint<sf::Vector2u>(transform, windowSize);
+    Vector2 windowRatio = getWindowRatio(this->_window->getSize());
+    sf::Vector2f sizeRatio = getSizeFromRatio(size, windowRatio);
 
-    rectangle.setPosition(getPosFromTransform(transform.Pos, windowSize, anchorPoint));
-    rectangle.setSize(getSizeFromTransform(transform.Size, windowSize));
-    rectangle.setOrigin(getAnchorPoint<sf::Vector2f>(transform, rectangle.getSize()));
-    rectangle.setRotation(options.angle);
-    rectangle.setFillColor(colorNormalize(options.primaryColor));
-    rectangle.setOutlineColor(colorNormalize(options.secondaryColor));
-    rectangle.setOutlineThickness(options.outlineThickness);
+    rectangle.setPosition(getPositionFromRatio(transform.position, windowRatio));
+    rectangle.setSize(sizeRatio);
+    rectangle.setOrigin({ sizeRatio.x / 2, sizeRatio.y / 2 });
+    rectangle.setRotation(transform.rotation);
+    rectangle.setFillColor(colorNormalize(fillColor));
+    rectangle.setOutlineThickness(outlineThickness);
+    rectangle.setOutlineColor(colorNormalize(outlineColor));
 
     this->_window->draw(rectangle);
 }
 
-void Layout::SFML::drawCircle(Transform transform, Options options) const
+void OrByte::SFML::drawCircle(const Transform& transform, unsigned radius, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor) const
 {
     sf::CircleShape circle;
 
     if (!this->_isOpen || !this->_window)
         return;
-    sf::Vector2u windowSize = this->_window->getSize();
-    sf::Vector2u anchorPoint = getAnchorPoint<sf::Vector2u>(transform, windowSize);
-    float radius = getSizeFromTransform(transform.Size, windowSize).x;
+    Vector2 windowRatio = getWindowRatio(this->_window->getSize());
+    float radiusRatio = radius * windowRatio.y;
 
-    circle.setPosition(getPosFromTransform(transform.Pos, windowSize, anchorPoint));
-    circle.setRadius(radius);
-    circle.setOrigin(getAnchorPoint<sf::Vector2f>(transform, {radius*2, radius*2}));
-    circle.setRotation(options.angle);
-    circle.setFillColor(colorNormalize(options.primaryColor));
-    circle.setOutlineColor(colorNormalize(options.secondaryColor));
-    circle.setOutlineThickness(options.outlineThickness);
+    circle.setPosition(getPositionFromRatio(transform.position, windowRatio));
+    circle.setRadius(radiusRatio);
+    circle.setOrigin({radiusRatio, radiusRatio});
+    circle.setRotation(transform.rotation);
+    circle.setFillColor(colorNormalize(fillColor));
+    circle.setOutlineThickness(outlineThickness);
+    circle.setOutlineColor(colorNormalize(outlineColor));
 
     this->_window->draw(circle);
 }
 
-void Layout::SFML::drawImage(Transform transform, std::filesystem::path path, Options options) const
+void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::filesystem::path path) const
 {
     sf::Texture texture;
 
@@ -354,22 +331,21 @@ void Layout::SFML::drawImage(Transform transform, std::filesystem::path path, Op
         return;
 
     sf::Sprite sprite;
-    sf::Vector2u windowSize = this->_window->getSize();
-    sf::Vector2u anchorPoint = getAnchorPoint<sf::Vector2u>(transform, windowSize);
+    Vector2 windowRatio = getWindowRatio(this->_window->getSize());
     sf::Vector2u textureSize = texture.getSize();
-    float scale = (windowSize.x * transform.Size.x + transform.Size.offsetX) / textureSize.x;
-    sf::Vector2f spriteAnchorPoint = getAnchorPoint<sf::Vector2f>(transform, {textureSize.x * scale, textureSize.y * scale});
+    float scale = size.y / textureSize.y;
+    float sizeRatio = getSizeFromRatio(size, windowRatio).y * scale;
 
-    sprite.setPosition(getPosFromTransform(transform.Pos, windowSize, anchorPoint));
-    sprite.setScale({scale, scale});
+    sprite.setPosition(getPositionFromRatio(transform.position, windowRatio));
+    sprite.setScale({sizeRatio, sizeRatio});
     sprite.setTexture(texture);
-    sprite.setOrigin(spriteAnchorPoint);
-    sprite.setRotation(options.angle);
+    sprite.setOrigin({textureSize.x * sizeRatio / 2, textureSize.y * sizeRatio / 2});
+    sprite.setRotation(transform.rotation);
 
     this->_window->draw(sprite);
 }
 
-void Layout::SFML::drawText(Transform transform, std::string text, Options options, std::filesystem::path font) const
+void OrByte::SFML::drawText(const Transform& transform, std::string text, unsigned fontSize, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor, std::filesystem::path font) const
 {
     sf::Font sfmlFont;
 
@@ -378,21 +354,20 @@ void Layout::SFML::drawText(Transform transform, std::string text, Options optio
     sfmlFont.loadFromFile(font);
 
     sf::Text sfmlText;
-    sf::Vector2u windowSize = this->_window->getSize();
-    sf::Vector2u anchorPoint = getAnchorPoint<sf::Vector2u>(transform, windowSize);
+    Vector2 windowRatio = getWindowRatio(this->_window->getSize());
 
     sfmlText.setFont(sfmlFont);
-    sfmlText.setCharacterSize(windowSize.x * transform.Size.x + transform.Size.x);
-    sfmlText.setFillColor(colorNormalize(options.primaryColor));
-    sfmlText.setOutlineColor(colorNormalize(options.secondaryColor));
-    sfmlText.setOutlineThickness(options.outlineThickness);
+    sfmlText.setCharacterSize(fontSize * windowRatio.y);
+    sfmlText.setFillColor(colorNormalize(fillColor));
+    sfmlText.setOutlineThickness(outlineThickness);
+    sfmlText.setOutlineColor(colorNormalize(outlineColor));
     sfmlText.setString(text);
 
-    sfmlText.setPosition(getPosFromTransform(transform.Pos, windowSize, anchorPoint));
+    sfmlText.setPosition(getPositionFromRatio(transform.position, windowRatio));
     this->_window->draw(sfmlText);
 }
 
-std::pair<unsigned, unsigned> Layout::SFML::getWindowSize() const noexcept
+std::pair<unsigned, unsigned> OrByte::SFML::getWindowSize() const noexcept
 {
     sf::Vector2u windowSize = this->_window->getSize();
 
@@ -400,8 +375,8 @@ std::pair<unsigned, unsigned> Layout::SFML::getWindowSize() const noexcept
 }
 
 extern "C" {
-    Layout::IGraphic *factory(Layout::Layout& layout)
+    OrByte::IGraphic *factory(OrByte::Layout& layout)
     {
-        return new Layout::SFML(layout);
+        return new OrByte::SFML(layout);
     }
 }

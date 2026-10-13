@@ -11,6 +11,8 @@
 
     #include "IComponent.hpp"
 
+namespace OrByte {
+
 struct Health : public IComponent
 {
     inline static constexpr ComponentType Type = ComponentType::Health;
@@ -26,5 +28,7 @@ struct Health : public IComponent
     int currentHealth{100};
     int maxHealth{100};
 };
+
+}
 
 #endif /* HEALTH_HPP_ */

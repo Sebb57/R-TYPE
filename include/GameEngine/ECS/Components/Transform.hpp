@@ -12,6 +12,8 @@
     #include "IComponent.hpp"
     #include "../Utils.hpp"
 
+namespace OrByte {
+
 struct Transform : public IComponent
 {
     inline static constexpr ComponentType Type = ComponentType::Transform;
@@ -24,5 +26,7 @@ struct Transform : public IComponent
     Vector2 scale{1.0f, 1.0f};
     float rotation{0.0f};
 };
+
+}
 
 #endif /* TRANSFORM_HPP_ */

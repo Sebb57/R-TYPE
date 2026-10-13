@@ -13,6 +13,8 @@
     #include "Transform.hpp"
     #include "../Utils.hpp"
 
+namespace OrByte {
+
 struct Sinus : public IComponent
 {
     inline static constexpr ComponentType Type = ComponentType::Sinus;
@@ -31,5 +33,7 @@ struct Sinus : public IComponent
     float curr = 0.0F;
     float speed = 0.0F;
 };
+
+}
 
 #endif /* SINUS_HPP_ */
