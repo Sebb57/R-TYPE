@@ -18,10 +18,10 @@ int main()
         server::ServerConfig const config;
         server::Server server(config);
         server.run();
-        return RType::SUCCESS;
+        return OrByte::constants::SUCCESS;
     }
     catch (const std::exception& e) {
         std::cerr << "[Fatal] " << e.what() << std::endl;
-        return RType::FAILURE;
+        return OrByte::constants::FAILURE;
     }
 }

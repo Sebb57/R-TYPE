@@ -10,11 +10,15 @@
 #define SERVER_GAME_GAMEINSTANCE_HPP
 
 #include <atomic>
+#include <functional>
+#include <map>
 #include <memory>
 #include <optional>
+#include <string>
 #include <unordered_map>
 #include <thread>
 #include "BoundedQueue.hpp"
+#include "protocol/UdpProtocol.hpp"
 #include "server/common/ServerMessages.hpp"
 
 class World;
@@ -36,8 +40,15 @@ class GameInstance {
         [[nodiscard]] bool finished() const;
 
     private:
+        using InputHandler = std::function<void(PlayerSlot slot, int entity, bool pressed)>;
+
         void run(std::stop_token);
+        void bindInputs();
+        [[nodiscard]] InputHandler logInput(std::string action) const;
         void applyInbound();
+        void handle(const PlayerJoined& event);
+        void handle(const PlayerLeft& event);
+        void handle(const PlayerInput& event);
         void update();
         [[nodiscard]] SnapshotDto makeSnapshot(std::uint32_t tick);
         void emit(Target, std::variant<SnapshotDto, GameEventDto>);
@@ -50,6 +61,7 @@ class GameInstance {
         std::unique_ptr<OrByte::PhysicSystem> _physicSystem;
         BoundedQueue<InboundEvent> _inbox{256};
         OutgoingSink _sink;
+        std::map<InputKey, InputHandler> _inputHandlers;
         std::unordered_map<PlayerSlot, std::uint8_t> _playerInputs;
         std::unordered_map<PlayerSlot, int> _playerEntities;
         std::optional<std::size_t> _lastSnapshotCount;

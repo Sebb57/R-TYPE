@@ -13,17 +13,14 @@
 #include "plugins/IGraphic.hpp"
 
 namespace OrByte {
-    class Layout;
-
     class AGraphic : public IGraphic {
         protected:
-            Layout& _layout;
             std::size_t _width = 0;
             std::size_t _height = 0;
             bool _isOpen = false;
 
         public:
-            AGraphic(Layout& layout) : _layout(layout) {}
+            AGraphic() = default;
             ~AGraphic() override = default;
 
             bool isOpen() const noexcept final { return this->_isOpen; }
