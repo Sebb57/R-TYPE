@@ -1,14 +1,14 @@
-#ifndef ENNEMIES_HPP
-#define ENNEMIES_HPP
+#ifndef PLAYEUR_HPP
+#define PLAYEUR_HPP
 
-#include "../GameEngine/ECS/World.hpp"
+#include "../World.hpp"
 #include <cstddef>
 
 namespace RType {
-    class Ennemies {
+    class Playeur {
         public:
-            Ennemies(World *world);
-            ~Ennemies();
+            Playeur(World *world);
+            ~Playeur();
             void CreateServeurComponent(World *world);
             void CreateClientComponent(World *world);
         private:

@@ -1,14 +1,14 @@
-#ifndef PROJECTILES_HPP
-#define PROJECTILES_HPP
+#ifndef ENNEMIES_HPP
+#define ENNEMIES_HPP
 
-#include "../GameEngine/ECS/World.hpp"
+#include "../World.hpp"
 #include <cstddef>
 
 namespace RType {
-    class Projectiles {
+    class Ennemies {
         public:
-            Projectiles(World *world);
-            ~Projectiles();
+            Ennemies(World *world);
+            ~Ennemies();
             void CreateServeurComponent(World *world);
             void CreateClientComponent(World *world);
         private:

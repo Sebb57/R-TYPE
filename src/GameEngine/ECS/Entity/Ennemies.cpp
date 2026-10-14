@@ -1,9 +1,9 @@
-#include "../../include/OrByte/Ennemies.hpp"
-#include "../../include/GameEngine/ECS/Components/Collider.hpp"
-#include "../../include/GameEngine/ECS/Components/Health.hpp"
-#include "../../include/GameEngine/ECS/Components/Sprite.hpp"
-#include "../../include/GameEngine/ECS/Components/Transform.hpp"
-#include "../../include/GameEngine/ECS/Components/Velocity.hpp"
+#include "GameEngine/ECS/Entity/Ennemies.hpp"
+#include "GameEngine/ECS/Components/Collider.hpp"
+#include "GameEngine/ECS/Components/Health.hpp"
+#include "GameEngine/ECS/Components/Sprite.hpp"
+#include "GameEngine/ECS/Components/Transform.hpp"
+#include "GameEngine/ECS/Components/Velocity.hpp"
 
 RType::Ennemies::Ennemies(World *world)
 {

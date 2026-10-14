@@ -1,14 +1,14 @@
-#ifndef PLAYEUR_HPP
-#define PLAYEUR_HPP
+#ifndef PROJECTILES_HPP
+#define PROJECTILES_HPP
 
-#include "../GameEngine/ECS/World.hpp"
+#include "../World.hpp"
 #include <cstddef>
 
 namespace RType {
-    class Playeur {
+    class Projectiles {
         public:
-            Playeur(World *world);
-            ~Playeur();
+            Projectiles(World *world);
+            ~Projectiles();
             void CreateServeurComponent(World *world);
             void CreateClientComponent(World *world);
         private:
