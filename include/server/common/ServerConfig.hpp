@@ -6,14 +6,13 @@
  * @date 2026-10-05
 **/
 
-#ifndef SERVERCONFIG_HPP_
-#define SERVERCONFIG_HPP_
+#ifndef SERVER_COMMON_SERVERCONFIG_HPP
+#define SERVER_COMMON_SERVERCONFIG_HPP
 
 #include <cstdint>
 #include <chrono>
 #include <expected>
 #include <cstddef>
-#include <string>
 #include <vector>
 
 namespace server {
@@ -25,9 +24,9 @@ using Clock = std::chrono::steady_clock;
 using Byte = std::uint8_t;
 using Buffer = std::vector<Byte>;
 
-enum class RoomState   { Lobby, Running, Finished };
-enum class LeaveReason { Requested, ConnectionLost, Timeout, Kicked };
-enum class LobbyError  { BadName, RoomFull, RoomNotFound, AlreadyStarted,
+enum class RoomState : uint8_t { Lobby, Running, Finished };
+enum class LeaveReason : uint8_t { Requested, ConnectionLost, Timeout, Kicked };
+enum class LobbyError : uint8_t { BadName, RoomFull, RoomNotFound, AlreadyStarted,
                          NotHost, PlayersNotReady, TooManyRooms, NotInRoom };
 
 template <class T> using Result = std::expected<T, LobbyError>;
@@ -41,6 +40,6 @@ struct ServerConfig {
     std::chrono::seconds handshakeTimeout{5};
 };
 
-}
+} // namespace server
 
-#endif /* SERVERCONFIG_HPP_ */
+#endif // SERVER_COMMON_SERVERCONFIG_HPP

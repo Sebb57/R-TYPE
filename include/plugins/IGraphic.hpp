@@ -9,6 +9,7 @@
 #ifndef IGRAPHIC_HPP
     #define IGRAPHIC_HPP
 
+    #include "constants.hpp"
     #include "GameEngine/ECS/Components/Transform.hpp"
     #include "GameEngine/ECS/Utils.hpp"
     #include "GameEngine/Event.hpp"
@@ -44,7 +45,7 @@ namespace OrByte {
             virtual void drawRectangle(const Transform& transform, Vector2 size, RGBA fillColor = {255, 255, 255}, unsigned outlineThickness = 0, RGBA outlineColor = {0, 0, 0}) const = 0;
             virtual void drawCircle(const Transform& transform, unsigned radius, RGBA fillColor = {255, 255, 255}, unsigned outlineThickness = 0, RGBA outlineColor = {0, 0, 0}) const = 0;
             virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path) const = 0;
-            virtual void drawText(const Transform& transform, std::string text, unsigned fontSize = 20, RGBA fillColor = {255, 255, 255}, unsigned outlineThickness = 0, RGBA outlineColor = {0, 0, 0}, std::filesystem::path font = "./assets/Arial Regular.ttf") const = 0;
+            virtual void drawText(const Transform& transform, std::string text, unsigned fontSize = 20, RGBA fillColor = {255, 255, 255}, unsigned outlineThickness = 0, RGBA outlineColor = {0, 0, 0}, std::filesystem::path font = constants::FONT_DEFAULT) const = 0;
 
             [[nodiscard]] virtual std::pair<unsigned, unsigned> getWindowSize() const noexcept = 0;
 

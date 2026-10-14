@@ -16,6 +16,8 @@
     #include <map>
     #include <memory>
     #include <queue>
+    #include <string>
+    #include <unordered_map>
     #include <SFML/Graphics.hpp>
     #include <SFML/System.hpp>
     #include <SFML/Window.hpp>
@@ -24,9 +26,14 @@ namespace OrByte {
     class SFML : public AGraphic {
         std::chrono::steady_clock::time_point _nextFrameTime = std::chrono::steady_clock::now();
         std::unique_ptr<sf::RenderWindow> _window;
+        mutable std::unordered_map<std::string, sf::Font> _fonts;
+        mutable std::unordered_map<std::string, sf::Texture> _textures;
+
+        const sf::Font *getFont(const std::filesystem::path& path) const;
+        const sf::Texture *getTexture(const std::filesystem::path& path) const;
 
         public:
-            SFML(Layout& layout) noexcept : AGraphic(layout) {}
+            SFML() = default;
             ~SFML() override = default;
 
             void open(const std::size_t width, const std::size_t height, std::string title) final;

@@ -6,8 +6,8 @@
  * @date 2026-10-05
 **/
 
-#ifndef BOUNDEDQUEUE_HPP_
-#define BOUNDEDQUEUE_HPP_
+#ifndef SERVER_GAME_BOUNDEDQUEUE_HPP
+#define SERVER_GAME_BOUNDEDQUEUE_HPP
 
 #include <cstddef>
 #include <deque>
@@ -24,7 +24,7 @@ class BoundedQueue {
 
         bool push(T item)
         {
-            std::lock_guard<std::mutex> lock(this->_mutex);
+            std::scoped_lock lock(this->_mutex);
             if (this->_items.size() >= this->_capacity)
                 return false;
             this->_items.push_back(std::move(item));
@@ -33,7 +33,7 @@ class BoundedQueue {
 
         std::vector<T> drain()
         {
-            std::lock_guard<std::mutex> lock(this->_mutex);
+            std::scoped_lock lock(this->_mutex);
             std::vector<T> result;
             result.reserve(this->_items.size());
             while (!this->_items.empty()) {
@@ -49,6 +49,6 @@ class BoundedQueue {
         std::size_t _capacity;
 };
 
-}
+} // namespace server
 
-#endif /* BOUNDEDQUEUE_HPP_ */
+#endif // SERVER_GAME_BOUNDEDQUEUE_HPP

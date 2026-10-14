@@ -40,10 +40,13 @@ target_include_directories(rtype_asio SYSTEM INTERFACE "${asio_SOURCE_DIR}/asio/
 target_compile_definitions(rtype_asio INTERFACE ASIO_STANDALONE)
 target_link_libraries(rtype_asio INTERFACE Threads::Threads)
 
-add_library(rtype-protocol INTERFACE)
-target_include_directories(rtype-protocol INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(rtype-protocol INTERFACE rtype_asio bitsery)
-target_compile_features(rtype-protocol INTERFACE cxx_std_23)
+add_library(rtype-protocol STATIC
+    src/server/net/TcpProtocol.cpp
+    src/server/net/UdpProtocol.cpp
+)
+target_include_directories(rtype-protocol PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_link_libraries(rtype-protocol PUBLIC rtype_asio bitsery)
+target_compile_features(rtype-protocol PUBLIC cxx_std_23)
 
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/GameEngine/*.cpp")
@@ -58,6 +61,9 @@ file(GLOB_RECURSE SERVER_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/server/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/server/*.cc"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/server/*.cxx")
+list(REMOVE_ITEM SERVER_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/server/net/TcpProtocol.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/server/net/UdpProtocol.cpp")
 file(GLOB_RECURSE SERVER_HEADERS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/include/server/*.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/server/*.hh"
@@ -71,41 +77,38 @@ foreach(header IN LISTS SERVER_HEADERS)
 endforeach()
 list(REMOVE_DUPLICATES SERVER_INCLUDE_DIRS)
 
-add_executable(server ${SERVER_SOURCES})
-target_include_directories(server PRIVATE ${SERVER_INCLUDE_DIRS})
-target_link_libraries(server PRIVATE rtype_engine rtype-protocol)
-target_compile_features(server PRIVATE cxx_std_23)
+add_executable(r-type_server ${SERVER_SOURCES})
+target_include_directories(r-type_server PRIVATE ${SERVER_INCLUDE_DIRS})
+target_link_libraries(r-type_server PRIVATE rtype_engine rtype-protocol)
+target_compile_features(r-type_server PRIVATE cxx_std_23)
 
-option(RTYPE_BUILD_CLIENT "Build the SFML client" ON)
-if(RTYPE_BUILD_CLIENT)
-    set(SFML_BUILD_GRAPHICS ON CACHE BOOL "" FORCE)
-    set(SFML_BUILD_WINDOW ON CACHE BOOL "" FORCE)
-    set(SFML_BUILD_AUDIO ON CACHE BOOL "" FORCE)
-    set(SFML_BUILD_NETWORK OFF CACHE BOOL "" FORCE)
-    FetchContent_Declare(sfml
-        GIT_REPOSITORY https://github.com/SFML/SFML.git
-        GIT_TAG 2.6.1
-        GIT_SHALLOW TRUE
-    )
-    FetchContent_MakeAvailable(sfml)
+set(SFML_BUILD_GRAPHICS ON CACHE BOOL "" FORCE)
+set(SFML_BUILD_WINDOW ON CACHE BOOL "" FORCE)
+set(SFML_BUILD_AUDIO ON CACHE BOOL "" FORCE)
+set(SFML_BUILD_NETWORK OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(sfml
+    GIT_REPOSITORY https://github.com/SFML/SFML.git
+    GIT_TAG 2.6.1
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(sfml)
 
-    add_executable(r-type_client src/main.cpp)
-    target_include_directories(r-type_client PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-    target_link_libraries(r-type_client PRIVATE rtype_engine sfml-graphics sfml-window sfml-audio sfml-system)
-    target_compile_features(r-type_client PRIVATE cxx_std_23)
-endif()
+add_library(rtype_sfml STATIC src/plugins/SFML.cpp)
+target_include_directories(rtype_sfml PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_link_libraries(rtype_sfml PUBLIC sfml-graphics sfml-window sfml-system)
+target_compile_features(rtype_sfml PUBLIC cxx_std_23)
 
-foreach(target IN ITEMS rtype_engine server)
+file(GLOB_RECURSE CLIENT_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/client/*.cpp")
+add_executable(r-type_client ${CLIENT_SOURCES})
+target_include_directories(r-type_client PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_link_libraries(r-type_client PRIVATE rtype_engine rtype-protocol rtype_sfml sfml-audio)
+target_compile_features(r-type_client PRIVATE cxx_std_23)
+
+foreach(target IN ITEMS rtype_engine r-type_server r-type_client)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
         target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
     endif()
 endforeach()
-if(TARGET r-type_client)
-    if(MSVC)
-        target_compile_options(r-type_client PRIVATE /W4 /permissive-)
-    else()
-        target_compile_options(r-type_client PRIVATE -Wall -Wextra -Wpedantic)
-    endif()
-endif()
