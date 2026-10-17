@@ -396,6 +396,30 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     this->_window->draw(sprite);
 }
 
+void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, Rect rect) const
+{
+    if (!this->_isOpen || !this->_window)
+        return;
+    const sf::Texture *texture = this->getTexture(path);
+    if (texture == nullptr)
+        return;
+
+    sf::Sprite sprite;
+    sf::IntRect sfmlRect(rect.x, rect.y, rect.width, rect.height);
+    Vector2 windowRatio = getWindowRatio(this->_window->getSize());
+    sf::Vector2u textureSize = texture->getSize();
+    float scale = getSizeFromRatio(size, windowRatio).y / rect.height;
+
+    sprite.setPosition(getPositionFromRatio(transform.position, this->_window->getSize()));
+    sprite.setScale({scale, scale});
+    sprite.setTexture(*texture);
+    sprite.setTextureRect(sfmlRect);
+    sprite.setOrigin({rect.width / 2.0f, rect.height / 2.0f});
+    sprite.setRotation(transform.rotation);
+
+    this->_window->draw(sprite);
+}
+
 void OrByte::SFML::drawText(const Transform& transform, std::string text, unsigned fontSize, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor, std::filesystem::path font) const
 {
     if (!this->_isOpen || !this->_window)

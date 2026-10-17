@@ -45,6 +45,7 @@ namespace OrByte {
             virtual void drawRectangle(const Transform& transform, Vector2 size, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor) const final;
             virtual void drawCircle(const Transform& transform, unsigned radius, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor) const final;
             virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path) const final;
+            virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, Rect rect) const final;
             virtual void drawText(const Transform& transform, std::string text, unsigned fontSize, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor, std::filesystem::path font) const final;
 
             std::pair<unsigned, unsigned> getWindowSize() const noexcept final;
