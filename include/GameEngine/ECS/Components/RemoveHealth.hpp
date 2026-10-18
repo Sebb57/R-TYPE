@@ -11,6 +11,8 @@
 
     #include "IComponent.hpp"
 
+namespace OrByte {
+
 struct RemoveHealth : public IComponent
 {
     inline static constexpr ComponentType Type = ComponentType::RemoveHealth;
@@ -20,5 +22,7 @@ struct RemoveHealth : public IComponent
 
     int hitDamage{100};
 };
+
+}
 
 #endif /* REMOVEHEALTH_HPP_ */

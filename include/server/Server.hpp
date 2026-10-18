@@ -6,8 +6,8 @@
  * @date 2026-10-05
 **/
 
-#ifndef SERVER_HPP_
-#define SERVER_HPP_
+#ifndef SERVER_SERVER_HPP
+#define SERVER_SERVER_HPP
 
 #include <atomic>
 #include <asio.hpp>
@@ -41,6 +41,6 @@ class Server {
         std::atomic<bool> _stopped{false};
 };
 
-}
+} // namespace server
 
-#endif /* SERVER_HPP_ */
+#endif // SERVER_SERVER_HPP

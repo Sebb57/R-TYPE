@@ -11,6 +11,8 @@
 
     #include "IComponent.hpp"
 
+namespace OrByte {
+
 struct Wither : public IComponent
 {
     inline static constexpr ComponentType Type = ComponentType::Wither;
@@ -23,5 +25,7 @@ struct Wither : public IComponent
     float cooldown{1.0F};
     float duration{3.0F};
 };
+
+}
 
 #endif /* WITHER_HPP_ */

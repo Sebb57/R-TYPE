@@ -11,6 +11,8 @@
 
     #include "IComponent.hpp"
 
+namespace OrByte {
+
 struct Poison : public IComponent
 {
     inline static constexpr ComponentType Type = ComponentType::Poison;
@@ -23,5 +25,7 @@ struct Poison : public IComponent
     float cooldown{1.0F};
     float duration{3.0F};
 };
+
+}
 
 #endif /* POISON_HPP_ */

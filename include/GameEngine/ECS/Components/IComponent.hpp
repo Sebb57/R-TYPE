@@ -9,11 +9,13 @@ enum class ComponentType
     Poison,
     RegenHealth,
     RemoveHealth,
+    Sinus,
     Spiral,
     Sprite,
     Transform,
     Velocity,
     Wither,
+    Animator
 };
 
 class IComponent

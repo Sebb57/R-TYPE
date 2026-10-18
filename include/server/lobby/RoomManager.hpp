@@ -6,8 +6,8 @@
  * @date 2026-10-05
 **/
 
-#ifndef ROOMMANAGER_HPP_
-#define ROOMMANAGER_HPP_
+#ifndef SERVER_LOBBY_ROOMMANAGER_HPP
+#define SERVER_LOBBY_ROOMMANAGER_HPP
 
 #include <unordered_map>
 #include <memory>
@@ -18,10 +18,9 @@
 #include "server/lobby/SessionRegistry.hpp"
 #include "server/lobby/Room.hpp"
 
-namespace server { class TcpConnection; }
-
 namespace server {
 
+class TcpConnection;
 struct JoinResult { RoomId room; SessionToken token; PlayerSlot slot; };
 
 class RoomManager {
@@ -29,16 +28,19 @@ class RoomManager {
         RoomManager(SessionRegistry&, OutgoingSink, const ServerConfig&);
 
         std::vector<RoomInfo> list() const;
-        Result<JoinResult> create(std::shared_ptr<TcpConnection>, std::string roomName, std::uint8_t maxPlayers);
-        Result<JoinResult> join(std::shared_ptr<TcpConnection>, RoomId);
+        Result<JoinResult> create(const std::shared_ptr<TcpConnection>&, std::string roomName, std::uint8_t maxPlayers);
+        Result<JoinResult> join(const std::shared_ptr<TcpConnection>&, RoomId);
         Result<void> startGame(SessionToken requester);
+        [[nodiscard]] bool isRunning(RoomId) const;
 
         void leave(SessionToken, LeaveReason);
         void push(RoomId, InboundEvent);
+        void refreshRoom(RoomId);
         void sweep(Clock::time_point now);
         void stopAll();
 
     private:
+        void notifyRoom(RoomId);
         std::unordered_map<RoomId, std::unique_ptr<Room>> _rooms;
         RoomId _nextId = 1;
         SessionRegistry& _sessions;
@@ -46,6 +48,6 @@ class RoomManager {
         const ServerConfig& _conf;
 };
 
-}
+} // namespace server
 
-#endif /* ROOMMANAGER_HPP_ */
+#endif // SERVER_LOBBY_ROOMMANAGER_HPP

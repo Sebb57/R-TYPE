@@ -36,6 +36,8 @@ void server::Server::run()
     this->_udp.start();
     this->_tcp.start();
     armSweepTimer();
+    std::cerr << "[Server] listening tcp=" << this->_conf.tcpPort << " udp=" << this->_conf.udpPort
+        << " tick=" << this->_conf.tickRate << "Hz snapshot=" << this->_conf.snapshotRate << "Hz" << std::endl;
 
     while (!this->_io.stopped()) {
         try {

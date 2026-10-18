@@ -11,6 +11,8 @@
 
     #include "IComponent.hpp"
 
+namespace OrByte {
+
 struct RegenHealth : public IComponent
 {
     inline static constexpr ComponentType Type = ComponentType::RegenHealth;
@@ -23,5 +25,7 @@ struct RegenHealth : public IComponent
     float cooldown{1.0F};
     float duration{3.0F};
 };
+
+}
 
 #endif /* REGENHEALTH_HPP_ */

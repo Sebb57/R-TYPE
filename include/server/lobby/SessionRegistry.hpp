@@ -6,8 +6,8 @@
  * @date 2026-10-05
 **/
 
-#ifndef SESSIONREGISTRY_HPP_
-#define SESSIONREGISTRY_HPP_
+#ifndef SERVER_LOBBY_SESSIONREGISTRY_HPP
+#define SERVER_LOBBY_SESSIONREGISTRY_HPP
 
 #include <asio.hpp>
 #include <memory>
@@ -31,6 +31,7 @@ struct Session {
     std::optional<asio::ip::udp::endpoint> udp;
     Clock::time_point lastSeen;
     std::optional<std::uint32_t> lastInputSeq;
+    std::optional<std::uint8_t> lastInputKeys;
 };
 
 class SessionRegistry {
@@ -43,12 +44,13 @@ class SessionRegistry {
         [[nodiscard]] std::vector<SessionToken> timedOut(Clock::time_point now, std::chrono::seconds timeout) const;
         [[nodiscard]] std::vector<asio::ip::udp::endpoint> endpointsOf(RoomId, const Target&) const;
         [[nodiscard]] bool allBound(RoomId) const;
+        [[nodiscard]] std::vector<const Session*> sessionsIn(RoomId) const;
 
     private:
         std::unordered_map<SessionToken, Session> _sessions;
         SessionToken _nextToken = 1;
 };
 
-}
+} // namespace server
 
-#endif /* SESSIONREGISTRY_HPP_ */
+#endif // SERVER_LOBBY_SESSIONREGISTRY_HPP
