@@ -11,8 +11,10 @@ namespace RType {
             ~Ennemies();
             void CreateServeurComponent(World *world);
             void CreateClientComponent(World *world);
+            void DestructEnnemies(World *world);
         private:
             int ID;
+            float RandomLine;
     };
 }
 
