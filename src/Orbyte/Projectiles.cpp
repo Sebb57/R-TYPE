@@ -26,7 +26,6 @@ RType::Projectiles::Projectiles(World *world, int shooterId, Team owner, float v
     this->_velocity.y = 0.0f;
 }
 
-<<<<<<< HEAD:src/Orbyte/Projectiles.cpp
 void RType::Projectiles::CreateServeurComponent(World *world)
 {
     world->addComponentToEntity<Collider>(this->ID, Vector2(OrByte::constants::PROJECTILE_WIDTH * OrByte::constants::PROJECTILE_COLLIDER_SCALE,
@@ -54,21 +53,6 @@ void RType::Projectiles::CreateClientComponent(World *world)
     animator.addAnimation("bullet", animation);
     animator.play("bullet");
     world->addComponentToEntity<OrByte::Animator>(this->ID, animator);
-=======
-void OrByte::Projectiles::createServerComponent(World *world)
-{
-    world->addComponentToEntity<Collider>(this->_id, Vector2 {0.0f, 0.0f});
-    world->addComponentToEntity<OrByte::Velocity>(this->_id, this->_velocity);
-    world->addComponentToEntity<OrByte::Transform>(this->_id, this->_spawnPos, Vector2 {1.0f, 1.0f}, 0.0f);
-    world->addComponentToEntity<OrByte::RemoveHealth>(this->_id, 10);
-    world->addComponentToEntity<Owner>(this->_id, _owner);
-}
-
-void OrByte::Projectiles::createClientComponent(World *world)
-{
-    world->addComponentToEntity<OrByte::Transform>(this->_id, this->_spawnPos, Vector2 {1.0f, 1.0f}, 0.0f);
-    world->addComponentToEntity<OrByte::Sprite>(this->_id, "", Vector2(100.0f, 100.0f));
->>>>>>> c3e11980d00c3392cbd379ba44750a5b496978a4:src/GameEngine/ECS/Entity/Projectiles.cpp
 }
 
 static bool applyDamage(World *world, int attacker, int victim)
@@ -83,7 +67,7 @@ static bool applyDamage(World *world, int attacker, int victim)
     return health->currentHealth <= 0;
 }
 
-void OrByte::Projectiles::checkCollision(World *world, Vector2 entity)
+void RType::Projectiles::CheckCollision(World *world, Vector2 entity)
 {
     const int idA = static_cast<int>(entity.x);
     const int idB = static_cast<int>(entity.y);
