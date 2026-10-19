@@ -24,6 +24,7 @@ class RoomScene : public AMenuScene {
 
     private:
         [[nodiscard]] bool canStart() const;
+        [[nodiscard]] bool isReady() const;
 };
 
 } // namespace client

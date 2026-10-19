@@ -22,7 +22,9 @@ namespace OrByte {
         bool isSpriteSheet{false};
 
         std::size_t frameCount{1};
+        std::size_t firstFrame{0};
         Vector2 frameSize{0.0f, 0.0f};
+        Vector2 displaySize{0.0f, 0.0f};
         std::size_t columns{1};
 
         float frameDuration{0.1f};

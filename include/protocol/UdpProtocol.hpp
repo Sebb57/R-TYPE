@@ -22,9 +22,17 @@ constexpr std::uint16_t UdpMagic = 0x6767;
 constexpr std::uint8_t UdpVersion = 1;
 
 enum class UdpType : std::uint8_t { Hello = 1, HelloAck, Input, Snapshot, Event, Ping, Pong, Disconnect };
-enum class EntityType : std::uint8_t { Unknown = 0, Player = 1, Projectile = 2 };
+enum class EntityType : std::uint8_t { Unknown = 0, Player = 1, Projectile = 2, Enemy = 3, Bonus = 4 };
 enum class InputKey : std::uint8_t { Up = 0x01, Down = 0x02, Left = 0x04, Right = 0x08, Fire = 0x10 };
 constexpr std::uint8_t EntitySlotMask = 0x03;
+constexpr std::uint8_t BonusExtraShotFlag = 0x04;
+enum class CollisionEffect : std::uint8_t {
+    RedEnemy = 1,
+    BluePlayer = 2,
+    RedPlayer = 3,
+    EnemyDestroyed = 4,
+    PlayerDestroyed = 5,
+};
 
 struct UdpHeader {
     std::uint16_t magic = UdpMagic;

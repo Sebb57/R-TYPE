@@ -21,7 +21,7 @@ namespace server {
 constexpr std::uint16_t MaxFrameSize = 4096;
 
 enum class Type : Byte { Connect = 1, ConnectOk, ListRooms, RoomList, CreateRoom, JoinRoom,
-    RoomJoined, RoomUpdate, LeaveRoom, StartGame, GameStarted, Error };
+    RoomJoined, RoomUpdate, LeaveRoom, StartGame, GameStarted, Error, SetReady };
 
 class TcpProtocol {
 public:
