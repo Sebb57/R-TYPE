@@ -1,3 +1,10 @@
+/*
+** EPITECH PROJECT, 2026
+** RType
+** File description:
+** Bonus.cpp
+*/
+
 #include "GameEngine/ECS/Entity/Bonus.hpp"
 #include "GameEngine/ECS/Components/Collider.hpp"
 #include "GameEngine/ECS/Components/Sprite.hpp"
@@ -7,9 +14,9 @@
 #include "GameEngine/ECS/World.hpp"
 #include <random>
 
-RType::Bonus::Bonus(World *world)
+OrByte::Bonus::Bonus(World *world)
 {
-    this->ID = world->createEntity();
+    this->_id = world->createEntity();
     constexpr int LINE_LENGTH = 1980;
     constexpr int SLOTS = 4;
     constexpr int SLOT_SIZE = LINE_LENGTH / SLOTS;
@@ -20,19 +27,19 @@ RType::Bonus::Bonus(World *world)
     this->RandomLine = slot(engine) * SLOT_SIZE;
 }
 
-RType::Bonus::~Bonus()
+OrByte::Bonus::~Bonus()
 {
 }
 
-void RType::Bonus::CreateServeurBonus(World *world)
+void OrByte::Bonus::createServerBonus(World *world)
 {
-    world->addComponentToEntity<Collider>(this->ID, Vector2 {0.0f, 0.0f});
-    world->addComponentToEntity<OrByte::Velocity>(this->ID, Vector2 {-5.0f, 0.0f});
-    world->addComponentToEntity<OrByte::Transform>(this->ID, Vector2 {2000.0f, this->RandomLine}, Vector2 {1.0f, 1.0f}, float {0.0f});
+    world->addComponentToEntity<Collider>(this->_id, Vector2 {0.0f, 0.0f});
+    world->addComponentToEntity<OrByte::Velocity>(this->_id, Vector2 {-5.0f, 0.0f});
+    world->addComponentToEntity<OrByte::Transform>(this->_id, Vector2 {2000.0f, this->RandomLine}, Vector2 {1.0f, 1.0f}, float {0.0f});
 }
 
-void RType::Bonus::CreateClientBonus(World *world)
+void OrByte::Bonus::createClientBonus(World *world)
 {
-    world->addComponentToEntity<OrByte::Transform>(this->ID, Vector2 {2000.0f, this->RandomLine}, Vector2 {1.0f, 1.0f}, float {0.0f});
-    world->addComponentToEntity<OrByte::Sprite>(this->ID, "");
+    world->addComponentToEntity<OrByte::Transform>(this->_id, Vector2 {2000.0f, this->RandomLine}, Vector2 {1.0f, 1.0f}, float {0.0f});
+    world->addComponentToEntity<OrByte::Sprite>(this->_id, "");
 }

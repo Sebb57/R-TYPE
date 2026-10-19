@@ -1,4 +1,11 @@
-#include "GameEngine/ECS/Entity/Ennemies.hpp"
+/*
+** EPITECH PROJECT, 2026
+** OrByte
+** File description:
+** Ennemies.cpp
+*/
+
+#include "GameEngine/ECS/Entity/Enemy.hpp"
 #include "GameEngine/ECS/Components/Collider.hpp"
 #include "GameEngine/ECS/Components/Health.hpp"
 #include "GameEngine/ECS/Components/Sprite.hpp"
@@ -10,9 +17,9 @@
 #include "GameEngine/ECS/World.hpp"
 #include <random>
 
-RType::Ennemies::Ennemies(World *world) : RandomLine(0.0)
+OrByte::Enemy::Enemy(World *world) : _randomLine(0.0)
 {
-    this->ID = world->createEntity();
+    this->_id = world->createEntity();
     constexpr int LINE_LENGTH = 1980;
     constexpr int SLOTS = 4;
     constexpr int SLOT_SIZE = LINE_LENGTH / SLOTS;
@@ -20,30 +27,26 @@ RType::Ennemies::Ennemies(World *world) : RandomLine(0.0)
     static std::linear_congruential_engine<std::uint_fast32_t, 16807, 0, 2147483647>
         engine{std::random_device{}()};
     std::uniform_int_distribution<int> slot(0, SLOTS - 1);
-    this->RandomLine = slot(engine) * SLOT_SIZE;
+    this->_randomLine = slot(engine) * SLOT_SIZE;
 }
 
-RType::Ennemies::~Ennemies()
+void OrByte::Enemy::createServerComponent(World *world)
 {
+    world->addComponentToEntity<Collider>(this->_id, Vector2 {0.0f, 0.0f});
+    world->addComponentToEntity<OrByte::Health>(this->_id, 100, 100);
+    world->addComponentToEntity<OrByte::RemoveHealth>(this->_id, 10);
+    world->addComponentToEntity<OrByte::Velocity>(this->_id, Vector2 {-10.0f, 0.0f});
+    world->addComponentToEntity<OrByte::Transform>(this->_id, Vector2 {2000.0f, this->_randomLine}, Vector2 {1.0f, 1.0f}, float {0.0f});
+    world->addComponentToEntity<Owner>(this->_id, Team::Enemy);
 }
 
-void RType::Ennemies::CreateServeurComponent(World *world)
+void OrByte::Enemy::createClientComponent(World *world)
 {
-    world->addComponentToEntity<Collider>(this->ID, Vector2 {0.0f, 0.0f});
-    world->addComponentToEntity<OrByte::Health>(this->ID, 100, 100);
-    world->addComponentToEntity<OrByte::RemoveHealth>(this->ID, 10);
-    world->addComponentToEntity<OrByte::Velocity>(this->ID, Vector2 {-10.0f, 0.0f});
-    world->addComponentToEntity<OrByte::Transform>(this->ID, Vector2 {2000.0f, this->RandomLine}, Vector2 {1.0f, 1.0f}, float {0.0f});
-    world->addComponentToEntity<Owner>(this->ID, Team::Enemy);
+    world->addComponentToEntity<OrByte::Transform>(this->_id, Vector2 {2000.0f, this->_randomLine}, Vector2 {1.0f, 1.0f}, float {0.0f});
+    world->addComponentToEntity<OrByte::Sprite>(this->_id, "");
 }
 
-void RType::Ennemies::CreateClientComponent(World *world)
-{
-    world->addComponentToEntity<OrByte::Transform>(this->ID, Vector2 {2000.0f, this->RandomLine}, Vector2 {1.0f, 1.0f}, float {0.0f});
-    world->addComponentToEntity<OrByte::Sprite>(this->ID, "");
-}
-
-void RType::Ennemies::DestructEnnemies(World *world)
+void OrByte::Enemy::destructEnemy(World *world)
 {
     constexpr float OFFSCREEN_X = -100.0f;
     std::vector<int> entities = world->getExistingEntities();
