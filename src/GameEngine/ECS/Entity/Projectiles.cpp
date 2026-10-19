@@ -42,7 +42,7 @@ void OrByte::Projectiles::createServerComponent(World *world)
     world->addComponentToEntity<Collider>(this->_id, Vector2 {0.0f, 0.0f});
     world->addComponentToEntity<OrByte::Velocity>(this->_id, this->_velocity);
     world->addComponentToEntity<OrByte::Transform>(this->_id, this->_spawnPos, Vector2 {1.0f, 1.0f}, 0.0f);
-    world->addComponentToEntity<OrByte::RemoveHealth>(this->_id, 10);
+    world->addComponentToEntity<OrByte::RemoveHealth>(this->_id, 100);
     world->addComponentToEntity<Owner>(this->_id, _owner);
 }
 
@@ -63,8 +63,5 @@ void OrByte::Projectiles::checkCollision(World *world, Vector2 entity)
         return;
 
     world->getComponent<OrByte::RemoveHealth>(idB);
-    world->getComponent<OrByte::Health>(idA);
-
     world->getComponent<OrByte::RemoveHealth>(idA);
-    world->getComponent<OrByte::Health>(idB);
 }

@@ -35,7 +35,7 @@ void OrByte::Enemy::createServerComponent(World *world)
 {
     world->addComponentToEntity<Collider>(this->_id, Vector2 {0.0f, 0.0f});
     world->addComponentToEntity<OrByte::Health>(this->_id, 100, 100);
-    world->addComponentToEntity<OrByte::RemoveHealth>(this->_id, 10);
+    world->addComponentToEntity<OrByte::RemoveHealth>(this->_id, 100);
     world->addComponentToEntity<OrByte::Velocity>(this->_id, Vector2 {-10.0f, 0.0f});
     world->addComponentToEntity<OrByte::Transform>(this->_id, Vector2 {2000.0f, this->_randomLine}, Vector2 {1.0f, 1.0f}, float {0.0f});
     world->addComponentToEntity<Owner>(this->_id, Team::Enemy);
