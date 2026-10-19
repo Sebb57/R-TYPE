@@ -52,18 +52,6 @@ void OrByte::Projectiles::createClientComponent(World *world)
     world->addComponentToEntity<OrByte::Sprite>(this->_id, "", Vector2(100.0f, 100.0f));
 }
 
-static bool applyDamage(World *world, int attacker, int victim)
-{
-    OrByte::RemoveHealth *damage = world->getComponent<OrByte::RemoveHealth>(attacker);
-    OrByte::Health       *health = world->getComponent<OrByte::Health>(victim);
-
-    if (damage == nullptr || health == nullptr)
-        return false;
-
-    health->currentHealth -= damage->hitDamage;
-    return health->currentHealth <= 0;
-}
-
 void OrByte::Projectiles::checkCollision(World *world, Vector2 entity)
 {
     const int idA = static_cast<int>(entity.x);
@@ -74,6 +62,9 @@ void OrByte::Projectiles::checkCollision(World *world, Vector2 entity)
     if (ownerA && ownerB && ownerA->team == ownerB->team)
         return;
 
-    bool deadA = applyDamage(world, idB, idA);
-    bool deadB = applyDamage(world, idA, idB);
+    world->getComponent<OrByte::RemoveHealth>(idB);
+    world->getComponent<OrByte::Health>(idA);
+
+    world->getComponent<OrByte::RemoveHealth>(idA);
+    world->getComponent<OrByte::Health>(idB);
 }
