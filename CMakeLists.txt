@@ -81,6 +81,9 @@ add_executable(r-type_server ${SERVER_SOURCES})
 target_include_directories(r-type_server PRIVATE ${SERVER_INCLUDE_DIRS})
 target_link_libraries(r-type_server PRIVATE r-type_engine rtype-protocol)
 target_compile_features(r-type_server PRIVATE cxx_std_23)
+set_target_properties(r-type_server PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 set(SFML_BUILD_GRAPHICS ON CACHE BOOL "" FORCE)
 set(SFML_BUILD_WINDOW ON CACHE BOOL "" FORCE)
@@ -104,6 +107,9 @@ add_executable(r-type_client ${CLIENT_SOURCES})
 target_include_directories(r-type_client PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(r-type_client PRIVATE r-type_engine rtype-protocol rtype_sfml sfml-audio)
 target_compile_features(r-type_client PRIVATE cxx_std_23)
+set_target_properties(r-type_client PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 foreach(target IN ITEMS r-type_engine r-type_server r-type_client)
     if(MSVC)
