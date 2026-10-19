@@ -6,14 +6,19 @@
  * @date 2026-10-12
 **/
 
-#include "DynamicLibrary.hpp"
-#include <dlfcn.h>
+#include "plugins/DynamicLibrary.hpp"
 
 DynamicLibrary::DynamicLibrary(const std::string& path) : _path(path)
 {
+#ifdef _WIN32
+    this->_handle = LoadLibraryA(path.c_str());
+    if (!this->_handle)
+        throw LibraryLoadFailed(path, "error code " + std::to_string(GetLastError()));
+#else
     this->_handle = dlopen(path.c_str(), RTLD_NOW);
     if (!this->_handle)
         throw LibraryLoadFailed(path, dlerror());
+#endif
 
     try {
         this->type = this->loadFunction<std::size_t (*)()>("type");
@@ -25,5 +30,11 @@ DynamicLibrary::DynamicLibrary(const std::string& path) : _path(path)
 
 DynamicLibrary::~DynamicLibrary() noexcept
 {
+    if (!this->_handle)
+        return;
+#ifdef _WIN32
+    FreeLibrary(static_cast<HMODULE>(this->_handle));
+#else
     dlclose(this->_handle);
+#endif
 }

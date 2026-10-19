@@ -4,19 +4,57 @@ OrByte is a C++23 multiplayer horizontal shoot 'em up. The server owns the simul
 
 ## Build
 
-Requirements: CMake 3.23+, a C++23 compiler, and network access on the first configure (CMake downloads Asio, bitsery, and SFML through FetchContent).
+Requirements: CMake 3.23+, a C++23 compiler, and network access on the first configure (CMake downloads Asio, bitsery, and SFML through FetchContent). The executables are written to the repository root.
+
+### Linux
+
+SFML needs the usual system development packages (X11/Xrandr/Xcursor, OpenGL, udev, FreeType, OpenAL, FLAC, Vorbis).
 
 ```sh
 cmake -S . -B build
 cmake --build build --parallel
 ```
 
+### Windows (Visual Studio 2022)
+
+From a Developer PowerShell, or open the folder directly in Visual Studio:
+
+```powershell
+cmake -S . -B build
+cmake --build build --config Release --parallel
+```
+
+This produces `r-type_server.exe`, `r-type_client.exe`, and `openal32.dll` (needed by the client). SFML is linked statically, so no other DLL is needed.
+
+### Windows (cross-compiled from Linux)
+
+Use a GCC-based MinGW-w64 toolchain (`mingw-w64-gcc` on Arch, `g++-mingw-w64-x86-64-posix` on Debian/Ubuntu). llvm-mingw does not work: its libc++ rejects SFML 2.6.
+
+```sh
+cmake -S . -B build-windows -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/mingw-w64-x86_64.cmake
+cmake --build build-windows --parallel
+```
+
+Or without installing the toolchain, through Docker:
+
+```sh
+docker build -t rtype-windows-cross -f docker/windows-cross.Dockerfile docker
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src rtype-windows-cross
+```
+
+To ship the Windows build, copy `r-type_server.exe`, `r-type_client.exe`, `openal32.dll`, and the `assets/` folder.
+
+## Run
+
 Run both programs from the repository root so the relative paths to `assets/` resolve:
 
 ```sh
-./build/bin/r-type_server
-./build/bin/r-type_client 127.0.0.1 Player1
+./r-type_server
+./r-type_client 127.0.0.1 Player1
 ```
+
+On Windows, run `r-type_server.exe` and `r-type_client.exe` the same way.
 
 The server listens on TCP port `6969` and UDP port `6767`. Start another client to play together. The client takes an optional IPv4 address and player name; defaults are `127.0.0.1` and `Player`.
 

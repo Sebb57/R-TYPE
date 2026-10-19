@@ -6,13 +6,13 @@
 2. From the repository root, start the server:
 
    ```sh
-   ./build/bin/r-type_server
+   ./r-type_server
    ```
 
 3. In another terminal, start a client:
 
    ```sh
-   ./build/bin/r-type_client 127.0.0.1 Player1
+   ./r-type_client 127.0.0.1 Player1
    ```
 
    The address and name are optional. The client defaults to `127.0.0.1` and `Player`.
