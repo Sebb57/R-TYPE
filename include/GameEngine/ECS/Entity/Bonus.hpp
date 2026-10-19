@@ -20,6 +20,7 @@ namespace OrByte {
             ~Bonus();
             void createServerBonus(World *world);
             void createClientBonus(World *world);
+            void checkColisionHeal(World *world, Vector2 entity);
 
         private:
             int _id;

@@ -52,7 +52,7 @@ void OrByte::Projectiles::createClientComponent(World *world)
     world->addComponentToEntity<OrByte::Sprite>(this->_id, "", Vector2(100.0f, 100.0f));
 }
 
-void OrByte::Projectiles::checkCollision(World *world, Vector2 entity)
+void OrByte::Projectiles::checkCollisionDamage(World *world, Vector2 entity)
 {
     const int idA = static_cast<int>(entity.x);
     const int idB = static_cast<int>(entity.y);

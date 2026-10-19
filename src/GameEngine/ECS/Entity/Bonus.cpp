@@ -10,6 +10,8 @@
 #include "GameEngine/ECS/Components/Sprite.hpp"
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "GameEngine/ECS/Components/Velocity.hpp"
+#include "GameEngine/ECS/Components/RemoveHealth.hpp"
+#include "GameEngine/ECS/Components/RegenHealth.hpp"
 #include "GameEngine/ECS/Managers/ComponentManager.hpp"
 #include "GameEngine/ECS/Utils.hpp"
 #include "GameEngine/ECS/World.hpp"
@@ -39,4 +41,16 @@ void OrByte::Bonus::createClientBonus(World *world)
 {
     world->addComponentToEntity<OrByte::Transform>(this->_id, Vector2 {2000.0f, this->_randomLine}, Vector2 {1.0f, 1.0f}, float {0.0f});
     world->addComponentToEntity<OrByte::Sprite>(this->_id, "", Vector2(100.0f, 100.0f));
+}
+
+void OrByte::Bonus::checkColisionHeal(World *world, Vector2 entity)
+{
+    const int idA = static_cast<int>(entity.x);
+    const int idB = static_cast<int>(entity.y);
+
+    if (world->getComponent<OrByte::RemoveHealth>(idA) == nullptr
+        && world->getComponent<OrByte::RemoveHealth>(idB) == nullptr) {
+        world->getComponent<OrByte::RegenHealth>(idA);
+        world->getComponent<OrByte::RegenHealth>(idB);
+    }
 }

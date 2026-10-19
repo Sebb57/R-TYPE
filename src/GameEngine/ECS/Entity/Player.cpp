@@ -12,6 +12,7 @@
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "GameEngine/ECS/Components/Velocity.hpp"
 #include "GameEngine/ECS/Components/Owner.hpp"
+#include "GameEngine/ECS/Components/RegenHealth.hpp"
 #include "GameEngine/ECS/Utils.hpp"
 
 OrByte::Player::Player(World *world)
@@ -26,6 +27,7 @@ void OrByte::Player::createServerComponent(World *world)
     world->addComponentToEntity<Velocity>(this->_id, Vector2 {0.0f, 0.0f});
     world->addComponentToEntity<Transform>(this->_id, Vector2 {0.0f, 0.0f}, Vector2 {1.0f, 1.0f}, float {0.0f});
     world->addComponentToEntity<Owner>(this->_id, Team::Player);
+    world->addComponentToEntity<RegenHealth>(this->_id, 100.0, 1.0);
 }
 
 void OrByte::Player::createClientComponent(World *world)
