@@ -31,7 +31,7 @@ void OrByte::DisplaySystem::_handleAnimator(int entityID, Transform* transform)
             animation->frameSize.y <= 0.0f)
             return;
 
-        const std::size_t frame = animator->currentFrame;
+        const std::size_t frame = animation->firstFrame + animator->currentFrame;
 
         const std::size_t column = frame % animation->columns;
         const std::size_t row = frame / animation->columns;
@@ -46,7 +46,9 @@ void OrByte::DisplaySystem::_handleAnimator(int entityID, Transform* transform)
             static_cast<int>(animation->frameSize.y)
         );
 
-        this->_graphic.drawImage(*transform, animation->frameSize, animation->spriteSheetPath, rect);
+        const Vector2 displaySize = animation->displaySize.x > 0.0f && animation->displaySize.y > 0.0f
+            ? animation->displaySize : animation->frameSize;
+        this->_graphic.drawImage(*transform, displaySize, animation->spriteSheetPath, rect);
     } else {
         if (animator->currentFrame >= animation->frameCount ||
             animator->currentFrame >= animation->spritePaths.size())

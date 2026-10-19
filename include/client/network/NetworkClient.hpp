@@ -44,6 +44,7 @@ class NetworkClient {
         void joinRoom(std::uint32_t id);
         void leaveRoom();
         void startGame();
+        void setReady(bool ready);
         void setKeys(std::uint8_t keys);
 
     private:
@@ -68,6 +69,7 @@ class NetworkClient {
         void onUdpPacket(const server::Buffer& packet);
         void onHelloAck(const server::Buffer& packet);
         void onSnapshot(const server::Buffer& packet);
+        void onGameEvent(const server::Buffer& packet);
         void beginInputLoop();
         void sendInput();
         void onDisconnect(const std::string& reason);

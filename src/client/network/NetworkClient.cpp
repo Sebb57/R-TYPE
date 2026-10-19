@@ -16,6 +16,7 @@ namespace {
 constexpr std::uint8_t ProtocolVersion = 1;
 constexpr std::uint8_t RoomCapacity = 4;
 constexpr std::size_t SnapshotEntitySize = 10;
+constexpr std::size_t SnapshotMetadataSize = 25;
 
 } // namespace
 
@@ -31,6 +32,7 @@ client::NetworkClient::NetworkClient()
     , _udpHandlers{
         {server::UdpType::HelloAck, &NetworkClient::onHelloAck},
         {server::UdpType::Snapshot, &NetworkClient::onSnapshot},
+        {server::UdpType::Event, &NetworkClient::onGameEvent},
     }
     , _work(asio::make_work_guard(this->_io))
     , _tcp(this->_io)
@@ -127,6 +129,11 @@ void client::NetworkClient::leaveRoom()
 void client::NetworkClient::startGame()
 {
     this->sendTcp(server::TcpProtocol::message(server::Type::StartGame));
+}
+
+void client::NetworkClient::setReady(bool ready)
+{
+    this->sendTcp(server::TcpProtocol::message(server::Type::SetReady, {static_cast<server::Byte>(ready)}));
 }
 
 void client::NetworkClient::setKeys(std::uint8_t keys)
@@ -268,7 +275,13 @@ void client::NetworkClient::onRoomJoined(const server::Buffer& message, std::siz
         this->_view.status = "Joined room " + std::to_string(id);
         this->_view.players.clear();
         this->_view.entities.clear();
+        this->_view.collisionEffects.clear();
         this->_view.tick = 0;
+        this->_view.remainingSeconds = 180;
+        this->_view.gameOver = false;
+        this->_view.hasGameState = false;
+        this->_view.aliveMask = 0;
+        this->_view.scores.fill(0);
     }
     this->startUdp(port, token);
 }
@@ -283,12 +296,14 @@ void client::NetworkClient::onRoomUpdate(const server::Buffer& message, std::siz
     for (std::uint8_t i = 0; i < count; ++i) {
         std::uint8_t slot = 0;
         std::uint8_t bound = 0;
+        std::uint8_t ready = 0;
         std::string name;
         if (!server::TcpProtocol::readU8(message, offset, slot) ||
             !server::TcpProtocol::readString(message, offset, 16, name) ||
-            !server::TcpProtocol::readU8(message, offset, bound))
+            !server::TcpProtocol::readU8(message, offset, bound) ||
+            !server::TcpProtocol::readU8(message, offset, ready))
             return;
-        players.push_back({slot, std::move(name), bound != 0});
+        players.push_back({slot, std::move(name), bound != 0, ready != 0});
     }
     std::scoped_lock lock(this->_mutex);
     this->_view.host = host == this->_view.slot;
@@ -372,9 +387,21 @@ void client::NetworkClient::onSnapshot(const server::Buffer& packet)
 {
     std::size_t offset = server::UdpHeaderSize;
     std::uint32_t tick = 0;
+    std::uint16_t remainingSeconds = 0;
+    std::uint8_t gameOver = 0;
+    std::uint8_t aliveMask = 0;
     std::uint8_t count = 0;
-    if (!server::TcpProtocol::readU32(packet, offset, tick) || !server::TcpProtocol::readU8(packet, offset, count) ||
-        tick <= this->_view.tick || packet.size() != offset + count * SnapshotEntitySize)
+    std::array<std::uint32_t, 4> scores{};
+    if (!server::TcpProtocol::readU32(packet, offset, tick) ||
+        !server::TcpProtocol::readU16(packet, offset, remainingSeconds) ||
+        !server::TcpProtocol::readU8(packet, offset, gameOver) ||
+        !server::TcpProtocol::readU8(packet, offset, aliveMask))
+        return;
+    for (std::uint32_t& score : scores)
+        if (!server::TcpProtocol::readU32(packet, offset, score))
+            return;
+    if (!server::TcpProtocol::readU8(packet, offset, count) || tick <= this->_view.tick ||
+        packet.size() != server::UdpHeaderSize + SnapshotMetadataSize + count * SnapshotEntitySize)
         return;
     std::vector<EntityView> entities(count);
     for (EntityView& entity : entities) {
@@ -391,6 +418,34 @@ void client::NetworkClient::onSnapshot(const server::Buffer& packet)
     std::scoped_lock lock(this->_mutex);
     this->_view.tick = tick;
     this->_view.entities = std::move(entities);
+    this->_view.remainingSeconds = remainingSeconds;
+    this->_view.gameOver = gameOver != 0;
+    this->_view.hasGameState = true;
+    this->_view.aliveMask = aliveMask;
+    this->_view.scores = scores;
+}
+
+void client::NetworkClient::onGameEvent(const server::Buffer& packet)
+{
+    std::size_t offset = server::UdpHeaderSize;
+    CollisionEffectView effect;
+    std::uint32_t packedPosition = 0;
+    if (!server::TcpProtocol::readU32(packet, offset, effect.eventId) ||
+        !server::TcpProtocol::readU8(packet, offset, effect.type) ||
+        !server::TcpProtocol::readU32(packet, offset, effect.entityId) ||
+        !server::TcpProtocol::readU32(packet, offset, packedPosition) || offset != packet.size() ||
+        (effect.type != static_cast<std::uint8_t>(server::CollisionEffect::RedEnemy) &&
+            effect.type != static_cast<std::uint8_t>(server::CollisionEffect::BluePlayer) &&
+            effect.type != static_cast<std::uint8_t>(server::CollisionEffect::RedPlayer) &&
+            effect.type != static_cast<std::uint8_t>(server::CollisionEffect::EnemyDestroyed) &&
+            effect.type != static_cast<std::uint8_t>(server::CollisionEffect::PlayerDestroyed)))
+        return;
+    effect.x = static_cast<std::int16_t>(packedPosition & 0xffffU);
+    effect.y = static_cast<std::int16_t>(packedPosition >> 16);
+    std::scoped_lock lock(this->_mutex);
+    this->_view.collisionEffects.push_back(effect);
+    if (this->_view.collisionEffects.size() > 32)
+        this->_view.collisionEffects.erase(this->_view.collisionEffects.begin());
 }
 
 void client::NetworkClient::beginInputLoop()

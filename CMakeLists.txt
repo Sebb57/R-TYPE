@@ -49,7 +49,8 @@ target_link_libraries(rtype-protocol PUBLIC rtype_asio bitsery)
 target_compile_features(rtype-protocol PUBLIC cxx_std_23)
 
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/GameEngine/*.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/GameEngine/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Orbyte/*.cpp")
 add_library(rtype_engine STATIC ${ENGINE_SOURCES})
 target_include_directories(rtype_engine PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"

@@ -34,6 +34,7 @@ const char* typeName(server::Type type)
         case server::Type::StartGame: return "START_GAME";
         case server::Type::GameStarted: return "GAME_STARTED";
         case server::Type::Error: return "ERROR";
+        case server::Type::SetReady: return "SET_READY";
     }
     return "UNKNOWN";
 }
@@ -290,6 +291,12 @@ void server::TcpConnection::onFrame(const Buffer& frame)
     }
     if (type == server::Type::StartGame && payload.empty() && this->_token) {
         auto result = this->_rooms.startGame(*this->_token);
+        if (!result)
+            sendError(result.error());
+        return;
+    }
+    if (type == server::Type::SetReady && payload.size() == 1 && payload[0] <= 1 && this->_token) {
+        auto result = this->_rooms.setReady(*this->_token, payload[0] != 0);
         if (!result)
             sendError(result.error());
         return;

@@ -10,6 +10,7 @@
 #define SERVER_COMMON_SERVERMESSAGES_HPP
 
 #include <cstdint>
+#include <array>
 #include <functional>
 #include <string>
 #include <variant>
@@ -37,7 +38,14 @@ struct Target {
 };
 
 struct EntityDto { std::uint32_t id = 0; std::uint8_t type = 0; std::int16_t x = 0; std::int16_t y = 0; std::uint8_t flags = 0; };
-struct SnapshotDto { std::uint32_t tick = 0; std::vector<EntityDto> entities; };
+struct SnapshotDto {
+    std::uint32_t tick = 0;
+    std::uint16_t remainingSeconds = 180;
+    bool gameOver = false;
+    std::uint8_t aliveMask = 0;
+    std::array<std::uint32_t, 4> scores{};
+    std::vector<EntityDto> entities;
+};
 struct GameEventDto { std::uint32_t eventId = 0; std::uint8_t eventType = 0; std::uint32_t entityId = 0; std::uint32_t extra = 0; };
 struct OutboundMessage {
     RoomId room;

@@ -68,7 +68,7 @@ server::Result<server::JoinResult> server::RoomManager::join(const std::shared_p
         return std::unexpected(LobbyError::RoomNotFound);
 
     Room& room = *it->second;
-    if (room.getState() == RoomState::Finished)
+    if (room.getState() != RoomState::Lobby)
         return std::unexpected(LobbyError::AlreadyStarted);
     if (room.isFull())
         return std::unexpected(LobbyError::RoomFull);
@@ -105,7 +105,7 @@ server::Result<void> server::RoomManager::startGame(SessionToken requester)
         return std::unexpected(LobbyError::AlreadyStarted);
     if (room.getHost() != requester)
         return std::unexpected(LobbyError::NotHost);
-    if (!this->_sessions.allBound(session->room))
+    if (!room.allReady() || !this->_sessions.allBound(session->room))
         return std::unexpected(LobbyError::PlayersNotReady);
     room.start();
     std::cerr << "[ROOM] started id=" << session->room << " players=" << static_cast<unsigned>(room.getInfo().players) << '\n';
@@ -113,6 +113,21 @@ server::Result<void> server::RoomManager::startGame(SessionToken requester)
     for (const Session* player : this->_sessions.sessionsIn(session->room))
         if (auto connection = player->tcp.lock())
             connection->send(started);
+    return {};
+}
+
+server::Result<void> server::RoomManager::setReady(SessionToken requester, bool ready)
+{
+    Session* session = this->_sessions.find(requester);
+    if (session == nullptr)
+        return std::unexpected(LobbyError::NotInRoom);
+    auto room = this->_rooms.find(session->room);
+    if (room == this->_rooms.end())
+        return std::unexpected(LobbyError::RoomNotFound);
+    if (room->second->getState() != RoomState::Lobby)
+        return std::unexpected(LobbyError::AlreadyStarted);
+    room->second->setReady(session->slot, ready);
+    this->notifyRoom(session->room);
     return {};
 }
 
@@ -161,6 +176,7 @@ void server::RoomManager::notifyRoom(RoomId id)
         message.push_back(session->slot);
         TcpProtocol::appendString(message, session->username);
         message.push_back(session->udp.has_value() ? 1 : 0);
+        message.push_back(roomIt->second->isReady(session->slot) ? 1 : 0);
     }
     for (const Session* session : sessions) {
         if (auto connection = session->tcp.lock())

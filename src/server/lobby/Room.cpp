@@ -24,15 +24,40 @@ server::Room::Room(RoomId id, std::string name, std::uint8_t maxPlayers, Session
 
 std::optional<server::PlayerSlot> server::Room::addPlayer(SessionToken token)
 {
-    if (token == 0 || this->_state == RoomState::Finished || this->isFull() || this->contains(token))
+    if (token == 0 || this->_state != RoomState::Lobby || this->isFull() || this->contains(token))
         return std::nullopt;
     for (PlayerSlot slot = 0; slot < this->_maxPlayers; ++slot) {
         if (!this->_slots[slot]) {
             this->_slots[slot] = token;
+            this->_ready[slot] = false;
             return slot;
         }
     }
     return std::nullopt;
+}
+
+void server::Room::setReady(PlayerSlot slot, bool ready)
+{
+    if (slot < this->_maxPlayers && this->_slots[slot] && this->_state == RoomState::Lobby)
+        this->_ready[slot] = ready;
+}
+
+bool server::Room::isReady(PlayerSlot slot) const
+{
+    return slot < this->_maxPlayers && this->_slots[slot].has_value() && this->_ready[slot];
+}
+
+bool server::Room::allReady() const
+{
+    bool found = false;
+    for (PlayerSlot slot = 0; slot < this->_maxPlayers; ++slot) {
+        if (!this->_slots[slot])
+            continue;
+        found = true;
+        if (!this->_ready[slot])
+            return false;
+    }
+    return found;
 }
 
 void server::Room::setPlayerName(PlayerSlot slot, std::string name)
@@ -47,6 +72,7 @@ void server::Room::removePlayer(PlayerSlot slot)
         return;
     SessionToken removed = *this->_slots[slot];
     this->_slots[slot].reset();
+    this->_ready[slot] = false;
     if (removed == this->_host)
         this->promoteNextHost();
 }
@@ -87,7 +113,7 @@ void server::Room::promoteNextHost()
 
 void server::Room::start()
 {
-    if (this->_state != RoomState::Lobby || this->isEmpty())
+    if (this->_state != RoomState::Lobby || this->isEmpty() || !this->allReady())
         return;
     this->_game = std::make_unique<GameInstance>(this->_id, this->_conf.tickRate, this->_conf.snapshotRate, this->_sink);
     this->_state = RoomState::Running;

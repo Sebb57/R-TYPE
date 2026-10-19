@@ -1,41 +1,35 @@
-#include "GameEngine/ECS/Entity/Projectiles.hpp"
+#include "Orbyte/Projectiles.hpp"
 #include "GameEngine/ECS/Components/Collider.hpp"
 #include "GameEngine/ECS/Components/Health.hpp"
-#include "GameEngine/ECS/Components/Sprite.hpp"
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "GameEngine/ECS/Components/Velocity.hpp"
 #include "GameEngine/ECS/Components/RemoveHealth.hpp"
 #include "GameEngine/ECS/Components/Owner.hpp"
+#include "GameEngine/ECS/Components/Animation.hpp"
+#include "GameEngine/ECS/Components/Animator.hpp"
+#include "constants.hpp"
 #include <cmath>
 
-RType::Projectiles::Projectiles(World *world, int shooterId, Team owner) : _owner(owner), _spawnPos{0.0f, 0.0f}, _velocity{0.0f, 0.0f}
+RType::Projectiles::Projectiles(World *world, int shooterId, Team owner, float verticalOffset) : _owner(owner), _spawnPos{0.0f, 0.0f}, _velocity{0.0f, 0.0f}
 {
     constexpr float SPAWN_OFFSET = 50.0f;
-    constexpr float PROJECTILE_SPEED = 20.0f;
     this->ID = world->createEntity();
     const float dir = (owner == Team::Player) ? 1.0f : -1.0f;
     OrByte::Transform *shooterTransform = world->getComponent<OrByte::Transform>(shooterId);
-    OrByte::Velocity *shooterVelocity = world->getComponent<OrByte::Velocity>(shooterId);
 
     if (shooterTransform != nullptr) {
         this->_spawnPos.x = shooterTransform->position.x + dir * SPAWN_OFFSET;
-        this->_spawnPos.y = shooterTransform->position.y;
+        this->_spawnPos.y = shooterTransform->position.y + verticalOffset;
     }
 
-    float shooterSpeed = 0.0f;
-    if (shooterVelocity != nullptr)
-        shooterSpeed = std::abs(shooterVelocity->velocity.x);
-    this->_velocity.x = dir * (PROJECTILE_SPEED + shooterSpeed);
+    this->_velocity.x = dir * OrByte::constants::PROJECTILE_SPEED;
     this->_velocity.y = 0.0f;
-}
-
-RType::Projectiles::~Projectiles()
-{
 }
 
 void RType::Projectiles::CreateServeurComponent(World *world)
 {
-    world->addComponentToEntity<Collider>(this->ID, Vector2 {0.0f, 0.0f});
+    world->addComponentToEntity<Collider>(this->ID, Vector2(OrByte::constants::PROJECTILE_WIDTH * OrByte::constants::PROJECTILE_COLLIDER_SCALE,
+        OrByte::constants::PROJECTILE_HEIGHT * OrByte::constants::PROJECTILE_COLLIDER_SCALE));
     world->addComponentToEntity<OrByte::Velocity>(this->ID, this->_velocity);
     world->addComponentToEntity<OrByte::Transform>(this->ID, this->_spawnPos, Vector2 {1.0f, 1.0f}, 0.0f);
     world->addComponentToEntity<OrByte::RemoveHealth>(this->ID, 10);
@@ -45,7 +39,20 @@ void RType::Projectiles::CreateServeurComponent(World *world)
 void RType::Projectiles::CreateClientComponent(World *world)
 {
     world->addComponentToEntity<OrByte::Transform>(this->ID, this->_spawnPos, Vector2 {1.0f, 1.0f}, 0.0f);
-    world->addComponentToEntity<OrByte::Sprite>(this->ID, "");
+    OrByte::Animation animation;
+    animation.spriteSheetPath = "./assets/sprites/bullet_1.png";
+    animation.isSpriteSheet = true;
+    animation.frameCount = 2;
+    animation.frameSize = Vector2(OrByte::constants::PROJECTILE_FRAME_WIDTH, OrByte::constants::PROJECTILE_FRAME_HEIGHT);
+    animation.displaySize = Vector2(OrByte::constants::PROJECTILE_WIDTH, OrByte::constants::PROJECTILE_HEIGHT);
+    animation.columns = 2;
+    animation.frameDuration = 0.08f;
+    animation.loop = false;
+
+    OrByte::Animator animator;
+    animator.addAnimation("bullet", animation);
+    animator.play("bullet");
+    world->addComponentToEntity<OrByte::Animator>(this->ID, animator);
 }
 
 static bool applyDamage(World *world, int attacker, int victim)
@@ -70,6 +77,6 @@ void RType::Projectiles::CheckCollision(World *world, Vector2 entity)
     if (ownerA && ownerB && ownerA->team == ownerB->team)
         return;
 
-    bool deadA = applyDamage(world, idB, idA);
-    bool deadB = applyDamage(world, idA, idB);
+    applyDamage(world, idB, idA);
+    applyDamage(world, idA, idB);
 }
