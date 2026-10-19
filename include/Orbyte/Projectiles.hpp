@@ -1,5 +1,13 @@
-#ifndef PROJECTILES_HPP
-#define PROJECTILES_HPP
+/*
+** EPITECH PROJECT, 2026
+** RType
+** File description:
+** Projectiles.hpp
+*/
+
+#pragma once
+#ifndef PROJECTILES_HPP_
+    #define PROJECTILES_HPP_
 
 #include "GameEngine/ECS/World.hpp"
 #include "GameEngine/ECS/Components/Owner.hpp"
@@ -19,6 +27,7 @@ namespace RType {
             Vector2 _spawnPos;
             Vector2 _velocity;
     };
+
 }
 
-#endif
+#endif /* PROJECTILES_HPP_ */

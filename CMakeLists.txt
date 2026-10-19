@@ -56,7 +56,7 @@ target_include_directories(rtype_engine PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/GameEngine/ECS/Managers"
 )
-target_compile_features(rtype_engine PUBLIC cxx_std_23)
+target_compile_features(r-type_engine PUBLIC cxx_std_23)
 
 file(GLOB_RECURSE SERVER_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/server/*.cpp"
@@ -80,8 +80,11 @@ list(REMOVE_DUPLICATES SERVER_INCLUDE_DIRS)
 
 add_executable(r-type_server ${SERVER_SOURCES})
 target_include_directories(r-type_server PRIVATE ${SERVER_INCLUDE_DIRS})
-target_link_libraries(r-type_server PRIVATE rtype_engine rtype-protocol)
+target_link_libraries(r-type_server PRIVATE r-type_engine rtype-protocol)
 target_compile_features(r-type_server PRIVATE cxx_std_23)
+set_target_properties(r-type_server PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 set(SFML_BUILD_GRAPHICS ON CACHE BOOL "" FORCE)
 set(SFML_BUILD_WINDOW ON CACHE BOOL "" FORCE)
@@ -103,10 +106,13 @@ file(GLOB_RECURSE CLIENT_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/client/*.cpp")
 add_executable(r-type_client ${CLIENT_SOURCES})
 target_include_directories(r-type_client PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(r-type_client PRIVATE rtype_engine rtype-protocol rtype_sfml sfml-audio)
+target_link_libraries(r-type_client PRIVATE r-type_engine rtype-protocol rtype_sfml sfml-audio)
 target_compile_features(r-type_client PRIVATE cxx_std_23)
+set_target_properties(r-type_client PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
-foreach(target IN ITEMS rtype_engine r-type_server r-type_client)
+foreach(target IN ITEMS r-type_engine r-type_server r-type_client)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
