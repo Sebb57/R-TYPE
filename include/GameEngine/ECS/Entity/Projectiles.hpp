@@ -24,6 +24,7 @@ class Projectiles {
         void createServerComponent(World *world);
         void createClientComponent(World *world);
         void checkCollision(World *world, Vector2 entity);
+        void destructProjectiles(World *world);
         int getID() const { return this->_id; }
 
     private:

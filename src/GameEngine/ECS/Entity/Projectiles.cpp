@@ -65,3 +65,19 @@ void OrByte::Projectiles::checkCollision(World *world, Vector2 entity)
     world->getComponent<OrByte::RemoveHealth>(idB);
     world->getComponent<OrByte::RemoveHealth>(idA);
 }
+
+void OrByte::Projectiles::destructProjectiles(World * world)
+{
+    constexpr float OFFSCREEN_X_LEFT = -100.0f;
+    constexpr float OFFSCREEN_X_RIGHT = 2080.0f;
+    std::vector<int> entities = world->getExistingEntities();
+
+    for (int id : entities) {
+        OrByte::Transform *transform = world->getComponent<OrByte::Transform>(id);
+        OrByte::Health *health = world->getComponent<OrByte::Health>(id);
+        if (transform == nullptr || health != nullptr)
+            continue;
+        if (transform->position.x < OFFSCREEN_X_LEFT || transform->position.x > OFFSCREEN_X_RIGHT)
+            world->destroyEntity(id);
+    }
+}
