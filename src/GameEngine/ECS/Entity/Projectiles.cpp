@@ -5,14 +5,15 @@
 ** Projectiles.cpp
 */
 
-#include "GameEngine/ECS/Entity/Projectiles.hpp"
 #include "GameEngine/ECS/Components/Collider.hpp"
 #include "GameEngine/ECS/Components/Health.hpp"
+#include "GameEngine/ECS/Components/Owner.hpp"
+#include "GameEngine/ECS/Components/RemoveHealth.hpp"
 #include "GameEngine/ECS/Components/Sprite.hpp"
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "GameEngine/ECS/Components/Velocity.hpp"
-#include "GameEngine/ECS/Components/RemoveHealth.hpp"
-#include "GameEngine/ECS/Components/Owner.hpp"
+#include "GameEngine/ECS/Entity/Projectiles.hpp"
+#include "GameEngine/ECS/Utils.hpp"
 #include <cmath>
 
 OrByte::Projectiles::Projectiles(World *world, int shooterId, Team owner) : _owner(owner), _spawnPos({0.0f, 0.0f}), _velocity({0.0f, 0.0f})
@@ -48,7 +49,7 @@ void OrByte::Projectiles::createServerComponent(World *world)
 void OrByte::Projectiles::createClientComponent(World *world)
 {
     world->addComponentToEntity<OrByte::Transform>(this->_id, this->_spawnPos, Vector2 {1.0f, 1.0f}, 0.0f);
-    world->addComponentToEntity<OrByte::Sprite>(this->_id, "");
+    world->addComponentToEntity<OrByte::Sprite>(this->_id, "", Vector2(100.0f, 100.0f));
 }
 
 static bool applyDamage(World *world, int attacker, int victim)

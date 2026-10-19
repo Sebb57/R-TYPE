@@ -12,6 +12,7 @@
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "GameEngine/ECS/Components/Velocity.hpp"
 #include "GameEngine/ECS/Components/Owner.hpp"
+#include "GameEngine/ECS/Utils.hpp"
 
 OrByte::Player::Player(World *world)
 {
@@ -21,14 +22,14 @@ OrByte::Player::Player(World *world)
 void OrByte::Player::createServerComponent(World *world)
 {
     world->addComponentToEntity<Collider>(this->_id, Vector2 {0.0f, 0.0f});
-    world->addComponentToEntity<OrByte::Health>(this->_id, 100, 100);
-    world->addComponentToEntity<OrByte::Velocity>(this->_id, Vector2 {0.0f, 0.0f});
-    world->addComponentToEntity<OrByte::Transform>(this->_id, Vector2 {0.0f, 0.0f}, Vector2 {1.0f, 1.0f}, float {0.0f});
+    world->addComponentToEntity<Health>(this->_id, 100, 100);
+    world->addComponentToEntity<Velocity>(this->_id, Vector2 {0.0f, 0.0f});
+    world->addComponentToEntity<Transform>(this->_id, Vector2 {0.0f, 0.0f}, Vector2 {1.0f, 1.0f}, float {0.0f});
     world->addComponentToEntity<Owner>(this->_id, Team::Player);
 }
 
 void OrByte::Player::createClientComponent(World *world)
 {
-    world->addComponentToEntity<OrByte::Transform>(this->_id, Vector2 {0.0f, 0.0f}, Vector2 {1.0f, 1.0f}, float {0.0f});
-    world->addComponentToEntity<OrByte::Sprite>(this->_id, "");
+    world->addComponentToEntity<Transform>(this->_id, Vector2{0.0f, 0.0f}, Vector2 {1.0f, 1.0f}, float {0.0f});
+    world->addComponentToEntity<Sprite>(this->_id, "", Vector2(100.0f, 100.0f));
 }

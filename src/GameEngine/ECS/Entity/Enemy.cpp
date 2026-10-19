@@ -5,15 +5,16 @@
 ** Ennemies.cpp
 */
 
-#include "GameEngine/ECS/Entity/Enemy.hpp"
 #include "GameEngine/ECS/Components/Collider.hpp"
 #include "GameEngine/ECS/Components/Health.hpp"
+#include "GameEngine/ECS/Components/Owner.hpp"
+#include "GameEngine/ECS/Components/RemoveHealth.hpp"
 #include "GameEngine/ECS/Components/Sprite.hpp"
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "GameEngine/ECS/Components/Velocity.hpp"
-#include "GameEngine/ECS/Components/RemoveHealth.hpp"
-#include "GameEngine/ECS/Components/Owner.hpp"
+#include "GameEngine/ECS/Entity/Enemy.hpp"
 #include "GameEngine/ECS/Managers/ComponentManager.hpp"
+#include "GameEngine/ECS/Utils.hpp"
 #include "GameEngine/ECS/World.hpp"
 #include <random>
 
@@ -43,7 +44,7 @@ void OrByte::Enemy::createServerComponent(World *world)
 void OrByte::Enemy::createClientComponent(World *world)
 {
     world->addComponentToEntity<OrByte::Transform>(this->_id, Vector2 {2000.0f, this->_randomLine}, Vector2 {1.0f, 1.0f}, float {0.0f});
-    world->addComponentToEntity<OrByte::Sprite>(this->_id, "");
+    world->addComponentToEntity<OrByte::Sprite>(this->_id, "", Vector2(100.0f, 100.0f));
 }
 
 void OrByte::Enemy::destructEnemy(World *world)

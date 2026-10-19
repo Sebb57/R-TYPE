@@ -23,7 +23,7 @@ namespace OrByte {
 
         private:
             int _id;
-            float RandomLine;
+            float _randomLine;
     };
 
 }
