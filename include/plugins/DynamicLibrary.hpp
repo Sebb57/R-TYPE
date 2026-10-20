@@ -12,18 +12,25 @@
 
 #include <dlfcn.h>
 #include <exception>
+#include <filesystem>
 #include <iostream>
 #include <string>
 
+namespace OrByte {
+
 class DynamicLibrary {
     void* _handle = nullptr;
-    std::string _path;
+    std::filesystem::path _path;
 
     public:
-        DynamicLibrary(const std::string& path);
+        enum PluginType {
+            GRAPHICAL_LIB,
+        };
+
+        DynamicLibrary(const std::filesystem::path& path);
         ~DynamicLibrary() noexcept;
 
-        std::size_t (*type)() = nullptr;
+        PluginType (*type)() = nullptr;
 
         std::string getPath() const noexcept { return this->_path; }
         template <typename T>
@@ -33,8 +40,10 @@ class DynamicLibrary {
             T func = reinterpret_cast<T>(dlsym(this->_handle, symbol.c_str()));
             const char *error = dlerror();
 
-            if (error != nullptr || !func)
+            if (error != nullptr || !func) {
+                std::cerr << "ERROR: " << error << std::endl;
                 throw FunctionLoadFailed(symbol);
+            }
             return func;
         }
 
@@ -68,5 +77,7 @@ class DynamicLibrary {
                     : DynamicLibraryException("Error: '" + path + "' not a graphical library") {}
         };
 };
+
+}
 
 #endif /* DYNAMICLIBRARY_HPP_ */

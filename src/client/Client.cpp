@@ -15,7 +15,6 @@
 #include "client/scenes/RoomListScene.hpp"
 #include "client/scenes/RoomScene.hpp"
 #include "client/scenes/ServerScene.hpp"
-#include "plugins/SFML.hpp"
 
 namespace {
 
@@ -31,26 +30,27 @@ std::filesystem::path findAsset(const std::filesystem::path& path)
 
 client::Client::Client(ClientConfig config)
     : _config(std::move(config))
-    , _graphic(std::make_unique<OrByte::SFML>())
-    , _context(this->_config, *this->_graphic, this->_network, this->_scenes, this->_controls, findAsset(this->_config.font))
+    , _graphicLoader("./plugins/SFML.so")
+    , _graphicLib(this->_graphicLoader.loadFunction<OrByte::IGraphic* (*)()>("factory")())
+    , _context(this->_config, *this->_graphicLib, this->_network, this->_scenes, this->_controls, findAsset(this->_config.font))
 {
     this->registerScenes();
 }
 
 void client::Client::run()
 {
-    this->_graphic->open(this->_config.width, this->_config.height, this->_config.title);
+    this->_graphicLib->open(this->_config.width, this->_config.height, this->_config.title);
     this->_scenes.switchTo(ServerScene::Name);
     this->_clock.reset();
-    while (this->_graphic->isOpen()) {
+    while (this->_graphicLib->isOpen()) {
         this->_scenes.apply();
         this->pollEvents();
         const double deltaTime = this->_clock.getElapsedTime();
         this->_clock.reset();
         this->_scenes.update(deltaTime);
-        this->_graphic->clear();
+        this->_graphicLib->clear();
         this->_scenes.render();
-        this->_graphic->update();
+        this->_graphicLib->update();
     }
 }
 
@@ -64,12 +64,12 @@ void client::Client::registerScenes()
 
 void client::Client::pollEvents()
 {
-    std::queue<OrByte::Event> events = this->_graphic->listen();
+    std::queue<OrByte::Event> events = this->_graphicLib->listen();
     while (!events.empty()) {
         const OrByte::Event event = events.front();
         events.pop();
         if (event.type == OrByte::Event::Type::Closed)
-            this->_graphic->close();
+            this->_graphicLib->close();
         else
             this->_scenes.onEvent(event);
     }

@@ -8,6 +8,7 @@
 
 #include "constants.hpp"
 #include "GameEngine/ECS/Utils.hpp"
+#include "plugins/DynamicLibrary.hpp"
 #include "plugins/SFML.hpp"
 #include <algorithm>
 #include <cmath>
@@ -407,7 +408,7 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     sf::Sprite sprite;
     sf::IntRect sfmlRect(rect.x, rect.y, rect.width, rect.height);
     Vector2 windowRatio = getWindowRatio(this->_window->getSize());
-    sf::Vector2u textureSize = texture->getSize();
+    // sf::Vector2u textureSize = texture->getSize();
     float scale = getSizeFromRatio(size, windowRatio).y / rect.height;
 
     sprite.setPosition(getPositionFromRatio(transform.position, this->_window->getSize()));
@@ -450,6 +451,11 @@ std::pair<unsigned, unsigned> OrByte::SFML::getWindowSize() const noexcept
 }
 
 extern "C" {
+    OrByte::DynamicLibrary::PluginType type()
+    {
+        return OrByte::DynamicLibrary::PluginType::GRAPHICAL_LIB;
+    }
+
     OrByte::IGraphic *factory()
     {
         return new OrByte::SFML();
