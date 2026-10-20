@@ -14,7 +14,7 @@ int main(void)
     try {
         OrByte::GameEngine engine;
 
-        // Run
+        engine.run();
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return OrByte::constants::FAILURE;

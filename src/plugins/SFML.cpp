@@ -65,6 +65,7 @@ namespace {
             color.a
         );
     }
+
 }
 
 void OrByte::SFML::open(const std::size_t width, const std::size_t height, std::string title)
