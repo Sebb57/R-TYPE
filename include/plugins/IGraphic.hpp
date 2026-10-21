@@ -48,6 +48,11 @@ namespace OrByte {
             virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, Rect rect) const = 0;
             virtual void drawText(const Transform& transform, std::string text, unsigned fontSize = 20, RGBA fillColor = {255, 255, 255}, unsigned outlineThickness = 0, RGBA outlineColor = {0, 0, 0}, std::filesystem::path font = constants::FONT_DEFAULT) const = 0;
 
+            virtual Vector2u regionSize() const = 0;
+            virtual void applyRegionView() const = 0;
+            virtual void pushRegion(const Rect& pixelRect) const = 0;
+            virtual void popRegion() const = 0;
+
             [[nodiscard]] virtual std::pair<unsigned, unsigned> getWindowSize() const noexcept = 0;
 
             IGraphic& operator=(const IGraphic& object) = delete;

@@ -11,6 +11,7 @@
     #define SFML_HPP_
 
     #include "plugins/AGraphic.hpp"
+    #include "GameEngine/Layout/Widget.hpp"
     #include <chrono>
     #include <filesystem>
     #include <map>
@@ -18,6 +19,7 @@
     #include <queue>
     #include <string>
     #include <unordered_map>
+    #include <vector>
     #include <SFML/Graphics.hpp>
     #include <SFML/System.hpp>
     #include <SFML/Window.hpp>
@@ -28,6 +30,7 @@ namespace OrByte {
         std::unique_ptr<sf::RenderWindow> _window;
         mutable std::unordered_map<std::string, sf::Font> _fonts;
         mutable std::unordered_map<std::string, sf::Texture> _textures;
+        mutable std::vector<Rect> _regions;
 
         const sf::Font *getFont(const std::filesystem::path& path) const;
         const sf::Texture *getTexture(const std::filesystem::path& path) const;
@@ -47,6 +50,12 @@ namespace OrByte {
             virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path) const final;
             virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, Rect rect) const final;
             virtual void drawText(const Transform& transform, std::string text, unsigned fontSize, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor, std::filesystem::path font) const final;
+
+            // Layout
+            virtual Vector2u regionSize() const override;
+            virtual void applyRegionView() const override;
+            virtual void pushRegion(const Rect& pixelRect) const override;
+            virtual void popRegion() const override;
 
             std::pair<unsigned, unsigned> getWindowSize() const noexcept final;
     };
