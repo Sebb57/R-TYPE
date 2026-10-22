@@ -10,8 +10,10 @@
 #include <array>
 #include <string>
 #include "client/network/NetworkClient.hpp"
+#include "client/scenes/RoomScene.hpp"
 #include "client/scenes/SceneManager.hpp"
 #include "client/scenes/ServerScene.hpp"
+#include "protocol/UdpProtocol.hpp"
 
 namespace {
 
@@ -43,7 +45,11 @@ void client::RoomListScene::update(double deltaTime)
         this->_context.scenes.switchTo(ServerScene::Name);
         return;
     }
-    this->_subtitle = "ROOMS    browsing as " + this->_view.username;
+    if (this->_view.inRoom) {
+        this->_context.scenes.switchTo(RoomScene::Name);
+        return;
+    }
+    this->_subtitle = "ROOMS    playing as " + this->_view.username;
     if (this->_view.rooms == this->_rooms)
         return;
     this->_rooms = this->_view.rooms;
@@ -53,8 +59,12 @@ void client::RoomListScene::update(double deltaTime)
 void client::RoomListScene::rebuild()
 {
     this->clearEntries();
-    for (const RoomView& room : this->_rooms)
-        this->addButton(room.name + "   #" + std::to_string(room.id), nullptr, nullptr, describe(room));
+    this->addButton("Create room", [this] { this->_context.network.createRoom(); });
+    for (const RoomView& room : this->_rooms) {
+        const std::uint32_t id = room.id;
+        const bool open = room.players < room.capacity && room.state != static_cast<std::uint8_t>(server::RoomState::Finished);
+        this->addButton(room.name + "   #" + std::to_string(id), [this, id] { this->_context.network.joinRoom(id); }, [open] { return open; }, describe(room));
+    }
     this->addButton("Refresh", [this] { this->_context.network.listRooms(); });
     this->addButton("Disconnect", [this] { this->_context.network.disconnect(); });
 }

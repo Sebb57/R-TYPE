@@ -16,14 +16,12 @@
 
 namespace client {
 
-class LocalGame;
 class NetworkClient;
 class SceneManager;
 
 struct SceneContext {
     const ClientConfig& config;
     OrByte::IGraphic& graphic;
-    LocalGame& game;
     NetworkClient& network;
     SceneManager& scenes;
     Controls& controls;

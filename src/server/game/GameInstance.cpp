@@ -460,7 +460,7 @@ void server::GameInstance::emitCollisionEffect(CollisionEffect type, int entity,
     const auto y = static_cast<std::uint16_t>(toCoordinate(position.y));
     const std::uint32_t packedPosition = static_cast<std::uint32_t>(x)
         | (static_cast<std::uint32_t>(y) << 16);
-    this->emit(Target(Target::Kind::All), GameEventDto(
+    this->emit(Target(Target::Kind::All), GameEventDto{
         this->_nextEventId++, static_cast<std::uint8_t>(type), static_cast<std::uint32_t>(entity + 1), packedPosition
-    ));
+    });
 }

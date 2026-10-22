@@ -6,7 +6,7 @@
  * @date 2026-10-22
 **/
 
-#include "client/LocalGame.hpp"
+#include "GameEngine/client/LocalGame.hpp"
 #include <algorithm>
 #include <variant>
 

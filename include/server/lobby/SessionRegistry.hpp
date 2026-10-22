@@ -32,12 +32,11 @@ struct Session {
     Clock::time_point lastSeen;
     std::optional<std::uint32_t> lastInputSeq;
     std::optional<std::uint8_t> lastInputKeys;
-    bool local = false;
 };
 
 class SessionRegistry {
     public:
-        Session& create(RoomId, PlayerSlot, std::string username, std::weak_ptr<TcpConnection>, bool local = false);
+        Session& create(RoomId, PlayerSlot, std::string username, std::weak_ptr<TcpConnection>);
         Session* find(SessionToken);
         bool bindEndpoint(SessionToken, const asio::ip::udp::endpoint&);
         void touch(SessionToken, Clock::time_point now);

@@ -11,6 +11,7 @@
 #include "protocol/TcpProtocol.hpp"
 #include <algorithm>
 #include <ranges>
+#include <cctype>
 #include <iostream>
 #include <utility>
 
@@ -32,9 +33,13 @@ std::vector<server::RoomInfo> server::RoomManager::list() const
     return result;
 }
 
-server::Result<server::JoinResult> server::RoomManager::host(std::string username, OutgoingSink local)
+server::Result<server::JoinResult> server::RoomManager::create(const std::shared_ptr<TcpConnection>& connection, std::string name, std::uint8_t maxPlayers)
 {
-    if (username.empty() || username.size() > 16)
+    if (!connection || connection->username().empty() || connection->session())
+        return std::unexpected(LobbyError::NotInRoom);
+
+    const bool validName = !name.empty() && name.size() <= 32 && std::ranges::any_of(name.begin(), name.end(), [](unsigned char c) { return !std::isspace(c); });
+    if (!validName || maxPlayers == 0 || maxPlayers > this->_conf.maxPlayersPerRoom || maxPlayers > 4)
         return std::unexpected(LobbyError::BadName);
     if (this->_rooms.size() >= this->_conf.maxRooms)
         return std::unexpected(LobbyError::TooManyRooms);
@@ -43,18 +48,13 @@ server::Result<server::JoinResult> server::RoomManager::host(std::string usernam
     while (id == 0 || this->_rooms.contains(id))
         id = this->_nextId++;
 
-    auto& session = this->_sessions.create(id, 0, username, {}, true);
+    auto& session = this->_sessions.create(id, 0, connection->username(), connection);
     const SessionToken token = session.token;
-    OutgoingSink sink = [network = this->_sink, local = std::move(local)](OutboundMessage&& msg) {
-        local(OutboundMessage(msg));
-        network(std::move(msg));
-    };
-    auto room = std::make_unique<Room>(id, username + "'s game", 1, token, std::move(sink), this->_conf);
-    room->setPlayerName(0, username);
-    room->setReady(0, true);
-    room->start();
+    auto room = std::make_unique<Room>(id, name, maxPlayers, token, this->_sink, this->_conf);
+    room->setPlayerName(0, connection->username());
     this->_rooms.emplace(id, std::move(room));
-    std::cerr << "[ROOM] hosting id=" << id << " player=" << username << '\n';
+    connection->setSession(token);
+    std::cerr << "[ROOM] created id=" << id << " name=" << name << " host=" << connection->username() << '\n';
     return JoinResult(id, token, 0);
 }
 

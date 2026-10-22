@@ -8,9 +8,7 @@
 
 #include "client/scenes/ServerScene.hpp"
 #include <cctype>
-#include "client/LocalGame.hpp"
 #include "client/network/NetworkClient.hpp"
-#include "client/scenes/GameScene.hpp"
 #include "client/scenes/RoomListScene.hpp"
 #include "client/scenes/SceneManager.hpp"
 
@@ -37,10 +35,10 @@ client::ServerScene::ServerScene(SceneContext& context)
     , _address(context.config.host == LocalHost ? "" : context.config.host)
     , _username(context.config.username)
 {
-    this->_subtitle = "MAIN MENU";
-    this->addButton("Play", [this] { this->play(); }, [this] { return !this->_username.empty(); });
+    this->_subtitle = "CHOOSE A SERVER";
+    this->addButton("Local server", [this] { this->connect(LocalHost); }, [this] { return !this->_username.empty(); }, LocalHost);
+    this->addField("Other server", this->_address, MaxAddressLength, isAddressCharacter, [this] { this->connect(this->_address); });
     this->addField("Player name", this->_username, MaxNameLength, isNameCharacter);
-    this->addField("Browse server", this->_address, MaxAddressLength, isAddressCharacter, [this] { this->connect(this->_address); });
     this->addButton("Quit", [this] { this->_context.graphic.close(); });
     this->bindAction(Action::Back, [this](bool pressed) {
         if (pressed)
@@ -53,14 +51,6 @@ void client::ServerScene::update(double deltaTime)
     AMenuScene::update(deltaTime);
     if (this->_view.connected)
         this->_context.scenes.switchTo(RoomListScene::Name);
-}
-
-void client::ServerScene::play()
-{
-    if (this->_username.empty())
-        return;
-    this->_context.game.start(this->_username);
-    this->_context.scenes.switchTo(GameScene::Name);
 }
 
 void client::ServerScene::connect(const std::string& host)

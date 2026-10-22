@@ -18,7 +18,7 @@
 namespace server {
 
 using RoomId = std::uint32_t;
-using SessionToken = std::uint64_t; // 0 = invalide
+using SessionToken = std::uint64_t;
 using PlayerSlot = std::uint8_t;
 using Clock = std::chrono::steady_clock;
 using Byte = std::uint8_t;
@@ -35,7 +35,7 @@ struct ServerConfig {
     std::uint16_t tcpPort = 6969, udpPort = 6767;
     std::size_t maxRooms = 16, maxTcpConnections = 64;
     std::uint8_t maxPlayersPerRoom = 4;
-    unsigned tickRate = 60, snapshotRate = 60;
+    unsigned tickRate = 60, snapshotRate = 20;
     std::chrono::seconds clientTimeout{5};
     std::chrono::seconds handshakeTimeout{5};
 };

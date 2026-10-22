@@ -6,15 +6,15 @@
  * @date 2026-10-22
 **/
 
-#ifndef CLIENT_LOCALGAME_HPP
-#define CLIENT_LOCALGAME_HPP
+#ifndef GAMEENGINE_CLIENT_LOCALGAME_HPP
+#define GAMEENGINE_CLIENT_LOCALGAME_HPP
 
 #include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
-#include "client/network/ClientView.hpp"
-#include "server/Server.hpp"
+#include "GameEngine/client/network/ClientView.hpp"
+#include "GameEngine/server/Server.hpp"
 
 namespace client {
 
@@ -42,4 +42,4 @@ class LocalGame {
 
 } // namespace client
 
-#endif // CLIENT_LOCALGAME_HPP
+#endif // GAMEENGINE_CLIENT_LOCALGAME_HPP

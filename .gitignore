@@ -1,6 +1,8 @@
 # Binaries
 r-type_client
 r-type_server
+#temporary
+r-type_solo
 
 # Prerequisites
 *.d
