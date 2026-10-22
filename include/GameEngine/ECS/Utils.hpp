@@ -36,6 +36,11 @@ struct Rect {
     Rect(int x, int y, int w, int h)
         : x(x), y(y), w(w), h(h)
     {}
+
+    [[nodiscard]] bool contains(int px, int py) const
+    {
+        return px >= x && px < x + w && py >= y && py < y + h;
+    }
 };
 
 #endif /* UTILS_HPP_ */

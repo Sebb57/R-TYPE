@@ -245,7 +245,9 @@ std::queue<OrByte::Event> OrByte::SFML::listen() const
         }
         if (sfmlEvent.type == sf::Event::MouseButtonPressed) {
             event.type = Event::Type::MouseButtonPressed;
-            Vector2 mousePos = getPositionFromWindow(sf::Mouse::getPosition(*this->_window), this->_window->getSize());
+            event.windowX = sfmlEvent.mouseButton.x;
+            event.windowY = sfmlEvent.mouseButton.y;
+            Vector2 mousePos = getPositionFromWindow({ event.windowX, event.windowY }, this->_window->getSize());
             event.mouseX = static_cast<int>(mousePos.x);
             event.mouseY = static_cast<int>(mousePos.y);
             switch (sfmlEvent.mouseButton.button) {
@@ -265,7 +267,9 @@ std::queue<OrByte::Event> OrByte::SFML::listen() const
         }
         if (sfmlEvent.type == sf::Event::MouseButtonReleased) {
             event.type = Event::Type::MouseButtonReleased;
-            Vector2 mousePos = getPositionFromWindow(sf::Mouse::getPosition(*this->_window), this->_window->getSize());
+            event.windowX = sfmlEvent.mouseButton.x;
+            event.windowY = sfmlEvent.mouseButton.y;
+            Vector2 mousePos = getPositionFromWindow({ event.windowX, event.windowY }, this->_window->getSize());
             event.mouseX = static_cast<int>(mousePos.x);
             event.mouseY = static_cast<int>(mousePos.y);
             switch (sfmlEvent.mouseButton.button) {
