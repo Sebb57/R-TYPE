@@ -1,6 +1,6 @@
 /**
  * @file GameScene.hpp
- * @brief in game scene, mirrors server snapshots into the ecs world
+ * @brief in game scene, mirrors the local server snapshots into the ecs world
  *
  * @author Seb
  * @date 2026-10-13

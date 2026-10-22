@@ -15,18 +15,16 @@ server::TcpServer::TcpServer(asio::io_context& io, RoomManager& rooms, const Ser
     : _acceptor(io)
     , _rooms(rooms)
     , _conf(conf)
+{}
+
+void server::TcpServer::start()
 {
-    const asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), conf.tcpPort);
+    const asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), this->_conf.tcpPort);
     this->_acceptor.open(endpoint.protocol());
     this->_acceptor.set_option(asio::socket_base::reuse_address(true));
     this->_acceptor.bind(endpoint);
     this->_acceptor.listen(asio::socket_base::max_listen_connections);
-}
-
-void server::TcpServer::start()
-{
-    if (this->_acceptor.is_open())
-        this->doAccept();
+    this->doAccept();
 }
 
 void server::TcpServer::stop()

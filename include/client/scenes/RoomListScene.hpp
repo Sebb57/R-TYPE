@@ -1,6 +1,6 @@
 /**
  * @file RoomListScene.hpp
- * @brief second menu, list the rooms of the server, create or join one
+ * @brief browse menu, list the rooms hosted by another server
  *
  * @author Seb
  * @date 2026-10-13

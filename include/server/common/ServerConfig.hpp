@@ -35,7 +35,7 @@ struct ServerConfig {
     std::uint16_t tcpPort = 6969, udpPort = 6767;
     std::size_t maxRooms = 16, maxTcpConnections = 64;
     std::uint8_t maxPlayersPerRoom = 4;
-    unsigned tickRate = 60, snapshotRate = 20;
+    unsigned tickRate = 60, snapshotRate = 60;
     std::chrono::seconds clientTimeout{5};
     std::chrono::seconds handshakeTimeout{5};
 };

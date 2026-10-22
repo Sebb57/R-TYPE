@@ -18,9 +18,9 @@
 #include "Orbyte/Ennemies.hpp"
 #include "Orbyte/Playeur.hpp"
 #include "Orbyte/Projectiles.hpp"
-#include "client/network/NetworkClient.hpp"
-#include "client/scenes/RoomScene.hpp"
+#include "client/LocalGame.hpp"
 #include "client/scenes/SceneManager.hpp"
+#include "client/scenes/ServerScene.hpp"
 #include "client/scenes/Theme.hpp"
 #include "constants.hpp"
 
@@ -73,13 +73,13 @@ client::GameScene::GameScene(SceneContext& context)
         this->bindInput(action, input);
     this->bindAction(Action::Back, [this](bool pressed) {
         if (pressed)
-            this->_context.network.leaveRoom();
+            this->_context.game.leave();
     });
 }
 
 client::GameScene::~GameScene()
 {
-    this->_context.network.setKeys(0);
+    this->_context.game.setKeys(0);
     this->_music.stop();
     for (sf::Sound& sound : this->_sounds)
         sound.stop();
@@ -88,7 +88,7 @@ client::GameScene::~GameScene()
 void client::GameScene::update(double deltaTime)
 {
     AScene::update(deltaTime);
-    this->_view = this->_context.network.view();
+    this->_view = this->_context.game.view();
     this->updateCollisionEffects(deltaTime);
     for (auto explosion = this->_explosions.begin(); explosion != this->_explosions.end();) {
         const auto *animator = this->_world.getComponent<OrByte::Animator>(*explosion);
@@ -100,7 +100,7 @@ void client::GameScene::update(double deltaTime)
         explosion = this->_explosions.erase(explosion);
     }
     if (!this->_view.running) {
-        this->_context.scenes.switchTo(RoomScene::Name);
+        this->_context.scenes.switchTo(ServerScene::Name);
         return;
     }
     if ((this->_keys & static_cast<std::uint8_t>(server::InputKey::Fire)) != 0) {
@@ -187,7 +187,7 @@ void client::GameScene::bindInput(Action action, server::InputKey input)
             this->_keys |= bit;
         else
             this->_keys &= static_cast<std::uint8_t>(~bit);
-        this->_context.network.setKeys(this->_keys);
+        this->_context.game.setKeys(this->_keys);
     });
 }
 

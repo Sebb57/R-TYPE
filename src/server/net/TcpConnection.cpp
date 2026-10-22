@@ -231,28 +231,7 @@ void server::TcpConnection::onFrame(const Buffer& frame)
             return;
         }
         if (type == server::Type::CreateRoom) {
-            std::string name;
-            std::uint8_t capacity = 0;
-            if (!TcpProtocol::readString(payload, offset, 32, name) || !TcpProtocol::readU8(payload, offset, capacity) || offset != payload.size()) {
-                badRequest();
-                return;
-            }
-            auto result = this->_rooms.create(this->shared_from_this(), std::move(name), capacity);
-            if (!result) {
-                sendError(result.error());
-                return;
-            }
-            this->_token = result->token;
-            this->_state = State::InRoom;
-            Buffer response{static_cast<Byte>(server::Type::RoomJoined)};
-            TcpProtocol::appendU32(response, result->room);
-            TcpProtocol::appendU64(response, result->token);
-            response.push_back(result->slot);
-            TcpProtocol::appendU16(response, this->_conf.udpPort);
-            this->send(response);
-            if (this->_rooms.isRunning(result->room))
-                this->send(Buffer{static_cast<Byte>(server::Type::GameStarted)});
-            this->_rooms.refreshRoom(result->room);
+            sendError(LobbyError::NotHost);
             return;
         }
         if (type == server::Type::JoinRoom) {

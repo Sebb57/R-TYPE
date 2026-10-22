@@ -28,7 +28,7 @@ class RoomManager {
         RoomManager(SessionRegistry&, OutgoingSink, const ServerConfig&);
 
         std::vector<RoomInfo> list() const;
-        Result<JoinResult> create(const std::shared_ptr<TcpConnection>&, std::string roomName, std::uint8_t maxPlayers);
+        Result<JoinResult> host(std::string username, OutgoingSink local);
         Result<JoinResult> join(const std::shared_ptr<TcpConnection>&, RoomId);
         Result<void> startGame(SessionToken requester);
         Result<void> setReady(SessionToken requester, bool ready);

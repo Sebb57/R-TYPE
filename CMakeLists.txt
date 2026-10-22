@@ -82,13 +82,13 @@ foreach(header IN LISTS SERVER_HEADERS)
 endforeach()
 list(REMOVE_DUPLICATES SERVER_INCLUDE_DIRS)
 
-add_executable(r-type_server ${SERVER_SOURCES})
-target_include_directories(r-type_server PRIVATE ${SERVER_INCLUDE_DIRS})
-target_link_libraries(r-type_server PRIVATE rtype_engine rtype-protocol)
-target_compile_features(r-type_server PRIVATE cxx_std_23)
-set_target_properties(r-type_server PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}>"
-)
+# The server is no longer a program of its own: every client embeds one to host
+# its solo game.
+add_library(rtype_server STATIC ${SERVER_SOURCES})
+target_include_directories(rtype_server PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(rtype_server PRIVATE ${SERVER_INCLUDE_DIRS})
+target_link_libraries(rtype_server PUBLIC rtype_engine rtype-protocol)
+target_compile_features(rtype_server PUBLIC cxx_std_23)
 
 set(SFML_BUILD_GRAPHICS ON CACHE BOOL "" FORCE)
 set(SFML_BUILD_WINDOW ON CACHE BOOL "" FORCE)
@@ -128,7 +128,7 @@ file(GLOB_RECURSE CLIENT_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/client/*.cpp")
 add_executable(r-type_client ${CLIENT_SOURCES})
 target_include_directories(r-type_client PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(r-type_client PRIVATE rtype_engine rtype-protocol rtype_sfml sfml-audio)
+target_link_libraries(r-type_client PRIVATE rtype_server rtype_sfml sfml-audio)
 target_compile_features(r-type_client PRIVATE cxx_std_23)
 set_target_properties(r-type_client PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}>"
@@ -149,7 +149,7 @@ if(WIN32)
     )
 endif()
 
-foreach(target IN ITEMS rtype_engine r-type_server r-type_client)
+foreach(target IN ITEMS rtype_engine rtype_server r-type_client)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
@@ -159,7 +159,7 @@ endforeach()
 
 # Windows: keep <windows.h> lean and stop its min/max macros from clashing with
 # std::min/std::max. Applied to our targets only, SFML relies on the full header.
-foreach(target IN ITEMS rtype-protocol rtype_engine rtype_sfml r-type_server r-type_client)
+foreach(target IN ITEMS rtype-protocol rtype_engine rtype_sfml rtype_server r-type_client)
     if(WIN32)
         target_compile_definitions(${target} PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
     endif()
@@ -168,9 +168,7 @@ foreach(target IN ITEMS rtype-protocol rtype_engine rtype_sfml r-type_server r-t
     endif()
 endforeach()
 
-# MinGW: embed the C++ runtime so the .exe files run without the toolchain's DLLs.
+# MinGW: embed the C++ runtime so the .exe runs without the toolchain's DLLs.
 if(MINGW)
-    foreach(target IN ITEMS r-type_server r-type_client)
-        target_link_options(${target} PRIVATE -static)
-    endforeach()
+    target_link_options(r-type_client PRIVATE -static)
 endif()

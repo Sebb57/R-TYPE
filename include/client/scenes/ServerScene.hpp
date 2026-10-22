@@ -1,6 +1,6 @@
 /**
  * @file ServerScene.hpp
- * @brief first menu, choose the server and the player name
+ * @brief first menu, play a solo game or browse the rooms of another server
  *
  * @author Seb
  * @date 2026-10-13
@@ -23,6 +23,7 @@ class ServerScene : public AMenuScene {
         void update(double deltaTime) override;
 
     private:
+        void play();
         void connect(const std::string& host);
 
         std::string _address;

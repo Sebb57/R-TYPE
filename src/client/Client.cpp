@@ -13,7 +13,6 @@
 #include <utility>
 #include "client/scenes/GameScene.hpp"
 #include "client/scenes/RoomListScene.hpp"
-#include "client/scenes/RoomScene.hpp"
 #include "client/scenes/ServerScene.hpp"
 #include "plugins/SFML.hpp"
 
@@ -32,13 +31,16 @@ std::filesystem::path findAsset(const std::filesystem::path& path)
 client::Client::Client(ClientConfig config)
     : _config(std::move(config))
     , _graphic(std::make_unique<OrByte::SFML>())
-    , _context(this->_config, *this->_graphic, this->_network, this->_scenes, this->_controls, findAsset(this->_config.font))
+    , _server(server::ServerConfig())
+    , _game(this->_server)
+    , _context(this->_config, *this->_graphic, this->_game, this->_network, this->_scenes, this->_controls, findAsset(this->_config.font))
 {
     this->registerScenes();
 }
 
 void client::Client::run()
 {
+    this->_server.start();
     this->_graphic->open(this->_config.width, this->_config.height, this->_config.title);
     this->_scenes.switchTo(ServerScene::Name);
     this->_clock.reset();
@@ -58,7 +60,6 @@ void client::Client::registerScenes()
 {
     this->_scenes.add(ServerScene::Name, [this] { return std::make_unique<ServerScene>(this->_context); });
     this->_scenes.add(RoomListScene::Name, [this] { return std::make_unique<RoomListScene>(this->_context); });
-    this->_scenes.add(RoomScene::Name, [this] { return std::make_unique<RoomScene>(this->_context); });
     this->_scenes.add(GameScene::Name, [this] { return std::make_unique<GameScene>(this->_context); });
 }
 
