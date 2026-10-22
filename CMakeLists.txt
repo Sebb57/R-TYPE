@@ -54,6 +54,8 @@ target_compile_features(rtype-protocol PUBLIC cxx_std_23)
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/GameEngine/*.cpp"
 )
+list(FILTER ENGINE_SOURCES EXCLUDE REGEX "/src/GameEngine/(Systems/.*|Components/.*|main)\\.cpp$")
+list(APPEND ENGINE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/plugins/DynamicLibrary.cpp")
 add_library(r-type_engine STATIC ${ENGINE_SOURCES})
 target_include_directories(r-type_engine PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -90,6 +92,7 @@ list(REMOVE_DUPLICATES SERVER_INCLUDE_DIRS)
 add_executable(r-type_server ${SERVER_SOURCES})
 target_include_directories(r-type_server PRIVATE ${SERVER_INCLUDE_DIRS})
 target_link_libraries(r-type_server PRIVATE r-type_engine rtype-protocol)
+add_dependencies(r-type_server ${SYSTEM_TARGETS})
 target_compile_features(r-type_server PRIVATE cxx_std_23)
 set_target_properties(r-type_server PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}"
@@ -123,15 +126,51 @@ target_link_libraries(rtype_sfml PRIVATE
 
 target_compile_features(rtype_sfml PRIVATE cxx_std_23)
 
+set(SYSTEM_PLUGINS Collider Display Health Physic)
+set(SYSTEM_TARGETS)
+foreach(system IN LISTS SYSTEM_PLUGINS)
+    set(system_target "rtype_system_${system}")
+    add_library(${system_target} MODULE "src/GameEngine/Systems/${system}System.cpp")
+    set_target_properties(${system_target} PROPERTIES
+        OUTPUT_NAME "${system}System"
+        PREFIX ""
+        SUFFIX ".so"
+        POSITION_INDEPENDENT_CODE ON
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/plugins/systems"
+    )
+    target_link_libraries(${system_target} PRIVATE r-type_engine)
+    target_compile_features(${system_target} PRIVATE cxx_std_23)
+    list(APPEND SYSTEM_TARGETS ${system_target})
+endforeach()
+
+set(COMPONENT_PLUGINS
+    AddHealth Animator Collider Health Orbit Owner Poison RegenHealth
+    RemoveHealth Sinus Spiral Sprite Transform Velocity Wither
+)
+set(COMPONENT_TARGETS)
+foreach(component IN LISTS COMPONENT_PLUGINS)
+    set(component_target "rtype_component_${component}")
+    add_library(${component_target} MODULE "src/GameEngine/Components/${component}.cpp")
+    set_target_properties(${component_target} PROPERTIES
+        OUTPUT_NAME "${component}"
+        PREFIX ""
+        SUFFIX ".so"
+        POSITION_INDEPENDENT_CODE ON
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/plugins/components"
+    )
+    target_link_libraries(${component_target} PRIVATE r-type_engine)
+    target_compile_features(${component_target} PRIVATE cxx_std_23)
+    list(APPEND COMPONENT_TARGETS ${component_target})
+endforeach()
+
 file(GLOB_RECURSE CLIENT_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/client/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/plugins/DynamicLibrary.cpp"
 )
 add_executable(r-type_client ${CLIENT_SOURCES})
 target_include_directories(r-type_client PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(r-type_client PRIVATE r-type_engine rtype-protocol sfml-audio)
 
-add_dependencies(r-type_client rtype_sfml)
+add_dependencies(r-type_client rtype_sfml ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
 
 target_compile_features(r-type_client PRIVATE cxx_std_23)
 
@@ -139,23 +178,10 @@ set_target_properties(r-type_client PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
-file(GLOB_RECURSE GAME_ENGINE_EXEC_SOURCES CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/GameEngine/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/GameEngine/*.cc"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/GameEngine/*.cxx"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/plugins/DynamicLibrary.cpp"
-)
+add_executable(r-type_game-engine src/GameEngine/main.cpp)
 
-add_executable(r-type_game-engine
-    ${GAME_ENGINE_EXEC_SOURCES}
-)
-
-target_include_directories(r-type_game-engine PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/GameEngine/ECS/Managers"
-)
-
-target_link_libraries(r-type_game-engine PRIVATE ${CMAKE_DL_LIBS})
+target_link_libraries(r-type_game-engine PRIVATE r-type_engine)
+add_dependencies(r-type_game-engine rtype_sfml ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
 
 target_compile_features(r-type_game-engine PRIVATE cxx_std_23)
 
@@ -169,6 +195,8 @@ foreach(target IN ITEMS
     r-type_client
     r-type_game-engine
     rtype_sfml
+    ${SYSTEM_TARGETS}
+    ${COMPONENT_TARGETS}
 )
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)

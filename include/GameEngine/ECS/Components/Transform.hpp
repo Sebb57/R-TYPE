@@ -9,14 +9,13 @@
 #ifndef TRANSFORM_HPP_
     #define TRANSFORM_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
     #include "../Utils.hpp"
 
 namespace OrByte {
 
-struct Transform : public IComponent
+struct Transform : public OrByte::AComponent<OrByte::ComponentType::Transform>
 {
-    inline static constexpr ComponentType Type = ComponentType::Transform;
 
     Transform() = default;
     Transform(const Vector2& position, const Vector2& scale, float rotation)

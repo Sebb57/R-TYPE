@@ -9,7 +9,6 @@
 #include <memory>
 #include <queue>
 #include <string_view>
-#include <unordered_map>
 
 namespace {
 
@@ -31,7 +30,7 @@ std::filesystem::path getGraphicalPlugin(OrByte::GameEngine::GraphicalLibs graph
     return PLUGINS_DIR / path;
 }
 
-}
+} // namespace
 
 OrByte::GameEngine::GameEngine(GraphicalLibs graphicalLib) : _graphicLoader(getGraphicalPlugin(graphicalLib)), _graphicLib(this->_graphicLoader.loadFunction<IGraphic* (*)()>("factory")())
 {

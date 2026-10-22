@@ -18,8 +18,6 @@
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "GameEngine/ECS/Components/Velocity.hpp"
 #include "GameEngine/ECS/World.hpp"
-#include "GameEngine/Systems/HealthSystem.hpp"
-#include "GameEngine/Systems/PhysicSystem.hpp"
 #include "constants.hpp"
 
 namespace {
@@ -42,8 +40,10 @@ server::GameInstance::GameInstance(RoomId room, unsigned tickRate, unsigned snap
     , _tickRate(std::max(tickRate, 1U))
     , _snapshotRate(std::max(snapshotRate, 1U))
     , _world(std::make_unique<World>())
-    , _healthSystem(std::make_unique<OrByte::HealthSystem>(*this->_world))
-    , _physicSystem(std::make_unique<OrByte::PhysicSystem>(*this->_world))
+    , _healthLoader("./plugins/systems/HealthSystem.so")
+    , _physicLoader("./plugins/systems/PhysicSystem.so")
+    , _healthSystem(this->_healthLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world))
+    , _physicSystem(this->_physicLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world))
     , _sink(std::move(sink))
 {
     this->bindInputs();

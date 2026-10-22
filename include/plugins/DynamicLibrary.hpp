@@ -10,6 +10,7 @@
 #ifndef DYNAMICLIBRARY_HPP_
     #define DYNAMICLIBRARY_HPP_
 
+#include <cstdint>
 #include <dlfcn.h>
 #include <exception>
 #include <filesystem>
@@ -23,8 +24,10 @@ class DynamicLibrary {
     std::filesystem::path _path;
 
     public:
-        enum PluginType {
+        enum PluginType: std::uint8_t {
             GRAPHICAL_LIB,
+            COMPONENT,
+            SYSTEMS,
         };
 
         DynamicLibrary(const std::filesystem::path& path);
@@ -32,7 +35,7 @@ class DynamicLibrary {
 
         PluginType (*type)() = nullptr;
 
-        std::string getPath() const noexcept { return this->_path; }
+        [[nodiscard]] std::string getPath() const noexcept { return this->_path; }
         template <typename T>
         T loadFunction(std::string symbol)
         {
@@ -53,7 +56,7 @@ class DynamicLibrary {
 
             public:
                 DynamicLibraryException(const std::string& msg) : _msg(msg) {}
-                virtual const char* what() const noexcept override { return this->_msg.c_str(); }
+                [[nodiscard]] virtual const char* what() const noexcept override { return this->_msg.c_str(); }
         };
 
         class LibraryLoadFailed : public DynamicLibraryException {
@@ -78,6 +81,6 @@ class DynamicLibrary {
         };
 };
 
-}
+} //namespace OrByte
 
 #endif /* DYNAMICLIBRARY_HPP_ */

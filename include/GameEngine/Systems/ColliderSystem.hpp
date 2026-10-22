@@ -12,6 +12,8 @@
     #include "GameEngine/ECS/Components/Transform.hpp"
     #include "GameEngine/ECS/World.hpp"
     #include "GameEngine/ECS/Components/Collider.hpp"
+    #include "plugins/ASystem.hpp"
+    #include <utility>
     #include <vector>
 
 namespace OrByte {
@@ -35,23 +37,25 @@ struct CollisionEntity {
     AABB box;
 };
 
-class ColliderSystem {
+class ColliderSystem : public ASystem {
     World& _world;
+    std::vector<std::pair<int, int>> _collisions;
     
     bool checkCollision(Collider* colliderA, Collider* colliderB, Transform* transformA, Transform* transformB);
-    AABB getAABB(const Collider& collider, const Transform& transform);
-    Circle getCircle(const Collider& collider, const Transform& transform);
     bool intersects(const Circle& a, const Circle& b);
     bool intersects(const Circle& circle, const AABB& box);
     bool intersects(const AABB& a, const AABB& b);
-    
+    Circle getCircle(const Collider& collider, const Transform& transform);
+    AABB getAABB(const Collider& collider, const Transform& transform);
+
     public:
         ColliderSystem(World& world);
-        ~ColliderSystem() = default;
+        ~ColliderSystem() override = default;
 
-        std::vector<std::pair<int, int>> update();
+        void update() override;
+        [[nodiscard]] const std::vector<std::pair<int, int>>& getCollisions() const { return this->_collisions; }
 };
 
-}
+} // namespace OrByte
 
 #endif /* COLLIDERSYSTEM_HPP_ */

@@ -9,13 +9,12 @@
 #ifndef ADDHEALTH_HPP_
     #define ADDHEALTH_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
 
 namespace OrByte {
 
-struct AddHealth : public IComponent
+struct AddHealth : public OrByte::AComponent<OrByte::ComponentType::AddHealth>
 {
-    inline static constexpr ComponentType Type = ComponentType::AddHealth;
 
     AddHealth() = default;
     AddHealth(int regenAmount) : regenAmount(regenAmount) {}

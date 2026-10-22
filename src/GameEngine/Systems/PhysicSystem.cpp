@@ -10,6 +10,8 @@
 #include "GameEngine/ECS/Components/Spiral.hpp"
 #include "GameEngine/ECS/Components/Velocity.hpp"
 #include "GameEngine/Systems/PhysicSystem.hpp"
+#include "plugins/DynamicLibrary.hpp"
+#include "plugins/ISystem.hpp"
 #include <cmath>
 #include <vector>
 
@@ -83,5 +85,18 @@ void OrByte::PhysicSystem::update()
         this->_handleSinus(transform, entity, deltaTime);
         this->_handleOrbit(transform, entity, deltaTime);
         this->_handleSpiral(transform, entity, deltaTime);
+    }
+}
+
+
+extern "C" {
+    OrByte::DynamicLibrary::PluginType type()
+    {
+        return OrByte::DynamicLibrary::PluginType::SYSTEMS;
+    }
+
+    OrByte::ISystem *factory(World& world)
+    {
+        return new OrByte::PhysicSystem(world);
     }
 }

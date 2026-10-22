@@ -9,13 +9,12 @@
 #ifndef OWNER_HPP_
     #define OWNER_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
 
 enum class Team { Player, Enemy };
 
-struct Owner : public IComponent
+struct Owner : public OrByte::AComponent<OrByte::ComponentType::Owner>
 {
-    inline static constexpr ComponentType Type = ComponentType::Owner;
 
     Owner() = default;
     Owner(Team t) : team(t) {}

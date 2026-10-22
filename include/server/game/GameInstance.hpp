@@ -19,14 +19,12 @@
 #include "BoundedQueue.hpp"
 #include "Chronometer.hpp"
 #include "GameEngine/ECS/Utils.hpp"
+#include "plugins/DynamicLibrary.hpp"
+#include "plugins/ISystem.hpp"
 #include "protocol/UdpProtocol.hpp"
 #include "server/common/ServerMessages.hpp"
 
 class World;
-namespace OrByte {
-class HealthSystem;
-class PhysicSystem;
-}
 
 namespace server {
 
@@ -66,8 +64,10 @@ class GameInstance {
         unsigned _tickRate;
         unsigned _snapshotRate;
         std::unique_ptr<World> _world;
-        std::unique_ptr<OrByte::HealthSystem> _healthSystem;
-        std::unique_ptr<OrByte::PhysicSystem> _physicSystem;
+        OrByte::DynamicLibrary _healthLoader;
+        OrByte::DynamicLibrary _physicLoader;
+        std::unique_ptr<OrByte::ISystem> _healthSystem;
+        std::unique_ptr<OrByte::ISystem> _physicSystem;
         BoundedQueue<InboundEvent> _inbox{256};
         OutgoingSink _sink;
         std::map<InputKey, InputHandler> _inputHandlers;

@@ -1,11 +1,11 @@
 #pragma once
-#include "GameEngine/ECS/Components/IComponent.hpp"
+#include "plugins/IComponent.hpp"
 #include <map>
 #include <memory>
 
 class ComponentManager
 {
-    std::map<ComponentType, std::map<int, std::unique_ptr<IComponent>>> _globalComponents;
+    std::map<OrByte::ComponentType, std::map<int, std::unique_ptr<OrByte::IComponent>>> _globalComponents;
 
     public:
         ComponentManager() = default;
@@ -13,17 +13,19 @@ class ComponentManager
 
         template <typename T, typename ... Args>
         void addComponentToEntity(int entityId, Args&& ... args) {
-            ComponentType type = T::Type;
+            OrByte::ComponentType type = T::Type;
             auto component = std::make_unique<T>(std::forward<Args>(args)...);
 
             this->_globalComponents[type][entityId] = std::move(component);
         }
 
+        void addComponentToEntity(int entityId, std::unique_ptr<OrByte::IComponent> component);
+
         //exemple d'utilisation : addComponentToEntity<Transform>(entityId, Vector2(0, 0), Vector2(1, 1), 0.0f); car Transform a un constructeur qui prend ces paramètres : KK Alexis 
 
         template <typename T>
         void removeComponentFromEntity(int entityId) {
-            ComponentType type = T::Type;
+            OrByte::ComponentType type = T::Type;
 
             auto it = this->_globalComponents.find(type);
             if (it != this->_globalComponents.end()) {
@@ -33,7 +35,7 @@ class ComponentManager
 
         template <typename T>
         T* getComponent(int entityId) {
-            ComponentType type = T::Type;
+            OrByte::ComponentType type = T::Type;
 
             auto it = this->_globalComponents.find(type);
             if (it != this->_globalComponents.end()) {
