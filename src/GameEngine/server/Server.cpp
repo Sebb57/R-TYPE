@@ -20,7 +20,7 @@ server::Server::Server(ServerConfig conf)
                  send(std::move(msg));
              },
              this->_conf)
-    , _udp(this->_io, this->_sessions, this->_rooms, this->_conf)
+    , _udp(this->_io, this->_sessions, this->_conf)
     , _tcp(this->_io, this->_rooms, this->_conf)
 {}
 
@@ -42,7 +42,7 @@ void server::Server::start()
     catch (const std::exception& e) {
         this->_tcp.stop();
         this->_udp.stop();
-        std::cerr << "[Server] network unavailable (" << e.what() << "), the game is only hosted locally" << std::endl;
+        std::cerr << "[Server] network unavailable (" << e.what() << "), the game cannot be spectated" << std::endl;
     }
     armSweepTimer();
     this->_thread = std::jthread([this] { this->run(); });
@@ -67,36 +67,27 @@ void server::Server::stop()
         this->_thread.join();
 }
 
-void server::Server::host(std::string username, OutgoingSink local)
+void server::Server::host(std::string username, std::shared_ptr<GameInstance> game)
 {
-    asio::post(this->_io, [this, username = std::move(username), local = std::move(local)]() mutable {
-        if (this->_host)
-            this->_rooms.leave(*this->_host, LeaveReason::Requested);
-        this->_host.reset();
-        auto result = this->_rooms.host(std::move(username), std::move(local));
+    asio::post(this->_io, [this, username = std::move(username), game = std::move(game)]() mutable {
+        if (this->_hosted)
+            this->_rooms.close(*this->_hosted);
+        this->_hosted.reset();
+        auto result = this->_rooms.host(std::move(username), std::move(game));
         if (!result) {
-            std::cerr << "[Server] cannot host a game, error=" << static_cast<unsigned>(result.error()) << std::endl;
+            std::cerr << "[Server] cannot host the game, error=" << static_cast<unsigned>(result.error()) << std::endl;
             return;
         }
-        this->_host = result->token;
+        this->_hosted = *result;
     });
 }
 
 void server::Server::leave()
 {
     asio::post(this->_io, [this] {
-        if (this->_host)
-            this->_rooms.leave(*this->_host, LeaveReason::Requested);
-        this->_host.reset();
-    });
-}
-
-void server::Server::setKeys(std::uint8_t keys)
-{
-    asio::post(this->_io, [this, keys] {
-        const Session* session = this->_host ? this->_sessions.find(*this->_host) : nullptr;
-        if (session != nullptr)
-            this->_rooms.push(session->room, PlayerInput(session->slot, keys));
+        if (this->_hosted)
+            this->_rooms.close(*this->_hosted);
+        this->_hosted.reset();
     });
 }
 

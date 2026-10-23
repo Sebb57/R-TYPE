@@ -21,27 +21,22 @@
 namespace server {
 
 class TcpConnection;
-struct JoinResult { RoomId room; SessionToken token; PlayerSlot slot; };
+struct JoinResult { RoomId room; SessionToken token; };
 
 class RoomManager {
     public:
         RoomManager(SessionRegistry&, OutgoingSink, const ServerConfig&);
 
-        std::vector<RoomInfo> list() const;
-        Result<JoinResult> host(std::string username, OutgoingSink local);
-        Result<JoinResult> join(const std::shared_ptr<TcpConnection>&, RoomId);
-        Result<void> startGame(SessionToken requester);
-        Result<void> setReady(SessionToken requester, bool ready);
-        [[nodiscard]] bool isRunning(RoomId) const;
+        [[nodiscard]] std::vector<RoomInfo> list() const;
+        Result<RoomId> host(std::string username, std::shared_ptr<GameInstance> game);
+        Result<JoinResult> spectate(const std::shared_ptr<TcpConnection>&, RoomId);
 
         void leave(SessionToken, LeaveReason);
-        void push(RoomId, InboundEvent);
-        void refreshRoom(RoomId);
+        void close(RoomId);
         void sweep(Clock::time_point now);
         void stopAll();
 
     private:
-        void notifyRoom(RoomId);
         std::unordered_map<RoomId, std::unique_ptr<Room>> _rooms;
         RoomId _nextId = 1;
         SessionRegistry& _sessions;

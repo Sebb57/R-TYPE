@@ -1,6 +1,6 @@
 /**
  * @file RoomListScene.hpp
- * @brief browse menu, list the rooms hosted by another server
+ * @brief browse menu, list the games hosted by another server to spectate them
  *
  * @author Seb
  * @date 2026-10-13

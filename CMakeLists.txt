@@ -182,8 +182,9 @@ endif()
 # TEMPORARY: merged client/server model for the future game engine
 # -----------------------------------------------------------------------------
 # r-type_solo is a client that hosts its own server to play solo, the network
-# side only stays for spectating. It is the model the game engine will use, so
-# it lives in src/GameEngine/{client,server} and
+# side only stays for spectating: the game is computed and rendered locally,
+# spectators only receive snapshots of what to draw. It is the model the game
+# engine will use, so it lives in src/GameEngine/{client,server} and
 # include/GameEngine/{client,server,protocol}. It is fully separate from the
 # old game above (r-type_client / r-type_server), which still builds as before.
 #
@@ -195,7 +196,7 @@ file(GLOB_RECURSE SOLO_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/GameEngine/server/*.cpp")
 add_executable(r-type_solo ${SOLO_SOURCES})
 target_include_directories(r-type_solo PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(r-type_solo PRIVATE rtype_engine rtype_asio bitsery rtype_sfml sfml-audio)
+target_link_libraries(r-type_solo PRIVATE rtype_engine rtype_asio bitsery rtype_sfml)
 target_compile_features(r-type_solo PRIVATE cxx_std_23)
 set_target_properties(r-type_solo PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}>"
@@ -207,11 +208,6 @@ else()
 endif()
 if(WIN32)
     target_compile_definitions(r-type_solo PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
-    add_custom_command(TARGET r-type_solo POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${RTYPE_OPENAL_DLL}" "$<TARGET_FILE_DIR:r-type_solo>"
-        VERBATIM
-    )
 endif()
 if(MINGW)
     target_link_options(r-type_solo PRIVATE -static)

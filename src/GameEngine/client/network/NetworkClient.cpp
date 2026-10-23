@@ -8,15 +8,36 @@
 
 #include "GameEngine/client/network/NetworkClient.hpp"
 #include <chrono>
+#include <filesystem>
+#include <iterator>
 #include <utility>
 #include <vector>
 
 namespace {
 
-constexpr std::uint8_t ProtocolVersion = 1;
-constexpr std::uint8_t RoomCapacity = 4;
-constexpr std::size_t SnapshotEntitySize = 10;
-constexpr std::size_t SnapshotMetadataSize = 25;
+const std::array<std::string, 6> Errors{
+    "bad request", "incompatible version", "invalid player name", "game not found", "too many spectators", "too many games",
+};
+const std::array<std::string, 4> LeaveReasons{
+    "Stopped spectating", "Connection lost", "Spectating timed out", "The game ended",
+};
+
+template <std::size_t Size>
+std::string describe(const std::array<std::string, Size>& names, std::uint8_t code)
+{
+    return code < names.size() ? names[code] : "error " + std::to_string(code);
+}
+
+std::string localImage(const std::string& image)
+{
+    const std::filesystem::path path(image);
+    if (path.has_root_path())
+        return {};
+    for (const auto& part : path)
+        if (part == "..")
+            return {};
+    return image;
+}
 
 } // namespace
 
@@ -24,21 +45,19 @@ client::NetworkClient::NetworkClient()
     : _tcpHandlers{
         {server::Type::ConnectOk, &NetworkClient::onConnectOk},
         {server::Type::RoomList, &NetworkClient::onRoomList},
-        {server::Type::RoomJoined, &NetworkClient::onRoomJoined},
-        {server::Type::RoomUpdate, &NetworkClient::onRoomUpdate},
-        {server::Type::GameStarted, &NetworkClient::onGameStarted},
+        {server::Type::Spectating, &NetworkClient::onSpectating},
+        {server::Type::Left, &NetworkClient::onLeft},
         {server::Type::Error, &NetworkClient::onError},
     }
     , _udpHandlers{
         {server::UdpType::HelloAck, &NetworkClient::onHelloAck},
         {server::UdpType::Snapshot, &NetworkClient::onSnapshot},
-        {server::UdpType::Event, &NetworkClient::onGameEvent},
     }
     , _work(asio::make_work_guard(this->_io))
     , _tcp(this->_io)
     , _udp(this->_io)
     , _helloTimer(this->_io)
-    , _inputTimer(this->_io)
+    , _pingTimer(this->_io)
     , _thread([this] { this->_io.run(); })
 {}
 
@@ -72,7 +91,7 @@ void client::NetworkClient::connect(std::string host, std::uint16_t port, std::s
                 this->setStatus("Connection failed: " + ec.message());
                 return;
             }
-            server::Buffer payload{ProtocolVersion};
+            server::Buffer payload{server::ProtocolVersion};
             server::TcpProtocol::appendString(payload, this->_username);
             this->sendTcp(server::TcpProtocol::message(server::Type::Connect, std::move(payload)));
             this->readLength();
@@ -90,55 +109,24 @@ void client::NetworkClient::listRooms()
     this->sendTcp(server::TcpProtocol::message(server::Type::ListRooms));
 }
 
-void client::NetworkClient::createRoom()
-{
-    server::Buffer payload;
-    server::TcpProtocol::appendString(payload, this->view().username + "'s room");
-    payload.push_back(RoomCapacity);
-    this->sendTcp(server::TcpProtocol::message(server::Type::CreateRoom, std::move(payload)));
-}
-
-void client::NetworkClient::joinRoom(std::uint32_t id)
+void client::NetworkClient::spectate(std::uint32_t id)
 {
     server::Buffer payload;
     server::TcpProtocol::appendU32(payload, id);
-    this->sendTcp(server::TcpProtocol::message(server::Type::JoinRoom, std::move(payload)));
+    this->sendTcp(server::TcpProtocol::message(server::Type::Spectate, std::move(payload)));
 }
 
-void client::NetworkClient::leaveRoom()
+void client::NetworkClient::leave()
 {
     asio::post(this->_io, [this] {
-        {
-            std::scoped_lock lock(this->_mutex);
-            this->_view.inRoom = false;
-            this->_view.running = false;
-            this->_view.host = false;
-            this->_view.udpReady = false;
-            this->_view.players.clear();
-            this->_view.entities.clear();
-            this->_view.status = "Left room";
-        }
-        asio::error_code ignored;
-        this->_helloTimer.cancel(ignored);
-        this->_inputTimer.cancel(ignored);
-        this->_udp.close(ignored);
+        this->stopUdp();
+        std::scoped_lock lock(this->_mutex);
+        this->_view.spectating = false;
+        this->_view.udpReady = false;
+        this->_view.entities.clear();
+        this->_view.status = LeaveReasons[static_cast<std::size_t>(server::LeaveReason::Requested)];
     });
-    this->sendTcp(server::TcpProtocol::message(server::Type::LeaveRoom));
-}
-
-void client::NetworkClient::startGame()
-{
-    this->sendTcp(server::TcpProtocol::message(server::Type::StartGame));
-}
-
-void client::NetworkClient::setReady(bool ready)
-{
-    this->sendTcp(server::TcpProtocol::message(server::Type::SetReady, {static_cast<server::Byte>(ready)}));
-}
-
-void client::NetworkClient::setKeys(std::uint8_t keys)
-{
-    this->_keys = keys;
+    this->sendTcp(server::TcpProtocol::message(server::Type::Leave));
 }
 
 void client::NetworkClient::setStatus(std::string status)
@@ -222,7 +210,7 @@ void client::NetworkClient::onTcpMessage(const server::Buffer& message)
         (this->*handler->second)(message, 1);
 }
 
-void client::NetworkClient::onConnectOk(const server::Buffer&, std::size_t)
+void client::NetworkClient::onConnectOk(const server::Buffer& /* buffer */, std::size_t /* size */)
 {
     {
         std::scoped_lock lock(this->_mutex);
@@ -243,94 +231,66 @@ void client::NetworkClient::onRoomList(const server::Buffer& message, std::size_
         RoomView room;
         if (!server::TcpProtocol::readU32(message, offset, room.id) ||
             !server::TcpProtocol::readString(message, offset, 32, room.name) ||
-            !server::TcpProtocol::readU8(message, offset, room.players) ||
-            !server::TcpProtocol::readU8(message, offset, room.capacity) ||
-            !server::TcpProtocol::readU8(message, offset, room.state))
+            !server::TcpProtocol::readU8(message, offset, room.spectators) ||
+            !server::TcpProtocol::readU8(message, offset, room.capacity))
             return;
         rooms.push_back(std::move(room));
     }
     std::scoped_lock lock(this->_mutex);
-    this->_view.status = std::to_string(rooms.size()) + (rooms.size() == 1 ? " room" : " rooms") + " on the server";
     this->_view.rooms = std::move(rooms);
 }
 
-void client::NetworkClient::onRoomJoined(const server::Buffer& message, std::size_t offset)
+void client::NetworkClient::onSpectating(const server::Buffer& message, std::size_t offset)
 {
     std::uint32_t id = 0;
-    std::uint16_t port = 0;
     std::uint64_t token = 0;
-    std::uint8_t slot = 0;
+    std::uint16_t port = 0;
     if (!server::TcpProtocol::readU32(message, offset, id) ||
         !server::TcpProtocol::readU64(message, offset, token) ||
-        !server::TcpProtocol::readU8(message, offset, slot) ||
         !server::TcpProtocol::readU16(message, offset, port))
         return;
     {
         std::scoped_lock lock(this->_mutex);
-        this->_view.inRoom = true;
-        this->_view.selectedRoom = id;
+        this->_view.spectating = true;
+        this->_view.udpReady = false;
+        this->_view.room = id;
         this->_view.token = token;
-        this->_view.slot = slot;
         this->_view.udpPort = port;
-        this->_view.status = "Joined room " + std::to_string(id);
-        this->_view.players.clear();
-        this->_view.entities.clear();
-        this->_view.collisionEffects.clear();
         this->_view.tick = 0;
-        this->_view.remainingSeconds = 180;
-        this->_view.gameOver = false;
-        this->_view.hasGameState = false;
-        this->_view.aliveMask = 0;
-        this->_view.scores.fill(0);
+        this->_view.entities.clear();
+        this->_view.status = "Joining game " + std::to_string(id) + "...";
     }
     this->startUdp(port, token);
 }
 
-void client::NetworkClient::onRoomUpdate(const server::Buffer& message, std::size_t offset)
+void client::NetworkClient::onLeft(const server::Buffer& message, std::size_t offset)
 {
-    std::uint8_t host = 0;
-    std::uint8_t count = 0;
-    if (!server::TcpProtocol::readU8(message, offset, host) || !server::TcpProtocol::readU8(message, offset, count))
+    std::uint8_t reason = 0;
+    if (!server::TcpProtocol::readU8(message, offset, reason))
         return;
-    std::vector<PlayerView> players;
-    for (std::uint8_t i = 0; i < count; ++i) {
-        std::uint8_t slot = 0;
-        std::uint8_t bound = 0;
-        std::uint8_t ready = 0;
-        std::string name;
-        if (!server::TcpProtocol::readU8(message, offset, slot) ||
-            !server::TcpProtocol::readString(message, offset, 16, name) ||
-            !server::TcpProtocol::readU8(message, offset, bound) ||
-            !server::TcpProtocol::readU8(message, offset, ready))
-            return;
-        players.push_back({slot, std::move(name), bound != 0, ready != 0});
-    }
-    std::scoped_lock lock(this->_mutex);
-    this->_view.host = host == this->_view.slot;
-    this->_view.players = std::move(players);
-}
-
-void client::NetworkClient::onGameStarted(const server::Buffer&, std::size_t)
-{
     {
         std::scoped_lock lock(this->_mutex);
-        this->_view.running = true;
-        this->_view.status = "Game started";
+        if (!this->_view.spectating)
+            return;
+        this->_view.spectating = false;
+        this->_view.udpReady = false;
+        this->_view.entities.clear();
+        this->_view.status = describe(LeaveReasons, reason);
     }
-    this->beginInputLoop();
+    this->stopUdp();
 }
 
 void client::NetworkClient::onError(const server::Buffer& message, std::size_t offset)
 {
     std::uint8_t code = 0;
     if (server::TcpProtocol::readU8(message, offset, code))
-        this->setStatus("Server error " + std::to_string(code));
+        this->setStatus("Server error: " + describe(Errors, code));
 }
 
 void client::NetworkClient::startUdp(std::uint16_t port, std::uint64_t token)
 {
     asio::error_code error;
-    this->_udp.close(error);
+    this->stopUdp();
     this->_udp.open(this->_hostAddress.is_v4() ? asio::ip::udp::v4() : asio::ip::udp::v6(), error);
     if (error) {
         this->setStatus("UDP setup failed: " + error.message());
@@ -340,6 +300,15 @@ void client::NetworkClient::startUdp(std::uint16_t port, std::uint64_t token)
     this->_udpSequence = 0;
     this->sendHello(token);
     this->readUdp();
+}
+
+void client::NetworkClient::stopUdp()
+{
+    asio::error_code ignored;
+    this->_helloTimer.cancel(ignored);
+    this->_pingTimer.cancel(ignored);
+    this->_udp.close(ignored);
+    this->_pending = {};
 }
 
 void client::NetworkClient::sendHello(std::uint64_t token)
@@ -376,93 +345,97 @@ void client::NetworkClient::onUdpPacket(const server::Buffer& packet)
 
 void client::NetworkClient::onHelloAck(const server::Buffer& packet)
 {
-    std::scoped_lock lock(this->_mutex);
-    if (packet.size() >= server::UdpHeaderSize + 3 && packet[server::UdpHeaderSize + 2] != 0)
-        this->_view.snapshotRate = packet[server::UdpHeaderSize + 2];
-    this->_view.udpReady = true;
-    this->_view.status = "Ready, waiting for the host to start";
+    {
+        std::scoped_lock lock(this->_mutex);
+        if (packet.size() >= server::UdpHeaderSize + 2 && packet[server::UdpHeaderSize + 1] != 0)
+            this->_view.snapshotRate = packet[server::UdpHeaderSize + 1];
+        this->_view.udpReady = true;
+        this->_view.status = "Waiting for the game...";
+    }
+    this->beginPingLoop();
 }
 
 void client::NetworkClient::onSnapshot(const server::Buffer& packet)
 {
     std::size_t offset = server::UdpHeaderSize;
     std::uint32_t tick = 0;
-    std::uint16_t remainingSeconds = 0;
-    std::uint8_t gameOver = 0;
-    std::uint8_t aliveMask = 0;
-    std::uint8_t count = 0;
-    std::array<std::uint32_t, 4> scores{};
+    std::uint8_t part = 0;
+    std::uint8_t parts = 0;
+    std::uint8_t imageCount = 0;
     if (!server::TcpProtocol::readU32(packet, offset, tick) ||
-        !server::TcpProtocol::readU16(packet, offset, remainingSeconds) ||
-        !server::TcpProtocol::readU8(packet, offset, gameOver) ||
-        !server::TcpProtocol::readU8(packet, offset, aliveMask))
+        !server::TcpProtocol::readU8(packet, offset, part) ||
+        !server::TcpProtocol::readU8(packet, offset, parts) ||
+        !server::TcpProtocol::readU8(packet, offset, imageCount) || part >= parts || tick <= this->_view.tick)
         return;
-    for (std::uint32_t& score : scores)
-        if (!server::TcpProtocol::readU32(packet, offset, score))
+    std::vector<std::string> images(imageCount);
+    for (std::string& image : images)
+        if (!server::TcpProtocol::readString(packet, offset, server::MaxImagePath, image))
             return;
-    if (!server::TcpProtocol::readU8(packet, offset, count) || tick <= this->_view.tick ||
-        packet.size() != server::UdpHeaderSize + SnapshotMetadataSize + count * SnapshotEntitySize)
+    std::uint8_t count = 0;
+    if (!server::TcpProtocol::readU8(packet, offset, count) || packet.size() - offset != count * server::SnapshotEntitySize)
         return;
     std::vector<EntityView> entities(count);
     for (EntityView& entity : entities) {
         std::uint16_t x = 0;
         std::uint16_t y = 0;
+        std::uint16_t rotation = 0;
+        std::uint16_t width = 0;
+        std::uint16_t height = 0;
+        std::uint8_t image = server::NoImage;
         server::TcpProtocol::readU32(packet, offset, entity.id);
-        server::TcpProtocol::readU8(packet, offset, entity.type);
         server::TcpProtocol::readU16(packet, offset, x);
         server::TcpProtocol::readU16(packet, offset, y);
-        server::TcpProtocol::readU8(packet, offset, entity.flags);
-        entity.x = static_cast<std::int16_t>(x);
-        entity.y = static_cast<std::int16_t>(y);
+        server::TcpProtocol::readU16(packet, offset, rotation);
+        server::TcpProtocol::readU16(packet, offset, width);
+        server::TcpProtocol::readU16(packet, offset, height);
+        server::TcpProtocol::readU8(packet, offset, entity.color.r);
+        server::TcpProtocol::readU8(packet, offset, entity.color.g);
+        server::TcpProtocol::readU8(packet, offset, entity.color.b);
+        server::TcpProtocol::readU8(packet, offset, entity.color.a);
+        server::TcpProtocol::readU8(packet, offset, image);
+        entity.position = Vector2(static_cast<std::int16_t>(x), static_cast<std::int16_t>(y));
+        entity.rotation = static_cast<std::int16_t>(rotation);
+        entity.size = Vector2(width, height);
+        entity.image = image < images.size() ? localImage(images[image]) : "";
     }
+    this->assemble(tick, part, parts, std::move(entities));
+}
+
+void client::NetworkClient::assemble(std::uint32_t tick, std::uint8_t part, std::uint8_t parts, std::vector<EntityView> entities)
+{
+    if (tick != this->_pending.tick || parts != this->_pending.parts) {
+        if (tick < this->_pending.tick)
+            return;
+        this->_pending = PendingSnapshot{tick, parts, {}};
+    }
+    this->_pending.received.try_emplace(part, std::move(entities));
+    if (this->_pending.received.size() < parts)
+        return;
+    std::vector<EntityView> snapshot;
+    for (auto& [index, received] : this->_pending.received)
+        snapshot.insert(snapshot.end(), std::make_move_iterator(received.begin()), std::make_move_iterator(received.end()));
+    this->_pending = {};
     std::scoped_lock lock(this->_mutex);
     this->_view.tick = tick;
-    this->_view.entities = std::move(entities);
-    this->_view.remainingSeconds = remainingSeconds;
-    this->_view.gameOver = gameOver != 0;
-    this->_view.hasGameState = true;
-    this->_view.aliveMask = aliveMask;
-    this->_view.scores = scores;
+    this->_view.entities = std::move(snapshot);
 }
 
-void client::NetworkClient::onGameEvent(const server::Buffer& packet)
+void client::NetworkClient::beginPingLoop()
 {
-    std::size_t offset = server::UdpHeaderSize;
-    CollisionEffectView effect;
-    std::uint32_t packedPosition = 0;
-    if (!server::TcpProtocol::readU32(packet, offset, effect.eventId) ||
-        !server::TcpProtocol::readU8(packet, offset, effect.type) ||
-        !server::TcpProtocol::readU32(packet, offset, effect.entityId) ||
-        !server::TcpProtocol::readU32(packet, offset, packedPosition) || offset != packet.size() ||
-        (effect.type != static_cast<std::uint8_t>(server::CollisionEffect::RedEnemy) &&
-            effect.type != static_cast<std::uint8_t>(server::CollisionEffect::BluePlayer) &&
-            effect.type != static_cast<std::uint8_t>(server::CollisionEffect::RedPlayer) &&
-            effect.type != static_cast<std::uint8_t>(server::CollisionEffect::EnemyDestroyed) &&
-            effect.type != static_cast<std::uint8_t>(server::CollisionEffect::PlayerDestroyed)))
-        return;
-    effect.x = static_cast<std::int16_t>(packedPosition & 0xffffU);
-    effect.y = static_cast<std::int16_t>(packedPosition >> 16);
-    std::scoped_lock lock(this->_mutex);
-    this->_view.collisionEffects.push_back(effect);
-    if (this->_view.collisionEffects.size() > 32)
-        this->_view.collisionEffects.erase(this->_view.collisionEffects.begin());
-}
-
-void client::NetworkClient::beginInputLoop()
-{
-    this->_inputTimer.expires_after(std::chrono::milliseconds(33));
-    this->_inputTimer.async_wait([this](const asio::error_code& error) {
-        if (error || !this->view().running)
+    this->_pingTimer.expires_after(std::chrono::seconds(1));
+    this->_pingTimer.async_wait([this](const asio::error_code& error) {
+        if (error)
             return;
-        this->sendInput();
-        this->beginInputLoop();
+        this->sendPing();
+        this->beginPingLoop();
     });
 }
 
-void client::NetworkClient::sendInput()
+void client::NetworkClient::sendPing()
 {
-    const server::Buffer payload{this->_keys.load()};
-    auto bytes = std::make_shared<server::Buffer>(server::UdpProtocol::encode(server::UdpType::Input, ++this->_udpSequence, this->_view.token, payload));
+    server::Buffer payload;
+    server::UdpProtocol::appendU32(payload, ++this->_udpSequence);
+    auto bytes = std::make_shared<server::Buffer>(server::UdpProtocol::encode(server::UdpType::Ping, this->_udpSequence, this->_view.token, payload));
     this->_udp.async_send_to(asio::buffer(*bytes), this->_udpEndpoint, [bytes](const asio::error_code&, std::size_t) {});
 }
 
@@ -470,18 +443,13 @@ void client::NetworkClient::onDisconnect(const std::string& reason)
 {
     asio::error_code ignored;
     this->_tcp.close(ignored);
-    this->_udp.close(ignored);
-    this->_helloTimer.cancel(ignored);
-    this->_inputTimer.cancel(ignored);
+    this->stopUdp();
     this->_writes.clear();
     std::scoped_lock lock(this->_mutex);
     this->_view.connected = false;
-    this->_view.inRoom = false;
-    this->_view.running = false;
-    this->_view.host = false;
+    this->_view.spectating = false;
     this->_view.udpReady = false;
     this->_view.rooms.clear();
-    this->_view.players.clear();
     this->_view.entities.clear();
     this->_view.status = "Disconnected: " + reason;
 }

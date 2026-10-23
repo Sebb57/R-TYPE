@@ -16,7 +16,8 @@ enum class ComponentType
     Velocity,
     Wither,
     Animator,
-    Owner
+    Owner,
+    Controllable
 };
 
 class IComponent

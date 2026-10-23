@@ -1,6 +1,6 @@
 /**
  * @file Room.hpp
- * @brief room class
+ * @brief room class, a hosted solo game and the spectators watching it
  *
  * @author Seb
  * @date 2026-10-05
@@ -9,10 +9,10 @@
 #ifndef GAMEENGINE_SERVER_LOBBY_ROOM_HPP
 #define GAMEENGINE_SERVER_LOBBY_ROOM_HPP
 
-#include <array>
+#include <cstdint>
 #include <memory>
-#include <optional>
 #include <string>
+#include <vector>
 #include "GameEngine/server/common/ServerConfig.hpp"
 #include "GameEngine/server/common/ServerMessages.hpp"
 #include "GameEngine/server/game/GameInstance.hpp"
@@ -21,38 +21,29 @@ namespace server {
 
 class Room {
     public:
-        Room(RoomId, std::string name, std::uint8_t maxPlayers, SessionToken host, OutgoingSink, const ServerConfig& conf);
+        Room(RoomId, std::string name, std::shared_ptr<GameInstance> game, std::uint8_t maxSpectators, OutgoingSink);
+        ~Room();
 
-        std::optional<PlayerSlot> addPlayer(SessionToken token);
-        void setPlayerName(PlayerSlot slot, std::string name);
-        void setReady(PlayerSlot slot, bool ready);
-        [[nodiscard]] bool isReady(PlayerSlot slot) const;
-        [[nodiscard]] bool allReady() const;
-        void removePlayer(PlayerSlot);
+        Room(const Room&) = delete;
+        Room& operator=(const Room&) = delete;
+        Room(Room&&) = delete;
+        Room& operator=(Room&&) = delete;
+
+        bool addSpectator(SessionToken token);
+        void removeSpectator(SessionToken token);
         [[nodiscard]] bool isFull() const;
-        [[nodiscard]] bool isEmpty() const;
-        [[nodiscard]] bool contains(SessionToken) const;
-        [[nodiscard]] std::optional<PlayerSlot> slotOf(SessionToken) const;
-        [[nodiscard]] SessionToken getHost() const { return this->_host; }
-        void promoteNextHost();
-        void start();
-        void stop();
-        void push(InboundEvent event);
-        [[nodiscard]] RoomState getState() const { return this->_state; }
+        [[nodiscard]] bool isFinished() const;
+        [[nodiscard]] const std::vector<SessionToken>& getSpectators() const { return this->_spectators; }
         [[nodiscard]] RoomInfo getInfo() const;
-        void refresh();
 
     private:
+        void stream(bool enabled);
+
         RoomId _id;
-        RoomState _state = RoomState::Lobby;
         std::string _name;
-        std::array<std::optional<SessionToken>, 4> _slots;
-        std::array<std::string, 4> _playerNames;
-        std::array<bool, 4> _ready{};
-        SessionToken _host;
-        std::unique_ptr<GameInstance> _game;
-        std::uint8_t _maxPlayers;
-        const ServerConfig& _conf;
+        std::vector<SessionToken> _spectators;
+        std::shared_ptr<GameInstance> _game;
+        std::uint8_t _maxSpectators;
         OutgoingSink _sink;
 };
 

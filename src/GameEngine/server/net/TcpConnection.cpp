@@ -26,15 +26,11 @@ const char* typeName(server::Type type)
         case server::Type::ConnectOk: return "CONNECT_OK";
         case server::Type::ListRooms: return "LIST_ROOMS";
         case server::Type::RoomList: return "ROOM_LIST";
-        case server::Type::CreateRoom: return "CREATE_ROOM";
-        case server::Type::JoinRoom: return "JOIN_ROOM";
-        case server::Type::RoomJoined: return "ROOM_JOINED";
-        case server::Type::RoomUpdate: return "ROOM_UPDATE";
-        case server::Type::LeaveRoom: return "LEAVE_ROOM";
-        case server::Type::StartGame: return "START_GAME";
-        case server::Type::GameStarted: return "GAME_STARTED";
+        case server::Type::Spectate: return "SPECTATE";
+        case server::Type::Spectating: return "SPECTATING";
+        case server::Type::Leave: return "LEAVE";
+        case server::Type::Left: return "LEFT";
         case server::Type::Error: return "ERROR";
-        case server::Type::SetReady: return "SET_READY";
     }
     return "UNKNOWN";
 }
@@ -123,6 +119,15 @@ void server::TcpConnection::close()
     }
 }
 
+void server::TcpConnection::left(LeaveReason reason)
+{
+    if (!this->_token)
+        return;
+    this->_token.reset();
+    this->_state = State::Lobby;
+    this->send(Buffer{static_cast<Byte>(server::Type::Left), static_cast<Byte>(reason)});
+}
+
 void server::TcpConnection::readFrameLength()
 {
     if (!this->_socket.is_open())
@@ -182,7 +187,7 @@ void server::TcpConnection::onFrame(const Buffer& frame)
 
     auto badRequest = [this] {
         this->_closeAfterWrite = true;
-        this->send(Buffer{static_cast<Byte>(server::Type::Error), 10});
+        this->send(Buffer{static_cast<Byte>(server::Type::Error), static_cast<Byte>(LobbyError::BadRequest)});
     };
     auto sendError = [this](LobbyError error) {
         std::cerr << "[TCP] lobby error user=" << this->_username << " code=" << static_cast<unsigned>(error) << '\n';
@@ -197,10 +202,9 @@ void server::TcpConnection::onFrame(const Buffer& frame)
             badRequest();
             return;
         }
-        if (version != 1 || !validUsername(name)) {
+        if (version != ProtocolVersion || !validUsername(name)) {
             this->_closeAfterWrite = true;
-            const Byte code = version != 1 ? 1 : 2;
-            this->send(Buffer{static_cast<Byte>(server::Type::Error), code});
+            sendError(version != ProtocolVersion ? LobbyError::BadVersion : LobbyError::BadName);
             return;
         }
         this->_username = std::move(name);
@@ -212,72 +216,48 @@ void server::TcpConnection::onFrame(const Buffer& frame)
         return;
     }
 
-    if (this->_state == State::Lobby) {
-        if (type == server::Type::ListRooms && payload.empty()) {
-            const auto rooms = this->_rooms.list();
-            if (rooms.size() > 255) {
-                badRequest();
-                return;
-            }
-            Buffer response{static_cast<Byte>(server::Type::RoomList), static_cast<Byte>(rooms.size())};
-            for (const auto& room : rooms) {
-                TcpProtocol::appendU32(response, room.id);
-                TcpProtocol::appendString(response, room.name);
-                response.push_back(room.players);
-                response.push_back(room.maxPlayers);
-                response.push_back(static_cast<Byte>(room.state));
-            }
-            this->send(response);
+    if (type == server::Type::ListRooms && payload.empty()) {
+        const auto rooms = this->_rooms.list();
+        if (rooms.size() > 255) {
+            badRequest();
             return;
         }
-        if (type == server::Type::CreateRoom) {
-            sendError(LobbyError::NotHost);
-            return;
+        Buffer response{static_cast<Byte>(server::Type::RoomList), static_cast<Byte>(rooms.size())};
+        for (const auto& room : rooms) {
+            TcpProtocol::appendU32(response, room.id);
+            TcpProtocol::appendString(response, room.name);
+            response.push_back(room.spectators);
+            response.push_back(room.maxSpectators);
         }
-        if (type == server::Type::JoinRoom) {
-            std::uint32_t id = 0;
-            if (!TcpProtocol::readU32(payload, offset, id) || offset != payload.size()) {
-                badRequest();
-                return;
-            }
-            auto result = this->_rooms.join(this->shared_from_this(), id);
-            if (!result) {
-                sendError(result.error());
-                return;
-            }
-            this->_token = result->token;
-            this->_state = State::InRoom;
-            Buffer response{static_cast<Byte>(server::Type::RoomJoined)};
-            TcpProtocol::appendU32(response, result->room);
-            TcpProtocol::appendU64(response, result->token);
-            response.push_back(result->slot);
-            TcpProtocol::appendU16(response, this->_conf.udpPort);
-            this->send(response);
-            if (this->_rooms.isRunning(result->room))
-                this->send(Buffer{static_cast<Byte>(server::Type::GameStarted)});
-            this->_rooms.refreshRoom(result->room);
-            return;
-        }
-        badRequest();
+        this->send(response);
         return;
     }
-
-    if (type == server::Type::LeaveRoom && payload.empty() && this->_token) {
-        this->_rooms.leave(*this->_token, LeaveReason::Requested);
-        this->_token.reset();
-        this->_state = State::Lobby;
+    if (type == server::Type::Leave && payload.empty()) {
+        if (this->_token) {
+            const SessionToken token = *this->_token;
+            this->_token.reset();
+            this->_state = State::Lobby;
+            this->_rooms.leave(token, LeaveReason::Requested);
+        }
         return;
     }
-    if (type == server::Type::StartGame && payload.empty() && this->_token) {
-        auto result = this->_rooms.startGame(*this->_token);
-        if (!result)
+    if (type == server::Type::Spectate && this->_state == State::Lobby) {
+        std::uint32_t id = 0;
+        if (!TcpProtocol::readU32(payload, offset, id) || offset != payload.size()) {
+            badRequest();
+            return;
+        }
+        auto result = this->_rooms.spectate(this->shared_from_this(), id);
+        if (!result) {
             sendError(result.error());
-        return;
-    }
-    if (type == server::Type::SetReady && payload.size() == 1 && payload[0] <= 1 && this->_token) {
-        auto result = this->_rooms.setReady(*this->_token, payload[0] != 0);
-        if (!result)
-            sendError(result.error());
+            return;
+        }
+        this->_state = State::Spectating;
+        Buffer response{static_cast<Byte>(server::Type::Spectating)};
+        TcpProtocol::appendU32(response, result->room);
+        TcpProtocol::appendU64(response, result->token);
+        TcpProtocol::appendU16(response, this->_conf.udpPort);
+        this->send(response);
         return;
     }
     badRequest();

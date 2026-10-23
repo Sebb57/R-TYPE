@@ -1,6 +1,6 @@
 /**
  * @file Server.hpp
- * @brief server embedded in the client, hosts the local player's solo game
+ * @brief server embedded in the client, lets spectators watch the local solo game
  *
  * @author Seb
  * @date 2026-10-05
@@ -10,13 +10,14 @@
 #define GAMEENGINE_SERVER_SERVER_HPP
 
 #include <atomic>
-#include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
 #include <thread>
 #include <asio.hpp>
 #include "GameEngine/server/common/ServerConfig.hpp"
 #include "GameEngine/server/common/ServerMessages.hpp"
+#include "GameEngine/server/game/GameInstance.hpp"
 #include "GameEngine/server/lobby/SessionRegistry.hpp"
 #include "GameEngine/server/lobby/RoomManager.hpp"
 #include "GameEngine/server/net/TcpServer.hpp"
@@ -38,9 +39,8 @@ class Server {
         void stop();
         [[nodiscard]] const ServerConfig& config() const { return this->_conf; }
 
-        void host(std::string username, OutgoingSink local);
+        void host(std::string username, std::shared_ptr<GameInstance> game);
         void leave();
-        void setKeys(std::uint8_t keys);
 
     private:
         void run();
@@ -55,7 +55,7 @@ class Server {
         RoomManager _rooms;
         UdpServer _udp;
         TcpServer _tcp;
-        std::optional<SessionToken> _host;
+        std::optional<RoomId> _hosted;
         std::atomic<bool> _stopped{false};
         std::jthread _thread;
 };

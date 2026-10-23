@@ -1,6 +1,6 @@
 /**
  * @file LocalGame.hpp
- * @brief solo game hosted by the client's own server, seen as a client view
+ * @brief solo game computed and rendered locally, hosted by the client's own server for spectators
  *
  * @author Seb
  * @date 2026-10-22
@@ -9,35 +9,36 @@
 #ifndef GAMEENGINE_CLIENT_LOCALGAME_HPP
 #define GAMEENGINE_CLIENT_LOCALGAME_HPP
 
-#include <cstdint>
 #include <memory>
-#include <mutex>
 #include <string>
-#include "GameEngine/client/network/ClientView.hpp"
+#include "GameEngine/Event.hpp"
 #include "GameEngine/server/Server.hpp"
+#include "GameEngine/server/game/GameInstance.hpp"
+#include "plugins/IGraphic.hpp"
 
 namespace client {
 
 class LocalGame {
     public:
-        explicit LocalGame(server::Server& server);
+        LocalGame(server::Server& server, OrByte::IGraphic& graphic, server::GameInstance::Setup setup);
+        ~LocalGame();
 
-        [[nodiscard]] ClientView view() const;
+        LocalGame(const LocalGame&) = delete;
+        LocalGame& operator=(const LocalGame&) = delete;
+        LocalGame(LocalGame&&) = delete;
+        LocalGame& operator=(LocalGame&&) = delete;
+
         void start(const std::string& username);
         void leave();
-        void setKeys(std::uint8_t keys);
+        void push(const OrByte::Event& event);
+        void render();
+        [[nodiscard]] bool running() const;
 
     private:
-        struct State {
-            std::mutex mutex;
-            ClientView view;
-            std::uint32_t game = 0;
-        };
-
-        static void receive(State& state, std::uint32_t game, const server::OutboundMessage& message);
-
         server::Server& _server;
-        std::shared_ptr<State> _state;
+        OrByte::IGraphic& _graphic;
+        server::GameInstance::Setup _setup;
+        std::shared_ptr<server::GameInstance> _game;
 };
 
 } // namespace client

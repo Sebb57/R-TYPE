@@ -9,7 +9,6 @@
 #ifndef GAMEENGINE_CLIENT_SCENES_THEME_HPP
 #define GAMEENGINE_CLIENT_SCENES_THEME_HPP
 
-#include <array>
 #include "constants.hpp"
 #include "plugins/IGraphic.hpp"
 
@@ -30,9 +29,6 @@ inline constexpr OrByte::RGBA Accent(111, 190, 255);
 inline constexpr OrByte::RGBA Text(225, 232, 245);
 inline constexpr OrByte::RGBA Muted(129, 150, 182);
 inline constexpr OrByte::RGBA Disabled(80, 92, 110);
-inline constexpr OrByte::RGBA Ready(117, 216, 168);
-inline constexpr OrByte::RGBA Waiting(230, 180, 105);
-inline constexpr std::array<OrByte::RGBA, 4> Slots{{{111, 190, 255}, {255, 170, 90}, {117, 216, 168}, {240, 120, 180}}};
 
 } // namespace client::theme
 

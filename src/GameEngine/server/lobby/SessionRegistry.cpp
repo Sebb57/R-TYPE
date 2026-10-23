@@ -7,7 +7,6 @@
 **/
 
 #include <random>
-#include <ranges>
 #include "GameEngine/server/lobby/SessionRegistry.hpp"
 #include "GameEngine/server/common/ServerConfig.hpp"
 
@@ -24,14 +23,14 @@ server::SessionToken generateRandomToken()
 
 } // namespace
 
-server::Session& server::SessionRegistry::create(RoomId room, PlayerSlot slot, std::string username, std::weak_ptr<TcpConnection> tcp, bool local)
+server::Session& server::SessionRegistry::create(RoomId room, std::string username, std::weak_ptr<TcpConnection> tcp)
 {
     SessionToken token = generateRandomToken();
     while (token == 0 || this->_sessions.contains(token))
         token = generateRandomToken();
 
-    auto [it, inserted] = this->_sessions.emplace(token, Session(token, room, slot,
-        std::move(username), std::move(tcp), std::nullopt, Clock::now(), std::nullopt, std::nullopt, local));
+    auto [it, inserted] = this->_sessions.emplace(token, Session(token, room,
+        std::move(username), std::move(tcp), std::nullopt, Clock::now()));
     return it->second;
 }
 
@@ -70,45 +69,17 @@ std::vector<server::SessionToken> server::SessionRegistry::timedOut(Clock::time_
     std::vector<SessionToken> result;
 
     for (const auto& [token, session] : this->_sessions)
-        if (!session.local && now - session.lastSeen >= timeout)
+        if (now - session.lastSeen >= timeout)
             result.push_back(token);
     return result;
 }
 
-std::vector<asio::ip::udp::endpoint> server::SessionRegistry::endpointsOf(RoomId room, const Target& target) const
+std::vector<asio::ip::udp::endpoint> server::SessionRegistry::endpointsOf(RoomId room) const
 {
     std::vector<asio::ip::udp::endpoint> result;
 
-    for (const auto& [token, session] : this->_sessions) {
-        if (session.room != room || !session.udp)
-            continue;
-        const bool include = target.kind == Target::Kind::All || (target.kind == Target::Kind::Only && session.slot == target.slot) || (target.kind == Target::Kind::AllExcept && session.slot != target.slot);
-        if (include)
+    for (const auto& [token, session] : this->_sessions)
+        if (session.room == room && session.udp)
             result.push_back(*session.udp);
-    }
-    return result;
-}
-
-bool server::SessionRegistry::allBound(RoomId room) const
-{
-    bool found = false;
-
-    for (const auto& [token, session] : this->_sessions) {
-        if (session.room != room)
-            continue;
-        found = true;
-        if (!session.udp)
-            return false;
-    }
-    return found;
-}
-
-std::vector<const server::Session*> server::SessionRegistry::sessionsIn(RoomId room) const
-{
-    std::vector<const Session*> result;
-    for (const auto& [token, session] : _sessions)
-        if (session.room == room)
-            result.push_back(&session);
-    std::ranges::sort(result, {}, [](const Session* session) { return session->slot; });
     return result;
 }

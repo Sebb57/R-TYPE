@@ -18,14 +18,14 @@ std::optional<UdpHeader> UdpProtocol::parseHeader(const Buffer& buffer, std::siz
     header.magic = static_cast<std::uint16_t>(buffer[0]) | static_cast<std::uint16_t>(buffer[1] << 8);
     header.version = buffer[2];
     const auto rawType = buffer[3];
-    if (rawType < static_cast<Byte>(UdpType::Hello) || rawType > static_cast<Byte>(UdpType::Disconnect))
+    if (rawType < static_cast<Byte>(UdpType::Hello) || rawType > static_cast<Byte>(UdpType::Pong))
         return std::nullopt;
     header.type = static_cast<UdpType>(rawType);
     header.payloadSize = static_cast<std::uint16_t>(buffer[4]) | static_cast<std::uint16_t>(buffer[5] << 8);
     for (unsigned shift = 0; shift < 32; shift += 8)
-        header.sequence |= static_cast<std::uint32_t>(buffer[6 + shift / 8]) << shift;
+        header.sequence |= static_cast<std::uint32_t>(buffer[6 + (shift / 8)]) << shift;
     for (unsigned shift = 0; shift < 64; shift += 8)
-        header.token |= static_cast<std::uint64_t>(buffer[10 + shift / 8]) << shift;
+        header.token |= static_cast<std::uint64_t>(buffer[10 + (shift / 8)]) << shift;
     if (header.magic != UdpMagic || header.version != UdpVersion || header.payloadSize != size - UdpHeaderSize)
         return std::nullopt;
     return header;

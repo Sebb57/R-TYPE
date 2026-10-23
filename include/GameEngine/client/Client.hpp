@@ -19,12 +19,13 @@
 #include "GameEngine/client/scenes/SceneManager.hpp"
 #include "plugins/IGraphic.hpp"
 #include "GameEngine/server/Server.hpp"
+#include "GameEngine/server/game/GameInstance.hpp"
 
 namespace client {
 
 class Client {
     public:
-        explicit Client(ClientConfig config);
+        Client(ClientConfig config, server::GameInstance::Setup game);
 
         void run();
 

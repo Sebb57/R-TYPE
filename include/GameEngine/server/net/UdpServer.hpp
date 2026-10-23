@@ -1,6 +1,6 @@
 /**
  * @file UdpServer.hpp
- * @brief UDP gameplay transport
+ * @brief UDP snapshot transport to the spectators
  *
  * @author Seb
  * @date 2026-10-05
@@ -20,11 +20,9 @@
 
 namespace server {
 
-class RoomManager;
-
 class UdpServer {
     public:
-        UdpServer(asio::io_context&, SessionRegistry&, RoomManager&, const ServerConfig&);
+        UdpServer(asio::io_context&, SessionRegistry&, const ServerConfig&);
 
         void start();
         void stop();
@@ -35,14 +33,12 @@ class UdpServer {
         void onDatagram(const asio::ip::udp::endpoint&, std::size_t);
         void sendRaw(const asio::ip::udp::endpoint&, std::shared_ptr<const Buffer>);
         void onHello(Session&, const asio::ip::udp::endpoint&);
-        void onInput(Session&, const UdpHeader&, std::size_t);
         void onPing(Session&, const UdpHeader&, std::size_t);
 
         asio::ip::udp::socket _socket;
         Buffer _rx = Buffer(1500);
         asio::ip::udp::endpoint _sender;
         SessionRegistry& _sessions;
-        RoomManager& _rooms;
         std::uint16_t _port;
         std::uint8_t _tickRate;
         std::uint8_t _snapshotRate;

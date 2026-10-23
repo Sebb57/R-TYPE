@@ -16,7 +16,7 @@
 
 namespace client {
 
-enum class Action { Up, Down, Left, Right, Fire, Confirm, Back };
+enum class Action { Up, Down, Confirm, Back };
 
 class Controls {
     public:

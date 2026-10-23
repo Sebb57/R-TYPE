@@ -29,9 +29,6 @@ client::Controls::Controls()
     : _keys{
         {Action::Up, OrByte::Event::Key::Up},
         {Action::Down, OrByte::Event::Key::Down},
-        {Action::Left, OrByte::Event::Key::Left},
-        {Action::Right, OrByte::Event::Key::Right},
-        {Action::Fire, OrByte::Event::Key::Space},
         {Action::Confirm, OrByte::Event::Key::Enter},
         {Action::Back, OrByte::Event::Key::Escape},
     }

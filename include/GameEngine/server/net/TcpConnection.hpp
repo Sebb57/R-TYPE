@@ -24,6 +24,7 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
         void start();
         void send(const Buffer&);
         void close();
+        void left(LeaveReason reason);
         [[nodiscard]] std::optional<SessionToken> session() const { return _token; }
         [[nodiscard]] const std::string& username() const { return _username; }
         void setSession(SessionToken token) { this->_token = token; }
@@ -34,7 +35,7 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
         void onFrame(const Buffer& frame);
         void flushWrites();
 
-        enum class State { AwaitingConnect, Lobby, InRoom };
+        enum class State { AwaitingConnect, Lobby, Spectating };
 
         asio::ip::tcp::socket _socket;
         asio::steady_timer _deadline;
