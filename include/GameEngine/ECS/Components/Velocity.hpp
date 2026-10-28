@@ -9,14 +9,13 @@
 #ifndef VELOCITY_HPP_
     #define VELOCITY_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
     #include "../Utils.hpp"
 
 namespace OrByte {
 
-struct Velocity : public IComponent
+struct Velocity : public OrByte::AComponent<OrByte::ComponentType::Velocity>
 {
-    inline static constexpr ComponentType Type = ComponentType::Velocity;
 
     Velocity() = default;
     Velocity(const Vector2& v) : velocity(v) {}

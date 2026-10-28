@@ -9,7 +9,6 @@
 #ifndef ANIMATION_HPP_
     #define ANIMATION_HPP_
 
-    #include "IComponent.hpp"
     #include "../Utils.hpp"
     #include <string>
     #include <vector>

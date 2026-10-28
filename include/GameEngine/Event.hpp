@@ -21,7 +21,8 @@ struct Event {
         MouseWheelScrolled,
         MouseMoved,
         MouseButtonPressed,
-        MouseButtonReleased
+        MouseButtonReleased,
+        Resized,
     };
 
     enum class Key {
@@ -81,6 +82,10 @@ struct Event {
     double wheelDelta = 0.0;
     int mouseX = 0;
     int mouseY = 0;
+    int width = 0;
+    int height = 0;
+    int windowX = 0;
+    int windowY = 0;
 };
 
 }

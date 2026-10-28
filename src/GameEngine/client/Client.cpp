@@ -15,7 +15,6 @@
 #include "GameEngine/client/scenes/RoomListScene.hpp"
 #include "GameEngine/client/scenes/ServerScene.hpp"
 #include "GameEngine/client/scenes/SpectateScene.hpp"
-#include "plugins/SFML.hpp"
 
 namespace {
 
@@ -31,7 +30,8 @@ std::filesystem::path findAsset(const std::filesystem::path& path)
 
 client::Client::Client(ClientConfig config, server::GameInstance::Setup game)
     : _config(std::move(config))
-    , _graphic(std::make_unique<OrByte::SFML>())
+    , _graphicLoader("./plugins/SFML.so")
+    , _graphic(this->_graphicLoader.loadFunction<OrByte::IGraphic* (*)()>("factory")())
     , _server(server::ServerConfig())
     , _game(this->_server, *this->_graphic, std::move(game))
     , _context(this->_config, *this->_graphic, this->_game, this->_network, this->_scenes, this->_controls, findAsset(this->_config.font))

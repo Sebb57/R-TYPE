@@ -13,17 +13,18 @@
 #include "GameEngine/ECS/Components/Controllable.hpp"
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "GameEngine/ECS/World.hpp"
-#include "GameEngine/Systems/ControlSystem.hpp"
-#include "GameEngine/Systems/DisplaySystem.hpp"
-#include "GameEngine/Systems/PhysicSystem.hpp"
+#include "plugins/IGraphic.hpp"
 
 server::GameInstance::GameInstance(OrByte::IGraphic& graphic, unsigned tickRate, unsigned snapshotRate, const Setup& setup)
     : _tickRate(std::max(tickRate, 1U))
     , _snapshotRate(std::max(snapshotRate, 1U))
+    , _controlLoader("./plugins/systems/ControlSystem.so")
+    , _physicLoader("./plugins/systems/PhysicSystem.so")
+    , _displayLoader("./plugins/systems/DisplaySystem.so")
     , _world(std::make_unique<World>())
-    , _controlSystem(std::make_unique<OrByte::ControlSystem>(*this->_world))
-    , _physicSystem(std::make_unique<OrByte::PhysicSystem>(*this->_world))
-    , _displaySystem(std::make_unique<OrByte::DisplaySystem>(*this->_world, graphic))
+    , _controlSystem(this->_controlLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world))
+    , _physicSystem(this->_physicLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world))
+    , _displaySystem(this->_displayLoader.loadFunction<OrByte::ISystem* (*)(World&, OrByte::IGraphic&)>("factory")(*this->_world, graphic))
 {
     if (setup)
         setup(*this->_world);

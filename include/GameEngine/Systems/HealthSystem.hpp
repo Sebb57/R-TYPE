@@ -11,12 +11,13 @@
 
     #include "Chronometer.hpp"
     #include "GameEngine/ECS/World.hpp"
+    #include "plugins/ASystem.hpp"
     #include "GameEngine/ECS/Components/Health.hpp"
     #include <unordered_map>
 
 namespace OrByte {
 
-class HealthSystem {
+class HealthSystem : public ASystem {
     World& _world;
     std::unordered_map<int, Chronometer> _poisonCooldowns;
     std::unordered_map<int, Chronometer> _witherCooldowns;
@@ -31,11 +32,11 @@ class HealthSystem {
 
     public:
         HealthSystem(World& world);
-        ~HealthSystem() = default;
+        ~HealthSystem() override = default;
 
-        void update();
+        void update() override;
 };
 
-}
+} // namespace OrByte
 
 #endif /* HEALTHSYSTEM_HPP_ */

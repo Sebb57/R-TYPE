@@ -8,6 +8,8 @@
 #include "GameEngine/ECS/Components/Controllable.hpp"
 #include "GameEngine/ECS/Components/Velocity.hpp"
 #include "GameEngine/Systems/ControlSystem.hpp"
+#include "plugins/DynamicLibrary.hpp"
+#include "plugins/ISystem.hpp"
 #include <cmath>
 #include <vector>
 
@@ -41,5 +43,17 @@ void OrByte::ControlSystem::update()
         const float length = std::hypot(direction.x, direction.y);
         const float speed = length > 0.0F ? controllable->speed / length : 0.0F;
         this->_world.getComponent<Velocity>(entity)->velocity = Vector2(direction.x * speed, direction.y * speed);
+    }
+}
+
+extern "C" {
+    OrByte::DynamicLibrary::PluginType type()
+    {
+        return OrByte::DynamicLibrary::PluginType::SYSTEMS;
+    }
+
+    OrByte::ISystem *factory(World& world)
+    {
+        return new OrByte::ControlSystem(world);
     }
 }

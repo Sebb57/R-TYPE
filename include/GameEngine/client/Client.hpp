@@ -17,6 +17,7 @@
 #include "GameEngine/client/network/NetworkClient.hpp"
 #include "GameEngine/client/scenes/SceneContext.hpp"
 #include "GameEngine/client/scenes/SceneManager.hpp"
+#include "plugins/DynamicLibrary.hpp"
 #include "plugins/IGraphic.hpp"
 #include "GameEngine/server/Server.hpp"
 #include "GameEngine/server/game/GameInstance.hpp"
@@ -34,6 +35,7 @@ class Client {
         void pollEvents();
 
         ClientConfig _config;
+        OrByte::DynamicLibrary _graphicLoader;
         std::unique_ptr<OrByte::IGraphic> _graphic;
         server::Server _server;
         LocalGame _game;

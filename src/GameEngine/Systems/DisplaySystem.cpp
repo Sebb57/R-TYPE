@@ -7,6 +7,8 @@
 
 #include "GameEngine/ECS/Components/Controllable.hpp"
 #include "GameEngine/ECS/Components/Sprite.hpp"
+#include "plugins/DynamicLibrary.hpp"
+#include "plugins/ISystem.hpp"
 #include "GameEngine/Systems/DisplaySystem.hpp"
 #include <filesystem>
 #include <system_error>
@@ -131,5 +133,17 @@ void OrByte::DisplaySystem::update()
             this->_handleSprite(transform, entity);
         }
         this->_handleControllable(transform, entity);
+    }
+}
+
+extern "C" {
+    OrByte::DynamicLibrary::PluginType type()
+    {
+        return OrByte::DynamicLibrary::PluginType::SYSTEMS;
+    }
+
+    OrByte::ISystem *factory(World& world, OrByte::IGraphic& graphic)
+    {
+        return new OrByte::DisplaySystem(world, graphic);
     }
 }

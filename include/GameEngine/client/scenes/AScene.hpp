@@ -10,15 +10,16 @@
 #define GAMEENGINE_CLIENT_SCENES_ASCENE_HPP
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include "GameEngine/ECS/World.hpp"
-#include "GameEngine/Systems/DisplaySystem.hpp"
-#include "GameEngine/Systems/PhysicSystem.hpp"
 #include "GameEngine/client/Controls.hpp"
 #include "GameEngine/client/scenes/IScene.hpp"
 #include "GameEngine/client/scenes/SceneContext.hpp"
+#include "plugins/DynamicLibrary.hpp"
+#include "plugins/ISystem.hpp"
 
 namespace client {
 
@@ -29,6 +30,11 @@ class AScene : public IScene {
         void onEvent(const OrByte::Event& event) override;
         void update(double deltaTime) override;
         void render() override;
+
+    private:
+        // the loaders outlive the world: systems may create components whose code lives in their plugin
+        OrByte::DynamicLibrary _physicsLoader;
+        OrByte::DynamicLibrary _displayLoader;
 
     protected:
         using ActionHandler = std::function<void(bool pressed)>;
@@ -41,8 +47,8 @@ class AScene : public IScene {
         World _world;
 
     private:
-        OrByte::PhysicSystem _physics;
-        OrByte::DisplaySystem _display;
+        std::unique_ptr<OrByte::ISystem> _physics;
+        std::unique_ptr<OrByte::ISystem> _display;
         std::unordered_map<Action, ActionHandler> _actions;
         std::unordered_set<OrByte::Event::Key> _heldKeys;
 };

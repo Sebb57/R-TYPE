@@ -18,13 +18,12 @@
 #include "GameEngine/Event.hpp"
 #include "GameEngine/server/common/ServerMessages.hpp"
 #include "GameEngine/server/game/BoundedQueue.hpp"
+#include "plugins/DynamicLibrary.hpp"
+#include "plugins/ISystem.hpp"
 
 class World;
 namespace OrByte {
-class ControlSystem;
-class DisplaySystem;
 class IGraphic;
-class PhysicSystem;
 }
 
 namespace server {
@@ -51,10 +50,14 @@ class GameInstance {
 
         unsigned _tickRate;
         unsigned _snapshotRate;
+        // the loaders outlive the world: systems may create components whose code lives in their plugin
+        OrByte::DynamicLibrary _controlLoader;
+        OrByte::DynamicLibrary _physicLoader;
+        OrByte::DynamicLibrary _displayLoader;
         std::unique_ptr<World> _world;
-        std::unique_ptr<OrByte::ControlSystem> _controlSystem;
-        std::unique_ptr<OrByte::PhysicSystem> _physicSystem;
-        std::unique_ptr<OrByte::DisplaySystem> _displaySystem;
+        std::unique_ptr<OrByte::ISystem> _controlSystem;
+        std::unique_ptr<OrByte::ISystem> _physicSystem;
+        std::unique_ptr<OrByte::ISystem> _displaySystem;
         BoundedQueue<OrByte::Event> _inbox{256};
         std::mutex _mutex;
         SnapshotSink _sink;

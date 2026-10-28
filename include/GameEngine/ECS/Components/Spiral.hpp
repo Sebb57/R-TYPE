@@ -9,15 +9,14 @@
 #ifndef SPIRAL_HPP_
     #define SPIRAL_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
     #include "Transform.hpp"
     #include "../Utils.hpp"
 
 namespace OrByte {
 
-struct Spiral : public IComponent
+struct Spiral : public OrByte::AComponent<OrByte::ComponentType::Spiral>
 {
-    inline static constexpr ComponentType Type = ComponentType::Spiral; 
 
     Spiral() = default;
     Spiral(const Vector2 center, const float radius, float expandSpeed, float angleSpeed)

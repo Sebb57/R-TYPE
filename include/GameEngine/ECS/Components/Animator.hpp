@@ -9,15 +9,14 @@
 #ifndef ANIMATOR_HPP_
     #define ANIMATOR_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
     #include "Animation.hpp"
     #include <string>
     #include <unordered_map>
 
 namespace OrByte {
 
-    struct Animator : public IComponent {
-        inline static constexpr ComponentType Type = ComponentType::Animator;
+    struct Animator : public OrByte::AComponent<OrByte::ComponentType::Animator> {
 
         std::unordered_map<std::string, Animation> animations;
 

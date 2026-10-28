@@ -9,15 +9,14 @@
 #ifndef ORBIT_HPP_
     #define ORBIT_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
     #include "Transform.hpp"
     #include "../Utils.hpp"
 
 namespace OrByte {
 
-struct Orbit : public IComponent
+struct Orbit : public OrByte::AComponent<OrByte::ComponentType::Orbit>
 {
-    inline static constexpr ComponentType Type = ComponentType::Orbit;
 
     Orbit() = default;
     Orbit(const Vector2 center, const float radius, float angleSpeed)

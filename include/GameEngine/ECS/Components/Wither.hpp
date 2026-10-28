@@ -9,13 +9,12 @@
 #ifndef WITHER_HPP_
     #define WITHER_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
 
 namespace OrByte {
 
-struct Wither : public IComponent
+struct Wither : public OrByte::AComponent<OrByte::ComponentType::Wither>
 {
-    inline static constexpr ComponentType Type = ComponentType::Wither;
 
     Wither() = default;
     Wither(int damage, float duration) : damage(damage), duration(duration) {}

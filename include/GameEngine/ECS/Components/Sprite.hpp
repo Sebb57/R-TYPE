@@ -9,20 +9,20 @@
 #ifndef SPRITE_HPP_
     #define SPRITE_HPP_
 
-    #include "GameEngine/ECS/Components/IComponent.hpp"
+    #include "plugins/AComponent.hpp"
     #include "GameEngine/ECS/Utils.hpp"
     #include <string>
 
 namespace OrByte {
 
-struct Sprite : public IComponent
+struct Sprite : public OrByte::AComponent<OrByte::ComponentType::Sprite>
 {
-    inline static constexpr ComponentType Type = ComponentType::Sprite;
 
+    Sprite() = default;
     Sprite(const std::string& path, Vector2 size) : texturePath(path), size(size) {}
 
     std::string texturePath;
-    Vector2 size;
+    Vector2 size{0.0f, 0.0f};
 };
 
 }

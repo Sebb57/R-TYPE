@@ -9,7 +9,7 @@
 #ifndef CONTROLLABLE_HPP_
     #define CONTROLLABLE_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
     #include "../Utils.hpp"
     #include "GameEngine/Event.hpp"
     #include "plugins/IGraphic.hpp"
@@ -18,9 +18,8 @@
 
 namespace OrByte {
 
-struct Controllable : public IComponent
+struct Controllable : public OrByte::AComponent<OrByte::ComponentType::Controllable>
 {
-    inline static constexpr ComponentType Type = ComponentType::Controllable;
 
     Controllable() = default;
     Controllable(const Vector2& size, std::string image = "") : size(size), image(std::move(image)) {}

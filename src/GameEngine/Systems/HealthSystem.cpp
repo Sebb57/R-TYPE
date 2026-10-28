@@ -11,6 +11,8 @@
 #include "GameEngine/ECS/Components/RemoveHealth.hpp"
 #include "GameEngine/ECS/Components/Wither.hpp"
 #include "GameEngine/Systems/HealthSystem.hpp"
+#include "plugins/DynamicLibrary.hpp"
+#include "plugins/ISystem.hpp"
 #include <vector>
 #include <iostream>
 
@@ -153,5 +155,17 @@ void OrByte::HealthSystem::update()
         // Handle death
         if (this->_handleDeath(health, entity))
             continue;
+    }
+}
+
+extern "C" {
+    OrByte::DynamicLibrary::PluginType type()
+    {
+        return OrByte::DynamicLibrary::PluginType::SYSTEMS;
+    }
+
+    OrByte::ISystem *factory(World& world)
+    {
+        return new OrByte::HealthSystem(world);
     }
 }

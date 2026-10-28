@@ -9,7 +9,7 @@
 #ifndef WORLD_HPP_
     #define WORLD_HPP_
 
-    #include "GameEngine/ECS/Components/IComponent.hpp"
+    #include "plugins/IComponent.hpp"
     #include "Managers/EntityManager.hpp"
     #include "Managers/ComponentManager.hpp"
     
@@ -23,12 +23,15 @@ public:
 
     int createEntity();
     void destroyEntity(int entityId);
-    bool entityExists(int entityId) const;
-    std::vector<int> getExistingEntities() const;
+    [[nodiscard]] bool entityExists(int entityId) const;
+    [[nodiscard]] std::vector<int> getExistingEntities() const;
 
     template <typename T, typename ... Args>
     void addComponentToEntity(int entityId, Args&& ... args) {
         componentManager.addComponentToEntity<T>(entityId, std::forward<Args>(args)...);
+    }
+    void addComponentToEntity(int entityId, std::unique_ptr<OrByte::IComponent> component) {
+        componentManager.addComponentToEntity(entityId, std::move(component));
     }
     template <typename T>
     T* getComponent(int entityId) {

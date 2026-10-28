@@ -9,15 +9,14 @@
 #ifndef SINUS_HPP_
     #define SINUS_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
     #include "Transform.hpp"
     #include "../Utils.hpp"
 
 namespace OrByte {
 
-struct Sinus : public IComponent
+struct Sinus : public OrByte::AComponent<OrByte::ComponentType::Sinus>
 {
-    inline static constexpr ComponentType Type = ComponentType::Sinus;
 
     Sinus() = default;
     Sinus(const Vector2 center, const float distance, float speed)

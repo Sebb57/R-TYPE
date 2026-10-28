@@ -12,10 +12,11 @@
     #include "Chronometer.hpp"
     #include "GameEngine/ECS/Components/Transform.hpp"
     #include "GameEngine/ECS/World.hpp"
+    #include "plugins/ASystem.hpp"
 
 namespace OrByte {
 
-class PhysicSystem {
+class PhysicSystem : public ASystem {
     Chronometer _chrono;
     World& _world;
 
@@ -26,11 +27,11 @@ class PhysicSystem {
 
     public:
         PhysicSystem(World& world);
-        ~PhysicSystem() = default;
+        ~PhysicSystem() override = default;
 
-        void update();
+        void update() override;
 };
 
-}
+} // namespace OrByte
 
 #endif /* PHYSICSYSTEM_HPP_ */

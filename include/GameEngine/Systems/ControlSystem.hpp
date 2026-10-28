@@ -11,11 +11,12 @@
 
     #include "GameEngine/ECS/World.hpp"
     #include "GameEngine/Event.hpp"
+    #include "plugins/ASystem.hpp"
     #include <unordered_set>
 
 namespace OrByte {
 
-class ControlSystem {
+class ControlSystem : public ASystem {
     World& _world;
     std::unordered_set<Event::Key> _heldKeys;
 
@@ -23,12 +24,12 @@ class ControlSystem {
 
     public:
         ControlSystem(World& world);
-        ~ControlSystem() = default;
+        ~ControlSystem() override = default;
 
-        void onEvent(const Event& event);
-        void update();
+        void onEvent(const Event& event) override;
+        void update() override;
 };
 
-}
+} // namespace OrByte
 
 #endif /* CONTROLSYSTEM_HPP_ */
