@@ -42,6 +42,10 @@ add_library(rtype_asio INTERFACE)
 target_include_directories(rtype_asio SYSTEM INTERFACE "${asio_SOURCE_DIR}/asio/include")
 target_compile_definitions(rtype_asio INTERFACE ASIO_STANDALONE)
 target_link_libraries(rtype_asio INTERFACE Threads::Threads)
+if(WIN32)
+    target_compile_definitions(rtype_asio INTERFACE _WIN32_WINNT=0x0A00)
+    target_link_libraries(rtype_asio INTERFACE ws2_32 mswsock)
+endif()
 
 add_library(rtype-protocol STATIC
     src/server/net/TcpProtocol.cpp
@@ -51,19 +55,27 @@ target_include_directories(rtype-protocol PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/in
 target_link_libraries(rtype-protocol PUBLIC rtype_asio bitsery)
 target_compile_features(rtype-protocol PUBLIC cxx_std_23)
 
+# ---------------------------------------------------------------------------
+# Engine (static library)
+# ---------------------------------------------------------------------------
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/GameEngine/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Orbyte/*.cpp"
 )
+# Systems/Components are built as plugins, main.cpp as its own executable.
 list(FILTER ENGINE_SOURCES EXCLUDE REGEX "/src/GameEngine/(Systems/.*|Components/.*|main)\\.cpp$")
 list(APPEND ENGINE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/plugins/DynamicLibrary.cpp")
-add_library(r-type_engine STATIC ${ENGINE_SOURCES})
-target_include_directories(r-type_engine PUBLIC
+add_library(rtype_engine STATIC ${ENGINE_SOURCES})
+target_include_directories(rtype_engine PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/GameEngine/ECS/Managers"
 )
-target_link_libraries(r-type_engine PUBLIC ${CMAKE_DL_LIBS})
-target_compile_features(r-type_engine PUBLIC cxx_std_23)
+target_link_libraries(rtype_engine PUBLIC ${CMAKE_DL_LIBS})
+target_compile_features(rtype_engine PUBLIC cxx_std_23)
 
+# ---------------------------------------------------------------------------
+# Server
+# ---------------------------------------------------------------------------
 file(GLOB_RECURSE SERVER_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/server/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/server/*.cc"
@@ -91,17 +103,37 @@ list(REMOVE_DUPLICATES SERVER_INCLUDE_DIRS)
 
 add_executable(r-type_server ${SERVER_SOURCES})
 target_include_directories(r-type_server PRIVATE ${SERVER_INCLUDE_DIRS})
-target_link_libraries(r-type_server PRIVATE r-type_engine rtype-protocol)
-add_dependencies(r-type_server ${SYSTEM_TARGETS})
+target_link_libraries(r-type_server PRIVATE rtype_engine rtype-protocol)
 target_compile_features(r-type_server PRIVATE cxx_std_23)
 set_target_properties(r-type_server PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}>"
 )
 
+# ---------------------------------------------------------------------------
+# SFML
+# ---------------------------------------------------------------------------
 set(SFML_BUILD_GRAPHICS ON CACHE BOOL "" FORCE)
 set(SFML_BUILD_WINDOW ON CACHE BOOL "" FORCE)
 set(SFML_BUILD_AUDIO ON CACHE BOOL "" FORCE)
 set(SFML_BUILD_NETWORK OFF CACHE BOOL "" FORCE)
+# On Windows, link SFML statically so the executables don't depend on sfml-*.dll.
+if(WIN32)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+endif()
+# Cross-compiling for Windows from Linux: SFML ships its dependencies prebuilt in
+# extlibs/. Allow lookups there despite the toolchain confining them to the
+# target sysroot, and point at OpenAL directly: FindOpenAL looks for "OpenAL32"
+# but the file is "libopenal32.a", which only matches on a case-insensitive
+# filesystem.
+if(CMAKE_CROSSCOMPILING AND MINGW)
+    list(APPEND CMAKE_FIND_ROOT_PATH "${FETCHCONTENT_BASE_DIR}/sfml-src")
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(RTYPE_SFML_EXTLIBS "${FETCHCONTENT_BASE_DIR}/sfml-src/extlibs/libs-mingw/x64")
+    else()
+        set(RTYPE_SFML_EXTLIBS "${FETCHCONTENT_BASE_DIR}/sfml-src/extlibs/libs-mingw/x86")
+    endif()
+    set(OPENAL_LIBRARY "${RTYPE_SFML_EXTLIBS}/libopenal32.a" CACHE FILEPATH "")
+endif()
 FetchContent_Declare(sfml
     GIT_REPOSITORY https://github.com/SFML/SFML.git
     GIT_TAG 2.6.1
@@ -109,14 +141,31 @@ FetchContent_Declare(sfml
 )
 FetchContent_MakeAvailable(sfml)
 
+# ---------------------------------------------------------------------------
+# Plugins (runtime-loaded modules)
+# ---------------------------------------------------------------------------
+if(WIN32)
+    set(RTYPE_PLUGIN_SUFFIX ".dll")
+else()
+    set(RTYPE_PLUGIN_SUFFIX ".so")
+endif()
+
+# $<1:...> prevents multi-config generators (MSVC) from appending Debug/Release.
+# On Windows a MODULE is a "runtime" artifact, so both properties are set.
+function(rtype_configure_plugin target output_name output_dir)
+    set_target_properties(${target} PROPERTIES
+        OUTPUT_NAME "${output_name}"
+        PREFIX ""
+        SUFFIX "${RTYPE_PLUGIN_SUFFIX}"
+        POSITION_INDEPENDENT_CODE ON
+        LIBRARY_OUTPUT_DIRECTORY "$<1:${output_dir}>"
+        RUNTIME_OUTPUT_DIRECTORY "$<1:${output_dir}>"
+    )
+    target_compile_features(${target} PRIVATE cxx_std_23)
+endfunction()
+
 add_library(rtype_sfml MODULE src/plugins/SFML.cpp)
-set_target_properties(rtype_sfml PROPERTIES
-    OUTPUT_NAME "SFML"
-    PREFIX ""
-    SUFFIX ".so"
-    POSITION_INDEPENDENT_CODE ON
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/plugins"
-)
+rtype_configure_plugin(rtype_sfml "SFML" "${CMAKE_SOURCE_DIR}/plugins")
 target_include_directories(rtype_sfml PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(rtype_sfml PRIVATE
     sfml-graphics
@@ -124,22 +173,13 @@ target_link_libraries(rtype_sfml PRIVATE
     sfml-system
 )
 
-target_compile_features(rtype_sfml PRIVATE cxx_std_23)
-
 set(SYSTEM_PLUGINS Collider Display Health Physic)
 set(SYSTEM_TARGETS)
 foreach(system IN LISTS SYSTEM_PLUGINS)
     set(system_target "rtype_system_${system}")
     add_library(${system_target} MODULE "src/GameEngine/Systems/${system}System.cpp")
-    set_target_properties(${system_target} PROPERTIES
-        OUTPUT_NAME "${system}System"
-        PREFIX ""
-        SUFFIX ".so"
-        POSITION_INDEPENDENT_CODE ON
-        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/plugins/systems"
-    )
-    target_link_libraries(${system_target} PRIVATE r-type_engine)
-    target_compile_features(${system_target} PRIVATE cxx_std_23)
+    rtype_configure_plugin(${system_target} "${system}System" "${CMAKE_SOURCE_DIR}/plugins/systems")
+    target_link_libraries(${system_target} PRIVATE rtype_engine)
     list(APPEND SYSTEM_TARGETS ${system_target})
 endforeach()
 
@@ -151,46 +191,60 @@ set(COMPONENT_TARGETS)
 foreach(component IN LISTS COMPONENT_PLUGINS)
     set(component_target "rtype_component_${component}")
     add_library(${component_target} MODULE "src/GameEngine/Components/${component}.cpp")
-    set_target_properties(${component_target} PROPERTIES
-        OUTPUT_NAME "${component}"
-        PREFIX ""
-        SUFFIX ".so"
-        POSITION_INDEPENDENT_CODE ON
-        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/plugins/components"
-    )
-    target_link_libraries(${component_target} PRIVATE r-type_engine)
-    target_compile_features(${component_target} PRIVATE cxx_std_23)
+    rtype_configure_plugin(${component_target} "${component}" "${CMAKE_SOURCE_DIR}/plugins/components")
+    target_link_libraries(${component_target} PRIVATE rtype_engine)
     list(APPEND COMPONENT_TARGETS ${component_target})
 endforeach()
 
+# The server loads the systems at runtime: make sure they are built with it.
+add_dependencies(r-type_server ${SYSTEM_TARGETS})
+
+# ---------------------------------------------------------------------------
+# Client
+# ---------------------------------------------------------------------------
 file(GLOB_RECURSE CLIENT_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/client/*.cpp"
 )
 add_executable(r-type_client ${CLIENT_SOURCES})
 target_include_directories(r-type_client PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(r-type_client PRIVATE r-type_engine rtype-protocol sfml-audio)
-
+target_link_libraries(r-type_client PRIVATE rtype_engine rtype-protocol sfml-audio)
 add_dependencies(r-type_client rtype_sfml ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
-
 target_compile_features(r-type_client PRIVATE cxx_std_23)
-
 set_target_properties(r-type_client PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}>"
 )
 
+# SFML is linked statically on Windows, but OpenAL stays a DLL (LGPL) and must
+# sit next to the client executable.
+if(WIN32)
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(RTYPE_OPENAL_DLL "${sfml_SOURCE_DIR}/extlibs/bin/x64/openal32.dll")
+    else()
+        set(RTYPE_OPENAL_DLL "${sfml_SOURCE_DIR}/extlibs/bin/x86/openal32.dll")
+    endif()
+    add_custom_command(TARGET r-type_client POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${RTYPE_OPENAL_DLL}" "$<TARGET_FILE_DIR:r-type_client>"
+        VERBATIM
+    )
+endif()
+
+# ---------------------------------------------------------------------------
+# Standalone game engine executable
+# ---------------------------------------------------------------------------
 add_executable(r-type_game-engine src/GameEngine/main.cpp)
-
-target_link_libraries(r-type_game-engine PRIVATE r-type_engine)
+target_link_libraries(r-type_game-engine PRIVATE rtype_engine)
 add_dependencies(r-type_game-engine rtype_sfml ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
-
 target_compile_features(r-type_game-engine PRIVATE cxx_std_23)
-
 set_target_properties(r-type_game-engine PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}>"
 )
 
+# ---------------------------------------------------------------------------
+# Warnings
+# ---------------------------------------------------------------------------
 foreach(target IN ITEMS
-    r-type_engine
+    rtype_engine
     r-type_server
     r-type_client
     r-type_game-engine
@@ -208,3 +262,30 @@ foreach(target IN ITEMS
         )
     endif()
 endforeach()
+
+# Windows: keep <windows.h> lean and stop its min/max macros from clashing with
+# std::min/std::max. Applied to our targets only, SFML relies on the full header.
+foreach(target IN ITEMS
+    rtype-protocol
+    rtype_engine
+    rtype_sfml
+    r-type_server
+    r-type_client
+    r-type_game-engine
+    ${SYSTEM_TARGETS}
+    ${COMPONENT_TARGETS}
+)
+    if(WIN32)
+        target_compile_definitions(${target} PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+    endif()
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /utf-8 /bigobj)
+    endif()
+endforeach()
+
+# MinGW: embed the C++ runtime so the .exe files run without the toolchain's DLLs.
+if(MINGW)
+    foreach(target IN ITEMS r-type_server r-type_client r-type_game-engine)
+        target_link_options(${target} PRIVATE -static)
+    endforeach()
+endif()

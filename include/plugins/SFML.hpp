@@ -35,6 +35,10 @@ namespace OrByte {
         const sf::Font *getFont(const std::filesystem::path& path) const;
         const sf::Texture *getTexture(const std::filesystem::path& path) const;
 
+        Vector2 currentRatio() const;
+        Vector2 currentOffset() const;
+        Vector2u referenceSize() const;
+
         public:
             SFML() = default;
             ~SFML() override = default;
@@ -46,7 +50,7 @@ namespace OrByte {
             void update() final;
 
             virtual void drawRectangle(const Transform& transform, Vector2 size, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor) const final;
-            virtual void drawCircle(const Transform& transform, unsigned radius, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor) const final;
+            virtual void drawCircle(const Transform& transform, float radius, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor) const final;
             virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path) const final;
             virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, Rect rect) const final;
             virtual void drawText(const Transform& transform, std::string text, unsigned fontSize, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor, std::filesystem::path font) const final;

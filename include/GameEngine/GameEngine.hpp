@@ -9,6 +9,7 @@
 #ifndef GAMEENGINE_HPP_
     #define GAMEENGINE_HPP_
 
+#include "GameEngine/Layout/Widget.hpp"
 #include "plugins/DynamicLibrary.hpp"
 #include "plugins/IGraphic.hpp"
 #include <filesystem>
@@ -32,10 +33,13 @@ class GameEngine {
     private:
         DynamicLibrary _graphicLoader;
         std::unique_ptr<IGraphic> _graphicLib;
-        std::vector<Event> _events;
+        std::unique_ptr<Widget> _root;
+        // std::vector<Event> _events;
 
-        bool _handleEvent(Event& event);
+        void _initLayout();
+
         void _handleEvents();
+        bool _handleEvent(Event& event);
         void _update();
         void _render();
 };

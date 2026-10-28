@@ -52,8 +52,8 @@ class ColliderSystem : public ASystem {
         ColliderSystem(World& world);
         ~ColliderSystem() override = default;
 
-        void update() override;
-        [[nodiscard]] const std::vector<std::pair<int, int>>& getCollisions() const { return this->_collisions; }
+        virtual void update() override;
+        [[nodiscard]] virtual const std::vector<std::pair<int, int>>& getEntityPairs() const override { return this->_collisions; }
 };
 
 } // namespace OrByte

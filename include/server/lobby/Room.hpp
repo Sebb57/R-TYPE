@@ -25,6 +25,9 @@ class Room {
 
         std::optional<PlayerSlot> addPlayer(SessionToken token);
         void setPlayerName(PlayerSlot slot, std::string name);
+        void setReady(PlayerSlot slot, bool ready);
+        [[nodiscard]] bool isReady(PlayerSlot slot) const;
+        [[nodiscard]] bool allReady() const;
         void removePlayer(PlayerSlot);
         [[nodiscard]] bool isFull() const;
         [[nodiscard]] bool isEmpty() const;
@@ -45,6 +48,7 @@ class Room {
         std::string _name;
         std::array<std::optional<SessionToken>, 4> _slots;
         std::array<std::string, 4> _playerNames;
+        std::array<bool, 4> _ready{};
         SessionToken _host;
         std::unique_ptr<GameInstance> _game;
         std::uint8_t _maxPlayers;

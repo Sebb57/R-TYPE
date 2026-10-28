@@ -10,10 +10,14 @@
 #ifndef ISYSTEM_HPP_
     #define ISYSTEM_HPP_
 
+#include <utility>
+#include <vector>
+
 namespace OrByte {
     class ISystem {
         public:
             virtual void update() = 0;
+            [[nodiscard]] virtual const std::vector<std::pair<int, int>>& getEntityPairs() const = 0;
 
             ISystem& operator=(const ISystem& object) = delete;
             ISystem& operator=(ISystem&& object) = delete;

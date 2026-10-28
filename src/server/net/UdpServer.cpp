@@ -123,6 +123,12 @@ void server::UdpServer::send(const OutboundMessage& message)
     if (const auto* snapshot = std::get_if<SnapshotDto>(&message.payload)) {
         sequence = snapshot->tick;
         UdpProtocol::appendU32(payload, snapshot->tick);
+        payload.push_back(static_cast<Byte>(snapshot->remainingSeconds));
+        payload.push_back(static_cast<Byte>(snapshot->remainingSeconds >> 8));
+        payload.push_back(snapshot->gameOver ? 1 : 0);
+        payload.push_back(snapshot->aliveMask);
+        for (std::uint32_t score : snapshot->scores)
+            UdpProtocol::appendU32(payload, score);
         const auto count = std::min<std::size_t>(snapshot->entities.size(), 100);
         payload.push_back(static_cast<Byte>(count));
         for (std::size_t i = 0; i < count; ++i) {

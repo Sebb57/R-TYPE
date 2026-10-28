@@ -15,6 +15,8 @@
 namespace OrByte {
     class ASystem : public ISystem {
         public:
+            [[nodiscard]] virtual const std::vector<std::pair<int, int>>& getEntityPairs() const override { static const std::vector<std::pair<int, int>> empty; return empty; }
+
             ASystem() = default;
             ~ASystem() override = default;
     };

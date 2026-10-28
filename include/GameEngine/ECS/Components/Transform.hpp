@@ -18,7 +18,7 @@ struct Transform : public OrByte::AComponent<OrByte::ComponentType::Transform>
 {
 
     Transform() = default;
-    Transform(const Vector2& position, const Vector2& scale, float rotation)
+    Transform(const Vector2& position, const Vector2& scale = { 1.f, 1.f }, float rotation = 0.f)
         : position(position), scale(scale), rotation(rotation) {}
 
     Vector2 position{0.0f, 0.0f};

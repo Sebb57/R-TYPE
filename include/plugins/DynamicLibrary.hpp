@@ -10,8 +10,17 @@
 #ifndef DYNAMICLIBRARY_HPP_
     #define DYNAMICLIBRARY_HPP_
 
-#include <cstdint>
-#include <dlfcn.h>
+#ifdef _WIN32
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+    #include <windows.h>
+#else
+    #include <dlfcn.h>
+#endif
 #include <exception>
 #include <filesystem>
 #include <iostream>
@@ -39,14 +48,22 @@ class DynamicLibrary {
         template <typename T>
         T loadFunction(std::string symbol)
         {
+        #ifdef _WIN32
+            T func = reinterpret_cast<T>(
+                GetProcAddress(static_cast<HMODULE>(this->_handle), symbol.c_str()));
+
+            if (!func)
+                throw FunctionLoadFailed(symbol);
+        #else
             dlerror();
             T func = reinterpret_cast<T>(dlsym(this->_handle, symbol.c_str()));
             const char *error = dlerror();
 
             if (error != nullptr || !func) {
-                std::cerr << "ERROR: " << error << std::endl;
+                std::cerr << "ERROR: " << (error ? error : "symbol is null") << std::endl;
                 throw FunctionLoadFailed(symbol);
             }
+        #endif
             return func;
         }
 
@@ -81,6 +98,6 @@ class DynamicLibrary {
         };
 };
 
-} //namespace OrByte
+} // namespace OrByte
 
 #endif /* DYNAMICLIBRARY_HPP_ */

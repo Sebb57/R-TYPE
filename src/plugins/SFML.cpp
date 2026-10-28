@@ -35,25 +35,12 @@ namespace {
                 (static_cast<float>(windowSize.y) - static_cast<float>(OrByte::constants::SERVER_WINDOW_Y) * windowRatio.y) / 2 };
     }
 
-    sf::Vector2f getPositionFromRatio(const Vector2 position, const sf::Vector2u windowSize)
-    {
-        const Vector2 windowRatio = getWindowRatio(windowSize);
-        const Vector2 offset = getWindowOffset(windowSize);
-
-        return { offset.x + position.x * windowRatio.x, offset.y + position.y * windowRatio.y };
-    }
-
     Vector2 getPositionFromWindow(const sf::Vector2i position, const sf::Vector2u windowSize)
     {
         const Vector2 windowRatio = getWindowRatio(windowSize);
         const Vector2 offset = getWindowOffset(windowSize);
 
         return { (static_cast<float>(position.x) - offset.x) / windowRatio.x, (static_cast<float>(position.y) - offset.y) / windowRatio.y };
-    }
-
-    sf::Vector2f getSizeFromRatio(const Vector2 size, const Vector2 windowRatio)
-    {
-        return { size.x * windowRatio.y, size.y * windowRatio.y };
     }
 
     sf::Color colorNormalize(const OrByte::RGBA color)
@@ -329,10 +316,11 @@ void OrByte::SFML::drawRectangle(const Transform& transform, Vector2 size, RGBA 
 
     if (!this->_isOpen || !this->_window)
         return;
-    Vector2 windowRatio = getWindowRatio(this->_window->getSize());
-    sf::Vector2f sizeRatio = getSizeFromRatio(size, windowRatio);
+    const Vector2 ratio = this->currentRatio();
+    const Vector2 offset = this->currentOffset();
+    const sf::Vector2f sizeRatio(size.x * ratio.x, size.y * ratio.y);
 
-    rectangle.setPosition(getPositionFromRatio(transform.position, this->_window->getSize()));
+    rectangle.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x, offset.y + transform.position.y * ratio.y));
     rectangle.setSize(sizeRatio);
     rectangle.setOrigin({ sizeRatio.x / 2, sizeRatio.y / 2 });
     rectangle.setRotation(transform.rotation);
@@ -343,16 +331,17 @@ void OrByte::SFML::drawRectangle(const Transform& transform, Vector2 size, RGBA 
     this->_window->draw(rectangle);
 }
 
-void OrByte::SFML::drawCircle(const Transform& transform, unsigned radius, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor) const
+void OrByte::SFML::drawCircle(const Transform& transform, float radius, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor) const
 {
     sf::CircleShape circle;
 
     if (!this->_isOpen || !this->_window)
         return;
-    Vector2 windowRatio = getWindowRatio(this->_window->getSize());
-    float radiusRatio = radius * windowRatio.y;
+    const Vector2 ratio = this->currentRatio();
+    const Vector2 offset = this->currentOffset();
+    const float radiusRatio = radius * ratio.y;
 
-    circle.setPosition(getPositionFromRatio(transform.position, this->_window->getSize()));
+    circle.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x, offset.y + transform.position.y * ratio.y));
     circle.setRadius(radiusRatio);
     circle.setOrigin({radiusRatio, radiusRatio});
     circle.setRotation(transform.rotation);
@@ -398,14 +387,15 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
         return;
 
     sf::Sprite sprite;
-    Vector2 windowRatio = getWindowRatio(this->_window->getSize());
-    sf::Vector2u textureSize = texture->getSize();
-    float scale = getSizeFromRatio(size, windowRatio).y / textureSize.y;
+    const Vector2 ratio = this->currentRatio();
+    const Vector2 offset = this->currentOffset();
+    const sf::Vector2u textureSize = texture->getSize();
+    const float scale = (size.y * ratio.y) / static_cast<float>(textureSize.y);
 
-    sprite.setPosition(getPositionFromRatio(transform.position, this->_window->getSize()));
-    sprite.setScale({scale, scale});
+    sprite.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x, offset.y + transform.position.y * ratio.y));
+    sprite.setScale({ scale, scale });
     sprite.setTexture(*texture);
-    sprite.setOrigin({textureSize.x / 2.0f, textureSize.y / 2.0f});
+    sprite.setOrigin({ textureSize.x / 2.f, textureSize.y / 2.f });
     sprite.setRotation(transform.rotation);
 
     this->_window->draw(sprite);
@@ -420,16 +410,15 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
         return;
 
     sf::Sprite sprite;
-    sf::IntRect sfmlRect(rect.x, rect.y, rect.w, rect.h);
-    Vector2 windowRatio = getWindowRatio(this->_window->getSize());
-    // sf::Vector2u textureSize = texture->getSize();
-    float scale = getSizeFromRatio(size, windowRatio).y / rect.h;
+    const Vector2 ratio = this->currentRatio();
+    const Vector2 offset = this->currentOffset();
+    const float scale = (size.y * ratio.y) / static_cast<float>(rect.h);
 
-    sprite.setPosition(getPositionFromRatio(transform.position, this->_window->getSize()));
-    sprite.setScale({scale, scale});
+    sprite.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x, offset.y + transform.position.y * ratio.y));
+    sprite.setScale({ scale, scale });
     sprite.setTexture(*texture);
-    sprite.setTextureRect(sfmlRect);
-    sprite.setOrigin({rect.w / 2.0f, rect.h / 2.0f});
+    sprite.setTextureRect(sf::IntRect(rect.x, rect.y, rect.w, rect.h));
+    sprite.setOrigin({ rect.w / 2.f, rect.h / 2.f });
     sprite.setRotation(transform.rotation);
 
     this->_window->draw(sprite);
@@ -444,16 +433,17 @@ void OrByte::SFML::drawText(const Transform& transform, std::string text, unsign
         return;
 
     sf::Text sfmlText;
-    Vector2 windowRatio = getWindowRatio(this->_window->getSize());
+    const Vector2 ratio = this->currentRatio();
+    const Vector2 offset = this->currentOffset();
 
     sfmlText.setFont(*sfmlFont);
-    sfmlText.setCharacterSize(fontSize * windowRatio.y);
+    sfmlText.setCharacterSize(static_cast<unsigned>(static_cast<float>(fontSize) * ratio.y));
     sfmlText.setFillColor(colorNormalize(fillColor));
     sfmlText.setOutlineThickness(outlineThickness);
     sfmlText.setOutlineColor(colorNormalize(outlineColor));
     sfmlText.setString(text);
 
-    sfmlText.setPosition(getPositionFromRatio(transform.position, this->_window->getSize()));
+    sfmlText.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x, offset.y + transform.position.y * ratio.y));
     this->_window->draw(sfmlText);
 }
 
@@ -500,6 +490,27 @@ void OrByte::SFML::popRegion() const
     if (!this->_regions.empty())
         this->_regions.pop_back();
     this->applyRegionView();
+}
+
+Vector2u OrByte::SFML::referenceSize() const
+{
+    return this->regionSize();
+}
+
+Vector2 OrByte::SFML::currentRatio() const
+{
+    if (!this->_regions.empty() && !this->_gameMode)
+        return { 1.f, 1.f };
+    const Vector2u size = this->referenceSize();
+    return getWindowRatio(sf::Vector2u(size.x, size.y));
+}
+
+Vector2 OrByte::SFML::currentOffset() const
+{
+    if (!this->_regions.empty() && !this->_gameMode)
+        return { 0.f, 0.f };
+    const Vector2u size = this->referenceSize();
+    return getWindowOffset(sf::Vector2u(size.x, size.y));
 }
 
 extern "C" {

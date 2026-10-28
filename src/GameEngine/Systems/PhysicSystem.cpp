@@ -13,6 +13,7 @@
 #include "plugins/DynamicLibrary.hpp"
 #include "plugins/ISystem.hpp"
 #include <cmath>
+#include <numbers>
 #include <vector>
 
 OrByte::PhysicSystem::PhysicSystem(World& world) : _world(world)
@@ -43,7 +44,7 @@ void OrByte::PhysicSystem::_handleSinus(Transform* transform, int entity, double
 
     sinus->curr += (sinus->speed * deltaTime);
     transform->position.x = center.x;
-    transform->position.y = center.y + std::sin(sinus->curr * M_PI * 2) * sinus->distance;
+    transform->position.y = center.y + std::sin(sinus->curr * std::numbers::pi * 2) * sinus->distance;
 }
 
 void OrByte::PhysicSystem::_handleSpiral(Transform* transform, int entity, double deltaTime)

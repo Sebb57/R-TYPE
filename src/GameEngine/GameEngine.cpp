@@ -6,6 +6,8 @@
 */
 
 #include "GameEngine/GameEngine.hpp"
+#include "GameEngine/Layout/Panel.hpp"
+#include "GameEngine/Layout/SceneView.hpp"
 #include <memory>
 #include <queue>
 #include <string_view>
@@ -35,23 +37,32 @@ std::filesystem::path getGraphicalPlugin(OrByte::GameEngine::GraphicalLibs graph
 OrByte::GameEngine::GameEngine(GraphicalLibs graphicalLib) : _graphicLoader(getGraphicalPlugin(graphicalLib)), _graphicLib(this->_graphicLoader.loadFunction<IGraphic* (*)()>("factory")())
 {
     this->_graphicLib->open();
+    this->_initLayout();
 }
 
 OrByte::GameEngine::GameEngine(std::filesystem::path graphicPath) : _graphicLoader(graphicPath), _graphicLib(this->_graphicLoader.loadFunction<IGraphic* (*)()>("factory")())
 {
     this->_graphicLib->open();
+    this->_initLayout();
 }
 
-bool OrByte::GameEngine::_handleEvent(Event& event)
+void OrByte::GameEngine::_initLayout()
 {
-    if (this->_events.empty())
-        return false;
-    event = this->_events.back();
-    this->_events.pop_back();
+    auto scene = std::make_unique<SceneView>(
+        [this](const IGraphic& graphicLib) {
+            (void) graphicLib; // TODO: remove when below is done and using this parameter
+            // TODO: Game Render
+        });
 
-    // Handle Event
+    scene->attach(Widget::Side::Top, std::make_unique<Panel>("", 40)); // ToolBar
+    scene->attach(Widget::Side::Bottom, std::make_unique<Panel>("Console", 220));
+    scene->attach(Widget::Side::Left, std::make_unique<Panel>("Hierarchy", 250));
+    scene->attach(Widget::Side::Right, std::make_unique<Panel>("Inspector", 300));
 
-    return false;
+    const auto [w, h] = this->_graphicLib->getWindowSize();
+
+    scene->setRect(Rect(0, 0, static_cast<int>(w), static_cast<int>(h)));
+    this->_root = std::move(scene);
 }
 
 void OrByte::GameEngine::_handleEvents()
@@ -59,17 +70,22 @@ void OrByte::GameEngine::_handleEvents()
     std::queue<Event> events = this->_graphicLib->listen();
 
     while (!events.empty()) {
-        this->_events.push_back(events.front());
+        Event event = events.front();
         events.pop();
-    }
 
-    for (auto event: this->_events) {
         if (event.type == Event::Type::Closed) {
             this->_graphicLib->close();
             return;
         }
         this->_handleEvent(event);
     }
+}
+
+bool OrByte::GameEngine::_handleEvent(Event& event)
+{
+    if (this->_root)
+        return this->_root->handleEvent(event);
+    return false;
 }
 
 void OrByte::GameEngine::_update()
@@ -80,6 +96,9 @@ void OrByte::GameEngine::_update()
 void OrByte::GameEngine::_render()
 {
     this->_graphicLib->clear();
+
+    if (this->_root)
+        this->_root->render(*this->_graphicLib);
 
     this->_graphicLib->update();
 }
