@@ -21,10 +21,13 @@
 #include "Chronometer.hpp"
 #include "GameEngine/Systems/ColliderSystem.hpp"
 #include "GameEngine/ECS/Utils.hpp"
+#include "plugins/DynamicLibrary.hpp"
+#include "plugins/ISystem.hpp"
 #include "protocol/UdpProtocol.hpp"
 #include "server/common/ServerMessages.hpp"
 
 class World;
+
 namespace OrByte {
 class HealthSystem;
 class PhysicSystem;
@@ -74,9 +77,12 @@ class GameInstance {
         unsigned _tickRate;
         unsigned _snapshotRate;
         std::unique_ptr<World> _world;
-        std::unique_ptr<OrByte::HealthSystem> _healthSystem;
-        std::unique_ptr<OrByte::PhysicSystem> _physicSystem;
-        std::unique_ptr<OrByte::ColliderSystem> _colliderSystem;
+        OrByte::DynamicLibrary _healthLoader;
+        OrByte::DynamicLibrary _physicLoader;
+        OrByte::DynamicLibrary _colliderLoader;
+        std::unique_ptr<OrByte::ISystem> _healthSystem;
+        std::unique_ptr<OrByte::ISystem> _physicSystem;
+        std::unique_ptr<OrByte::ISystem> _colliderSystem;
         BoundedQueue<InboundEvent> _inbox{256};
         OutgoingSink _sink;
         std::map<InputKey, InputHandler> _inputHandlers;

@@ -6,6 +6,8 @@
 */
 
 #include "GameEngine/ECS/Components/Sprite.hpp"
+#include "plugins/DynamicLibrary.hpp"
+#include "plugins/ISystem.hpp"
 #include "GameEngine/Systems/DisplaySystem.hpp"
 
 void OrByte::DisplaySystem::_handleSprite(Transform* transform, int entity)
@@ -102,5 +104,17 @@ void OrByte::DisplaySystem::update()
         } else {
             this->_handleSprite(transform, entity);
         }
+    }
+}
+
+extern "C" {
+    OrByte::DynamicLibrary::PluginType type()
+    {
+        return OrByte::DynamicLibrary::PluginType::SYSTEMS;
+    }
+
+    OrByte::ISystem *factory(World& world, OrByte::IGraphic& graphic)
+    {
+        return new OrByte::DisplaySystem(world, graphic);
     }
 }

@@ -58,9 +58,12 @@ server::GameInstance::GameInstance(RoomId room, unsigned tickRate, unsigned snap
     , _tickRate(std::max(tickRate, 1U))
     , _snapshotRate(std::max(snapshotRate, 1U))
     , _world(std::make_unique<World>())
-    , _healthSystem(std::make_unique<OrByte::HealthSystem>(*this->_world))
-    , _physicSystem(std::make_unique<OrByte::PhysicSystem>(*this->_world))
-    , _colliderSystem(std::make_unique<OrByte::ColliderSystem>(*this->_world))
+    , _healthLoader("./plugins/systems/HealthSystem.so")
+    , _physicLoader("./plugins/systems/PhysicSystem.so")
+    , _colliderLoader("./plugins/systems/ColliderSystem.so")
+    , _healthSystem(this->_healthLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world))
+    , _physicSystem(this->_physicLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world))
+    , _colliderSystem(this->_colliderLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world))
     , _sink(std::move(sink))
 {
     this->bindInputs();
@@ -202,7 +205,8 @@ void server::GameInstance::update()
     }
     this->holdInputs();
     this->_physicSystem->update();
-    for (const auto& [first, second] : this->_colliderSystem->update()) {
+    this->_colliderSystem->update();
+    for (const auto& [first, second] : this->_colliderSystem->getEntityPairs()) {
         const EntityType firstType = this->_types.contains(first) ? this->_types.at(first) : EntityType::Unknown;
         const EntityType secondType = this->_types.contains(second) ? this->_types.at(second) : EntityType::Unknown;
         if (firstType == EntityType::Bonus || secondType == EntityType::Bonus) {

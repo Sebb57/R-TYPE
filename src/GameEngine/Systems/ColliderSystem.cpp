@@ -6,6 +6,8 @@
 */
 
 #include "GameEngine/Systems/ColliderSystem.hpp"
+#include "plugins/DynamicLibrary.hpp"
+#include "plugins/ISystem.hpp"
 
 using namespace OrByte;
 
@@ -18,21 +20,21 @@ AABB ColliderSystem::getAABB(const Collider& collider, const Transform& transfor
     const float width = collider.size.x * transform.scale.x;
     const float height = collider.size.y * transform.scale.y;
 
-    return {
-        transform.position.x - width / 2.0f,
-        transform.position.x + width / 2.0f,
-        transform.position.y - height / 2.0f,
-        transform.position.y + height / 2.0f
-    };
+    return AABB(
+        transform.position.x - (width / 2.0F),
+        transform.position.x + (width / 2.0F),
+        transform.position.y - (height / 2.0F),
+        transform.position.y + (height / 2.0F)
+    );
 }
 
 Circle ColliderSystem::getCircle(const Collider& collider, const Transform& transform) {
-    const float radius = (collider.size.x * transform.scale.x) / 2.0f;
+    const float radius = (collider.size.x * transform.scale.x) / 2.0F;
 
-    return {
+    return Circle(
         {transform.position.x, transform.position.y},
         radius
-    };
+    );
 }
 
 bool ColliderSystem::intersects(const AABB& a, const AABB& b){
@@ -42,7 +44,7 @@ bool ColliderSystem::intersects(const AABB& a, const AABB& b){
 bool ColliderSystem::intersects(const Circle& a, const Circle& b) {
     const float dx = a.center.x - b.center.x;
     const float dy = a.center.y - b.center.y;
-    const float distanceSquared = dx * dx + dy * dy;
+    const float distanceSquared = (dx * dx) + (dy * dy);
     const float radiusSum = a.radius + b.radius;
 
     return distanceSquared <= (radiusSum * radiusSum);
@@ -84,7 +86,7 @@ bool ColliderSystem::checkCollision(Collider* colliderA, Collider* colliderB, Tr
     return false;
 }
 
-std::vector<std::pair<int, int>> ColliderSystem::update()
+void ColliderSystem::update()
 {
     std::vector<std::pair<int, int>> collisions;
     std::vector<CollisionEntity> collidables;
@@ -94,26 +96,24 @@ std::vector<std::pair<int, int>> ColliderSystem::update()
     collidables.reserve(entities.size());
 
     for (int entityID : entities) {
-        Collider* collider =
-            _world.getComponent<Collider>(entityID);
-        Transform* transform =
-            _world.getComponent<Transform>(entityID);
+        auto* collider = this->_world.getComponent<Collider>(entityID);
+        auto* transform = this->_world.getComponent<Transform>(entityID);
 
-        if (!collider || !transform) {
+        if (collider == nullptr || transform == nullptr) {
             continue;
         }
 
-        AABB box;
+        AABB box{};
 
         if (collider->colliderShape == ColliderShape::Circle) {
             Circle circle = getCircle(*collider, *transform);
 
-            box = {
+            box = AABB(
                 circle.center.x - circle.radius,
                 circle.center.x + circle.radius,
                 circle.center.y - circle.radius,
                 circle.center.y + circle.radius
-            };
+            );
         } else {
             box = getAABB(*collider, *transform);
         }
@@ -145,6 +145,18 @@ std::vector<std::pair<int, int>> ColliderSystem::update()
             }
         }
     }
+    this->_collisions = std::move(collisions);
+}
 
-    return collisions;
+
+extern "C" {
+    OrByte::DynamicLibrary::PluginType type()
+    {
+        return OrByte::DynamicLibrary::PluginType::SYSTEMS;
+    }
+
+    OrByte::ISystem *factory(World& world)
+    {
+        return new OrByte::ColliderSystem(world);
+    }
 }

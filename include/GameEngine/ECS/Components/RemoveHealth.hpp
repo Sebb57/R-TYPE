@@ -9,13 +9,12 @@
 #ifndef REMOVEHEALTH_HPP_
     #define REMOVEHEALTH_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
 
 namespace OrByte {
 
-struct RemoveHealth : public IComponent
+struct RemoveHealth : public OrByte::AComponent<OrByte::ComponentType::RemoveHealth>
 {
-    inline static constexpr ComponentType Type = ComponentType::RemoveHealth;
 
     RemoveHealth() = default;
     RemoveHealth(int hitDamage) : hitDamage(hitDamage) {}

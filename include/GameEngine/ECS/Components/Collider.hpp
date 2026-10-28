@@ -9,7 +9,7 @@
 #ifndef COLLIDER_HPP_
     #define COLLIDER_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
     #include "../Utils.hpp"
 
     enum class ColliderShape
@@ -19,9 +19,8 @@
     };
     
     
-    struct Collider : public IComponent
+    struct Collider : public OrByte::AComponent<OrByte::ComponentType::Collider>
     {
-        inline static constexpr ComponentType Type = ComponentType::Collider;
     
         Collider() = default;
         Collider(const Vector2& size, ColliderShape shape = ColliderShape::Box) : size(size), colliderShape(shape) {}

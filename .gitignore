@@ -1,6 +1,7 @@
 # Binaries
 r-type_client
 r-type_server
+r-type_game-engine
 
 # Prerequisites
 *.d

@@ -8,7 +8,7 @@
 
 #include "plugins/DynamicLibrary.hpp"
 
-DynamicLibrary::DynamicLibrary(const std::string& path) : _path(path)
+OrByte::DynamicLibrary::DynamicLibrary(const std::filesystem::path& path) : _path(path)
 {
 #ifdef _WIN32
     this->_handle = LoadLibraryA(path.c_str());
@@ -20,15 +20,10 @@ DynamicLibrary::DynamicLibrary(const std::string& path) : _path(path)
         throw LibraryLoadFailed(path, dlerror());
 #endif
 
-    try {
-        this->type = this->loadFunction<std::size_t (*)()>("type");
-    } catch (const DynamicLibraryException& e) {
-        std::cout << e.what() << std::endl;
-        return;
-    }
+    this->type = this->loadFunction<OrByte::DynamicLibrary::PluginType (*)()>("type");
 }
 
-DynamicLibrary::~DynamicLibrary() noexcept
+OrByte::DynamicLibrary::~DynamicLibrary() noexcept
 {
     if (!this->_handle)
         return;

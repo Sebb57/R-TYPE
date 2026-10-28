@@ -9,13 +9,12 @@
 #ifndef REGENHEALTH_HPP_
     #define REGENHEALTH_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
 
 namespace OrByte {
 
-struct RegenHealth : public IComponent
+struct RegenHealth : public OrByte::AComponent<OrByte::ComponentType::RegenHealth>
 {
-    inline static constexpr ComponentType Type = ComponentType::RegenHealth;
 
     RegenHealth() = default;
     RegenHealth(int regenAmount, float duration) : regenAmount(regenAmount), duration(duration) {}
