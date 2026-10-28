@@ -27,7 +27,8 @@ namespace OrByte {
         Velocity,
         Wither,
         Animator,
-        Owner
+        Owner,
+        Name,
     };
 
     class IComponent {

@@ -6,9 +6,13 @@
 */
 
 #include "GameEngine/ECS/World.hpp"
+#include "GameEngine/ECS/Components/Name.hpp"
 
 int World::createEntity() {
-    return this->entityManager.createEntity();
+    int id = this->entityManager.createEntity();
+    this->componentManager.addComponentToEntity<Name>(id, "Entity_" + std::to_string(id));
+    return id;
+
 }
 
 void World::destroyEntity(int entityId) {

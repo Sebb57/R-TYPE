@@ -284,7 +284,14 @@ std::queue<OrByte::Event> OrByte::SFML::listen() const
             events.push(event);
         }
         if (sfmlEvent.type == sf::Event::MouseWheelScrolled) {
-            // TODO
+            event.type = Event::Type::MouseWheelScrolled;
+            event.windowX = sfmlEvent.mouseWheelScroll.x;
+            event.windowY = sfmlEvent.mouseWheelScroll.y;
+            event.wheelDelta = sfmlEvent.mouseWheelScroll.delta;
+            Vector2 mousePos = getPositionFromWindow({ event.windowX, event.windowY }, this->_window->getSize());
+            event.mouseX = static_cast<int>(mousePos.x);
+            event.mouseY = static_cast<int>(mousePos.y);
+            events.push(event);
         }
     }
 
