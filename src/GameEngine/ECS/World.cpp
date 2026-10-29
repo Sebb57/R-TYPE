@@ -10,7 +10,7 @@
 
 int World::createEntity() {
     int id = this->entityManager.createEntity();
-    this->componentManager.addComponentToEntity<Name>(id, "Entity_" + std::to_string(id));
+    this->componentManager.addComponentToEntity<OrByte::Name>(id, "Entity_" + std::to_string(id));
     return id;
 
 }

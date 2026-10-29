@@ -33,6 +33,30 @@ struct Controllable : public OrByte::AComponent<OrByte::ComponentType::Controlla
     Vector2 size{64.0f, 64.0f};
     RGBA color{255, 255, 255};
     std::string image;
+
+    void serialize(Serializer& serializer) const final
+    {
+        serializer.value4b(this->up);
+        serializer.value4b(this->down);
+        serializer.value4b(this->left);
+        serializer.value4b(this->right);
+        serializer.value4b(this->speed);
+        serializer.object(this->size);
+        serializer.object(this->color);
+        serializer.text1b(this->image, MaxStringSize);
+    }
+
+    void deserialize(Deserializer& deserializer) final
+    {
+        deserializer.value4b(this->up);
+        deserializer.value4b(this->down);
+        deserializer.value4b(this->left);
+        deserializer.value4b(this->right);
+        deserializer.value4b(this->speed);
+        deserializer.object(this->size);
+        deserializer.object(this->color);
+        deserializer.text1b(this->image, MaxStringSize);
+    }
 };
 
 } // namespace OrByte

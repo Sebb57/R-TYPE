@@ -33,6 +33,15 @@ namespace OrByte {
         std::uint8_t a = 255;
     };
 
+    template <typename S>
+    void serialize(S& s, RGBA& color)
+    {
+        s.value1b(color.r);
+        s.value1b(color.g);
+        s.value1b(color.b);
+        s.value1b(color.a);
+    }
+
     class IGraphic {
         public:
             virtual void open(std::size_t width = 1920, std::size_t height = 1080, std::string title = "LayoutEngine") = 0;

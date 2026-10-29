@@ -17,6 +17,6 @@ extern "C" {
 
     OrByte::IComponent *factory()
     {
-        return new Name();
+        return new OrByte::Name();
     }
 }

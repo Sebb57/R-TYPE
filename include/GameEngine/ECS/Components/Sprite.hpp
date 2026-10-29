@@ -23,8 +23,20 @@ struct Sprite : public OrByte::AComponent<OrByte::ComponentType::Sprite>
 
     std::string texturePath;
     Vector2 size{0.0f, 0.0f};
+
+    void serialize(Serializer& serializer) const final
+    {
+        serializer.text1b(this->texturePath, MaxStringSize);
+        serializer.object(this->size);
+    }
+
+    void deserialize(Deserializer& deserializer) final
+    {
+        deserializer.text1b(this->texturePath, MaxStringSize);
+        deserializer.object(this->size);
+    }
 };
 
-}
+} // namespace OrByte
 
 #endif /* SPRITE_HPP_ */

@@ -74,7 +74,7 @@ std::vector<int> OrByte::EntityWidget::_entityIds() const
 
 std::string OrByte::EntityWidget::_nameOf(int entityId) const
 {
-    const auto *name = this->_world.getComponent<Name>(entityId);
+    const auto *name = this->_world.getComponent<OrByte::Name>(entityId);
     return name ? name->name : "Entity_" + std::to_string(entityId);
 }
 
@@ -106,7 +106,7 @@ void OrByte::EntityWidget::_finishEditing()
         return;
 
     if (this->_editingEntityId >= 0) {
-        if (auto *name = this->_world.getComponent<Name>(this->_editingEntityId))
+        if (auto *name = this->_world.getComponent<OrByte::Name>(this->_editingEntityId))
             name->name = this->_editingText.empty()
                 ? "Entity_" + std::to_string(this->_editingEntityId)
                 : this->_editingText;

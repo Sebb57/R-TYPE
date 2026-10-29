@@ -73,7 +73,7 @@ target_include_directories(rtype_engine PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/GameEngine/ECS/Managers"
 )
-target_link_libraries(rtype_engine PUBLIC ${CMAKE_DL_LIBS})
+target_link_libraries(rtype_engine PUBLIC ${CMAKE_DL_LIBS} bitsery)
 target_compile_features(rtype_engine PUBLIC cxx_std_23)
 
 # ---------------------------------------------------------------------------
@@ -171,6 +171,7 @@ add_library(rtype_sfml MODULE src/plugins/SFML.cpp)
 rtype_configure_plugin(rtype_sfml "SFML" "${CMAKE_SOURCE_DIR}/plugins")
 target_include_directories(rtype_sfml PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(rtype_sfml PRIVATE
+    bitsery
     sfml-graphics
     sfml-window
     sfml-system

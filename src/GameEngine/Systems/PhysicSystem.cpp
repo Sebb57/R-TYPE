@@ -27,7 +27,8 @@ void OrByte::PhysicSystem::_handleOrbit(Transform* transform, int entity, double
     if (orbit == nullptr)
         return;
 
-    Vector2 center = orbit->target ? orbit->target->position : orbit->center;
+    Transform* target = this->_world.getComponent<Transform>(orbit->targetEntity);
+    Vector2 center = target ? target->position : orbit->center;
 
     orbit->angle += (orbit->angleSpeed * deltaTime);
     transform->position.x = center.x + std::cos(orbit->angle) * orbit->radius;
@@ -40,7 +41,8 @@ void OrByte::PhysicSystem::_handleSinus(Transform* transform, int entity, double
     if (sinus == nullptr)
         return;
 
-    Vector2 center = sinus->target ? sinus->target->position : sinus->center;
+    Transform* target = this->_world.getComponent<Transform>(sinus->targetEntity);
+    Vector2 center = target ? target->position : sinus->center;
 
     sinus->curr += (sinus->speed * deltaTime);
     transform->position.x = center.x;
@@ -53,7 +55,8 @@ void OrByte::PhysicSystem::_handleSpiral(Transform* transform, int entity, doubl
     if (spiral == nullptr)
         return;
 
-    Vector2 center = spiral->target ? spiral->target->position : spiral->center;
+    Transform* target = this->_world.getComponent<Transform>(spiral->targetEntity);
+    Vector2 center = target ? target->position : spiral->center;
 
     spiral->angle += (spiral->angleSpeed * deltaTime);
     spiral->radius += spiral->expandSpeed * deltaTime;
