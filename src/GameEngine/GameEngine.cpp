@@ -79,6 +79,8 @@ void OrByte::GameEngine::_handleEvents()
         }
         this->_handleEvent(event);
     }
+    if (this->_root)
+        this->_graphicLib->setCursor(this->_root->getCursor());
 }
 
 bool OrByte::GameEngine::_handleEvent(Event& event)

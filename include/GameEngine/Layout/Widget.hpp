@@ -55,6 +55,12 @@ class Widget {
         [[nodiscard]] bool isVisible() const noexcept { return this->_visible; }
         void setTitle(std::string title) { this->_title = std::move(title); }
         [[nodiscard]] const std::string& getTitle() const noexcept { return this->_title; }
+        void setResizable(bool resizable) noexcept { this->_resizable = resizable; }
+        [[nodiscard]] bool isResizable() const noexcept { return this->_resizable; }
+        void setMinSize(int minSize);
+        [[nodiscard]] int getMinSize() const noexcept { return this->_minSize; }
+        [[nodiscard]] Side getSide() const noexcept { return this->_side; }
+        [[nodiscard]] CursorType getCursor() const noexcept { return this->_cursor; }
 
         void render(const IGraphic& graphic);
         bool handleEvent(const Event& event);
@@ -64,6 +70,15 @@ class Widget {
         virtual bool onEvent([[maybe_unused]] const Event& event, [[maybe_unused]] Vector2 localMouse) { return false; }
 
     private:
+        struct Drag {
+            Widget *target = nullptr;
+            int startSize = 0;
+            int startPos = 0;
+        };
+
+        static constexpr int GRIP = 4;
+        static constexpr int MIN_CONTENT = 50;
+
         std::string _title;
         int _size = 0;
         bool _visible = true;
@@ -72,10 +87,21 @@ class Widget {
         Widget *_parent = nullptr;
         std::array<std::unique_ptr<Widget>, SIDE_COUNT> _children;
 
+        Side _side = Side::Top;
+        bool _resizable = true;
+        int _minSize = 40;
+        Drag _drag;
+        CursorType _cursor = CursorType::Arrow;
+
         void _layout();
         void _layoutParent();
         bool _dispatchMouse(const Event& event);
         bool _dispatch(const Event& event);
+        
+        [[nodiscard]] bool _gripContains(int x, int y) const;
+        Widget *_findGrip(int x, int y);
+        [[nodiscard]] int _maxSize() const;
+        bool _handleResize(const Event& event);
 };
 
 } // namespace OrByte

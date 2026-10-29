@@ -33,6 +33,12 @@ namespace OrByte {
         std::uint8_t a = 255;
     };
 
+    enum class CursorType : std::uint8_t {
+        Arrow,
+        ResizeHorizontal,
+        ResizeVertical,
+    };
+
     class IGraphic {
         public:
             virtual void open(std::size_t width = 1920, std::size_t height = 1080, std::string title = "LayoutEngine") = 0;
@@ -54,6 +60,7 @@ namespace OrByte {
             virtual void popRegion() const = 0;
 
             virtual void setGameMode(bool enabled) const = 0;
+            virtual void setCursor(CursorType type) = 0;
 
             [[nodiscard]] virtual std::pair<unsigned, unsigned> getWindowSize() const noexcept = 0;
 

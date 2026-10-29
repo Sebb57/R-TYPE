@@ -66,6 +66,11 @@ void OrByte::SFML::open(const std::size_t width, const std::size_t height, std::
     this->_height = height;
     this->_nextFrameTime = std::chrono::steady_clock::now();
 
+    this->_cursorArrow.loadFromSystem(sf::Cursor::Arrow);
+    this->_cursorHorizontal.loadFromSystem(sf::Cursor::SizeHorizontal);
+    this->_cursorVertical.loadFromSystem(sf::Cursor::SizeVertical);
+    this->_currentCursor = CursorType::Arrow;
+
     this->_isOpen = true;
 }
 
@@ -511,6 +516,25 @@ Vector2 OrByte::SFML::currentOffset() const
         return { 0.f, 0.f };
     const Vector2u size = this->referenceSize();
     return getWindowOffset(sf::Vector2u(size.x, size.y));
+}
+
+void OrByte::SFML::setCursor(CursorType type)
+{
+    if (!this->_isOpen || !this->_window || type == this->_currentCursor)
+        return;
+
+    switch (type) {
+        case CursorType::ResizeHorizontal:
+            this->_window->setMouseCursor(this->_cursorHorizontal);
+            break;
+        case CursorType::ResizeVertical:
+            this->_window->setMouseCursor(this->_cursorVertical);
+            break;
+        default:
+            this->_window->setMouseCursor(this->_cursorArrow);
+            break;
+    }
+    this->_currentCursor = type;
 }
 
 extern "C" {
