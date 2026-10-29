@@ -21,6 +21,7 @@ class EntityManager {
         ~EntityManager() = default;
 
         int createEntity();
+        int createEntity(int entityId);
         void destroyEntity(int entityId);
         [[nodiscard]] bool entityExists(int entityId) const;
         [[nodiscard]] std::vector<int> getExistingEntities() const;

@@ -189,7 +189,7 @@ endforeach()
 
 set(COMPONENT_PLUGINS
     AddHealth Animator Collider Controllable Health Orbit Owner Poison
-    RegenHealth RemoveHealth Sinus Spiral Sprite Transform Velocity Wither
+    RegenHealth RemoveHealth Sinus Spiral Sprite Transform Velocity Wither Name
 )
 set(COMPONENT_TARGETS)
 foreach(component IN LISTS COMPONENT_PLUGINS)

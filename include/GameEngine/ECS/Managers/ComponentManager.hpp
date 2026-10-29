@@ -2,6 +2,7 @@
 #include "plugins/IComponent.hpp"
 #include <map>
 #include <memory>
+#include <vector>
 
 class ComponentManager
 {
@@ -47,6 +48,8 @@ class ComponentManager
 
             return nullptr;
         }
+
+        [[nodiscard]] std::vector<OrByte::IComponent*> getComponents(int entityId) const;
 
         void removeAllComponentsFromEntity(int entityId);
 };
