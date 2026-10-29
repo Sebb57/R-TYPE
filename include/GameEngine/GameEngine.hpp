@@ -34,7 +34,6 @@ class GameEngine {
         DynamicLibrary _graphicLoader;
         std::unique_ptr<IGraphic> _graphicLib;
         std::unique_ptr<Widget> _root;
-        // std::vector<Event> _events;
 
         void _initLayout();
 
