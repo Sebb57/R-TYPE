@@ -50,7 +50,6 @@ class GameInstance {
 
         unsigned _tickRate;
         unsigned _snapshotRate;
-        // the loaders outlive the world: systems may create components whose code lives in their plugin
         OrByte::DynamicLibrary _controlLoader;
         OrByte::DynamicLibrary _physicLoader;
         OrByte::DynamicLibrary _displayLoader;

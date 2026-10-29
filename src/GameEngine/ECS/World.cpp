@@ -7,6 +7,7 @@
 
 #include "GameEngine/ECS/World.hpp"
 #include "GameEngine/ECS/Components/Name.hpp"
+#include <vector>
 
 int World::createEntity()
 {
@@ -37,3 +38,11 @@ std::vector<int> World::getExistingEntities() const
 {
     return this->entityManager.getExistingEntities();
 }
+
+void World::clearWorld()
+{
+    for (int id : this->getExistingEntities())
+        this->destroyEntity(id);
+    this->_selectedEntityId = -1;
+}
+

@@ -33,6 +33,8 @@ namespace OrByte {
         Owner,
         Controllable,
         Name,
+
+        ENUM_END // no type bellow this one
     };
 
     class IComponent {

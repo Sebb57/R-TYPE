@@ -15,13 +15,14 @@
 #include <filesystem>
 #include <memory>
 #include "GameEngine/ECS/World.hpp"
+#include "GameEngine/ECS/WorldSerializer.hpp"
 #include <vector>
 
 namespace OrByte {
 
 class GameEngine {
     public:
-        enum GraphicalLibs {
+        enum GraphicalLibs : std::uint8_t {
             SFML,
         };
 
@@ -35,9 +36,12 @@ class GameEngine {
         DynamicLibrary _graphicLoader;
         std::unique_ptr<IGraphic> _graphicLib;
         std::unique_ptr<Widget> _root;
+        std::vector<std::unique_ptr<DynamicLibrary>> _componentLoaders;
+        ComponentFactories _componentFactories;
         World _world;
         // std::vector<Event> _events;
 
+        void _loadComponents();
         void _initLayout();
 
         void _handleEvents();
@@ -46,6 +50,6 @@ class GameEngine {
         void _render();
 };
 
-}
+} // namespace OrByte
 
 #endif /* GAMEENGINE_HPP_ */
