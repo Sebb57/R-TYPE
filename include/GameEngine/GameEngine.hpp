@@ -14,6 +14,7 @@
 #include "plugins/IGraphic.hpp"
 #include <filesystem>
 #include <memory>
+#include "GameEngine/ECS/World.hpp"
 #include <vector>
 
 namespace OrByte {
@@ -34,6 +35,7 @@ class GameEngine {
         DynamicLibrary _graphicLoader;
         std::unique_ptr<IGraphic> _graphicLib;
         std::unique_ptr<Widget> _root;
+        World _world;
         // std::vector<Event> _events;
 
         void _initLayout();

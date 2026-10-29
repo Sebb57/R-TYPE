@@ -28,7 +28,8 @@ namespace OrByte {
         Wither,
         Animator,
         Owner,
-        Controllable
+        Controllable,
+        Name,
     };
 
     class IComponent {

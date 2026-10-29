@@ -16,6 +16,7 @@
 class World {
     EntityManager entityManager;
     ComponentManager componentManager;
+    std::size_t _selectedEntityId = -1;
     
 public:
     World() = default;
@@ -40,6 +41,13 @@ public:
     template <typename T>
     void removeComponentFromEntity(int entityId) {
         componentManager.removeComponentFromEntity<T>(entityId);
+    }
+
+    void setEntitySelected(int entityId) {
+        this->_selectedEntityId = entityId;
+    }
+    int getSelectedEntity() const {
+        return static_cast<int>(this->_selectedEntityId);
     }
 };
 
