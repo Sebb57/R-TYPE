@@ -62,10 +62,7 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/GameEngine/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Orbyte/*.cpp"
 )
-# Systems/Components are built as plugins, main.cpp as its own executable.
 list(FILTER ENGINE_SOURCES EXCLUDE REGEX "/src/GameEngine/(Systems/.*|Components/.*|main)\\.cpp$")
-# TEMPORARY (r-type_solo, see the end of this file): src/GameEngine/client and
-# src/GameEngine/server hold the merged client/server model, not engine code.
 list(FILTER ENGINE_SOURCES EXCLUDE REGEX "/src/GameEngine/(client|server)/")
 list(APPEND ENGINE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/plugins/DynamicLibrary.cpp")
 add_library(rtype_engine STATIC ${ENGINE_SOURCES})
@@ -123,11 +120,6 @@ set(SFML_BUILD_NETWORK OFF CACHE BOOL "" FORCE)
 if(WIN32)
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 endif()
-# Cross-compiling for Windows from Linux: SFML ships its dependencies prebuilt in
-# extlibs/. Allow lookups there despite the toolchain confining them to the
-# target sysroot, and point at OpenAL directly: FindOpenAL looks for "OpenAL32"
-# but the file is "libopenal32.a", which only matches on a case-insensitive
-# filesystem.
 if(CMAKE_CROSSCOMPILING AND MINGW)
     list(APPEND CMAKE_FIND_ROOT_PATH "${FETCHCONTENT_BASE_DIR}/sfml-src")
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -153,8 +145,6 @@ else()
     set(RTYPE_PLUGIN_SUFFIX ".so")
 endif()
 
-# $<1:...> prevents multi-config generators (MSVC) from appending Debug/Release.
-# On Windows a MODULE is a "runtime" artifact, so both properties are set.
 function(rtype_configure_plugin target output_name output_dir)
     set_target_properties(${target} PROPERTIES
         OUTPUT_NAME "${output_name}"
@@ -200,7 +190,6 @@ foreach(component IN LISTS COMPONENT_PLUGINS)
     list(APPEND COMPONENT_TARGETS ${component_target})
 endforeach()
 
-# The server loads the systems at runtime: make sure they are built with it.
 add_dependencies(r-type_server ${SYSTEM_TARGETS})
 
 # ---------------------------------------------------------------------------
@@ -218,8 +207,6 @@ set_target_properties(r-type_client PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}>"
 )
 
-# SFML is linked statically on Windows, but OpenAL stays a DLL (LGPL) and must
-# sit next to the client executable.
 if(WIN32)
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
         set(RTYPE_OPENAL_DLL "${sfml_SOURCE_DIR}/extlibs/bin/x64/openal32.dll")
@@ -294,39 +281,3 @@ if(MINGW)
     endforeach()
 endif()
 
-# =============================================================================
-# TEMPORARY: merged client/server model for the future game engine
-# -----------------------------------------------------------------------------
-# r-type_solo is a client that hosts its own server to play solo, the network
-# side only stays for spectating: the game is computed and rendered locally,
-# spectators only receive snapshots of what to draw. It is the model the game
-# engine will use, so it lives in src/GameEngine/{client,server} and
-# include/GameEngine/{client,server,protocol}. It is fully separate from the
-# old game above (r-type_client / r-type_server), which still builds as before.
-#
-# Remove this block and the ENGINE_SOURCES filter at the top of this file once
-# the game engine builds this model itself.
-# =============================================================================
-file(GLOB_RECURSE SOLO_SOURCES CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/GameEngine/client/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/GameEngine/server/*.cpp")
-add_executable(r-type_solo ${SOLO_SOURCES})
-target_include_directories(r-type_solo PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(r-type_solo PRIVATE rtype_engine rtype_asio bitsery)
-add_dependencies(r-type_solo rtype_sfml ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
-target_compile_features(r-type_solo PRIVATE cxx_std_23)
-set_target_properties(r-type_solo PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}>"
-)
-if(MSVC)
-    target_compile_options(r-type_solo PRIVATE /W4 /permissive- /utf-8 /bigobj)
-else()
-    target_compile_options(r-type_solo PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-if(WIN32)
-    target_compile_definitions(r-type_solo PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
-endif()
-if(MINGW)
-    target_link_options(r-type_solo PRIVATE -static)
-endif()
-# =================== END OF TEMPORARY r-type_solo BLOCK ======================
