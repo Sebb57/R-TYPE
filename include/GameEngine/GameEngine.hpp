@@ -15,8 +15,7 @@
 #include <filesystem>
 #include <memory>
 #include "GameEngine/ECS/World.hpp"
-#include "GameEngine/ECS/WorldSerializer.hpp"
-#include <vector>
+#include "GameEngine/ECS/ComponentPlugins.hpp"
 
 namespace OrByte {
 
@@ -36,12 +35,10 @@ class GameEngine {
         DynamicLibrary _graphicLoader;
         std::unique_ptr<IGraphic> _graphicLib;
         std::unique_ptr<Widget> _root;
-        std::vector<std::unique_ptr<DynamicLibrary>> _componentLoaders;
-        ComponentFactories _componentFactories;
+        ComponentPlugins _components;
         World _world;
         // std::vector<Event> _events;
 
-        void _loadComponents();
         void _initLayout();
 
         void _handleEvents();
