@@ -68,7 +68,6 @@ void OrByte::deserializeWorld(World& world, const std::filesystem::path& path, c
             ComponentType type{};
             deserializer.value1b(type);
 
-            // the payload size is only known by the component, so an unknown type cannot be skipped
             auto factory = factories.find(type);
             if (factory == factories.end())
                 throw std::runtime_error(path.string() + " uses component type " + std::to_string(static_cast<int>(type)) + " which is not loaded");
