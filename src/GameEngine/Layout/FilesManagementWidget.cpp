@@ -15,7 +15,6 @@
 #include <iostream>
 #include <string>
 #include <system_error>
-#include <utility>
 
 namespace {
 
@@ -33,31 +32,30 @@ constexpr int ButtonWidth = 90;
 constexpr int FileButtonWidth = 210;
 constexpr unsigned ButtonTextSize = 14;
 constexpr unsigned FileTextSize = 12;
-// IGraphic cannot measure text, glyphs are assumed to be ~0.55 times the font size wide
-constexpr float GlyphWidthRatio = 0.55f;
+constexpr float GlyphWidthRatio = 0.55F;
 
-const OrByte::RGBA ButtonColor{60, 60, 60, 255};
-const OrByte::RGBA ActiveColor{52, 62, 74, 255};
-const OrByte::RGBA BorderColor{80, 80, 80, 255};
-const OrByte::RGBA ActiveBorderColor{120, 160, 200, 255};
-const OrByte::RGBA TextColor{220, 220, 220, 255};
-const OrByte::RGBA MutedText{170, 180, 196, 255};
+const OrByte::RGBA ButtonColor(60, 60, 60, 255);
+const OrByte::RGBA ActiveColor(52, 62, 74, 255);
+const OrByte::RGBA BorderColor(80, 80, 80, 255);
+const OrByte::RGBA ActiveBorderColor(120, 160, 200, 255);
+const OrByte::RGBA TextColor(220, 220, 220, 255);
+const OrByte::RGBA MutedText(170, 180, 196, 255);
 
 [[nodiscard]] Rect buttonRect(Button button, int height)
 {
     const int index = static_cast<int>(button);
 
-    return {Padding + index * (ButtonWidth + Padding), Padding, ButtonWidth, std::max(0, height - 2 * Padding)};
+    return {Padding + (index * (ButtonWidth + Padding)), Padding, ButtonWidth, std::max(0, height - (2 * Padding))};
 }
 
 [[nodiscard]] constexpr int pickerX()
 {
-    return Padding + ButtonCount * (ButtonWidth + Padding) + Padding;
+    return Padding + (ButtonCount * (ButtonWidth + Padding)) + Padding;
 }
 
 [[nodiscard]] Rect fileRect(std::size_t slot, int height)
 {
-    return {pickerX() + static_cast<int>(slot) * (FileButtonWidth + Padding), Padding, FileButtonWidth, std::max(0, height - 2 * Padding)};
+    return {pickerX() + (static_cast<int>(slot) * (FileButtonWidth + Padding)), Padding, FileButtonWidth, std::max(0, height - (2 * Padding))};
 }
 
 [[nodiscard]] std::size_t visibleFiles(int width)
@@ -85,12 +83,12 @@ void drawButton(const OrByte::IGraphic& graphic, const Rect& rect, const std::st
 {
     const auto w = static_cast<float>(rect.w);
     const auto h = static_cast<float>(rect.h);
-    const float textX = static_cast<float>(rect.x) + std::max(4.0f, (w - textWidth(label, textSize)) * 0.5f);
-    const float textY = static_cast<float>(rect.y) + (h - static_cast<float>(textSize)) * 0.5f - 2.0f;
+    const float textX = static_cast<float>(rect.x) + std::max(4.0F, (w - textWidth(label, textSize)) * 0.5F);
+    const float textY = static_cast<float>(rect.y) + (h - (static_cast<float>(textSize)) * 0.5F) - 2.0F;
 
-    graphic.drawRectangle({{static_cast<float>(rect.x) + w * 0.5f, static_cast<float>(rect.y) + h * 0.5f}, {1.0f, 1.0f}, 0.0f},
+    graphic.drawRectangle({{static_cast<float>(rect.x) + w * 0.5F, static_cast<float>(rect.y) + (h * 0.5F)}, {1.0F, 1.0F}, 0.0F},
         {w, h}, active ? ActiveColor : ButtonColor, 1, active ? ActiveBorderColor : BorderColor);
-    graphic.drawText({{textX, textY}, {1.0f, 1.0f}, 0.0f}, label, textSize, TextColor, 0, OrByte::RGBA{0, 0, 0, 0}, OrByte::constants::FONT_DEFAULT);
+    graphic.drawText({{textX, textY}, {1.0F, 1.0F}, 0.0F}, label, textSize, TextColor, 0, OrByte::RGBA(0, 0, 0, 0), OrByte::constants::FONT_DEFAULT);
 }
 
 [[nodiscard]] std::string timestampedWorldName()
@@ -149,14 +147,13 @@ void OrByte::FilesManagementWidget::_refreshFiles()
         if (entry.is_regular_file(error) && entry.path().extension() == WORLD_EXTENSION)
             this->_files.push_back(entry.path());
     }
-    // most recent saves first
     std::ranges::sort(this->_files, [](const std::filesystem::path& lhs, const std::filesystem::path& rhs) {
         std::error_code ignored;
         return std::filesystem::last_write_time(lhs, ignored) > std::filesystem::last_write_time(rhs, ignored);
     });
     this->_scrollOffset = 0;
 
-    const int needed = pickerX() + static_cast<int>(std::max<std::size_t>(this->_files.size(), 1)) * (FileButtonWidth + Padding);
+    const int needed = pickerX() + (static_cast<int>(std::max<std::size_t>(this->_files.size(), 1)) * (FileButtonWidth) + Padding);
     const int available = this->getParent() != nullptr ? this->getParent()->getRect().w : needed;
     this->setSize(std::max(this->_baseWidth, std::min(needed, available)));
 }
@@ -213,8 +210,8 @@ void OrByte::FilesManagementWidget::draw(const IGraphic& graphic, Vector2u size)
     const int width = static_cast<int>(size.x);
     const int height = static_cast<int>(size.y);
 
-    graphic.drawRectangle({{static_cast<float>(width) * 0.5f, static_cast<float>(height) * 0.5f}, {1.0f, 1.0f}, 0.0f},
-        {static_cast<float>(width), static_cast<float>(height)}, RGBA{40, 40, 40, 255}, 1, BorderColor);
+    graphic.drawRectangle({{static_cast<float>(width) * 0.5F, static_cast<float>(height) * 0.5F}, {1.0F, 1.0F}, 0.0F},
+        {static_cast<float>(width), static_cast<float>(height)}, RGBA(40, 40, 40, 255), 1, BorderColor);
     for (std::size_t i = 0; i < ButtonLabels.size(); ++i) {
         const auto button = static_cast<Button>(i);
         drawButton(graphic, buttonRect(button, height), ButtonLabels.at(i), ButtonTextSize, button == Button::Load && this->_picking);
@@ -222,14 +219,14 @@ void OrByte::FilesManagementWidget::draw(const IGraphic& graphic, Vector2u size)
     if (!this->_picking)
         return;
 
-    const auto separatorX = static_cast<float>(pickerX() - Padding) - 0.5f;
-    graphic.drawRectangle({{separatorX, static_cast<float>(height) * 0.5f}, {1.0f, 1.0f}, 0.0f},
-        {1.0f, static_cast<float>(std::max(0, height - 2 * Padding))}, BorderColor, 0, RGBA{0, 0, 0});
+    const auto separatorX = static_cast<float>(pickerX() - Padding) - 0.5F;
+    graphic.drawRectangle({{separatorX, static_cast<float>(height) * 0.5F}, {1.0F, 1.0F}, 0.0F},
+        {1.0F, static_cast<float>(std::max(0, height - (2 * Padding)))}, BorderColor, 0, RGBA(0, 0, 0));
 
     if (this->_files.empty()) {
         const std::string message = std::string("No world saved in ") + constants::CONFIGS_DIR;
-        graphic.drawText({{static_cast<float>(pickerX()), (static_cast<float>(height) - FileTextSize) * 0.5f - 2.0f}, {1.0f, 1.0f}, 0.0f},
-            message, FileTextSize, MutedText, 0, RGBA{0, 0, 0, 0}, constants::FONT_DEFAULT);
+        graphic.drawText({{static_cast<float>(pickerX()), ((static_cast<float>(height) - FileTextSize) * 0.5F) - 2.0F}, {1.0F, 1.0F}, 0.0F},
+            message, FileTextSize, MutedText, 0, RGBA(0, 0, 0, 0), constants::FONT_DEFAULT);
         return;
     }
 
