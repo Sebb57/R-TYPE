@@ -1,4 +1,4 @@
-# Standalone build of r-type_solo only:
+# Standalone build of OrByte-gameClient only:
 #   cmake -S cmake/GameEngine -B build-solo && cmake --build build-solo
 cmake_minimum_required(VERSION 3.23)
 
@@ -131,19 +131,18 @@ file(GLOB_RECURSE SOLO_SOURCES CONFIGURE_DEPENDS
     "${RTYPE_ROOT}/src/GameEngine/client/*.cpp"
     "${RTYPE_ROOT}/src/GameEngine/server/*.cpp"
 )
-add_executable(r-type_solo ${SOLO_SOURCES})
-target_include_directories(r-type_solo PRIVATE "${RTYPE_ROOT}/include")
-target_link_libraries(r-type_solo PRIVATE rtype_engine rtype_asio bitsery)
-# The plugins are loaded at runtime: make sure they are built with it.
-add_dependencies(r-type_solo rtype_sfml ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
-set_target_properties(r-type_solo PROPERTIES
+add_executable(OrByte-gameClient ${SOLO_SOURCES})
+target_include_directories(OrByte-gameClient PRIVATE "${RTYPE_ROOT}/include")
+target_link_libraries(OrByte-gameClient PRIVATE rtype_engine rtype_asio bitsery)
+add_dependencies(OrByte-gameClient rtype_sfml ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
+set_target_properties(OrByte-gameClient PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "$<1:${RTYPE_ROOT}>"
 )
 
 foreach(target IN ITEMS
     rtype_engine
     rtype_sfml
-    r-type_solo
+    OrByte-gameClient
     ${SYSTEM_TARGETS}
     ${COMPONENT_TARGETS}
 )
@@ -158,5 +157,5 @@ foreach(target IN ITEMS
 endforeach()
 
 if(MINGW)
-    target_link_options(r-type_solo PRIVATE -static)
+    target_link_options(OrByte-gameClient PRIVATE -static)
 endif()

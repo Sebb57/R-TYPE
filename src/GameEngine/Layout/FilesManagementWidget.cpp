@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cstdlib>
 #include <exception>
 #include <format>
 #include <iostream>
@@ -107,7 +108,10 @@ OrByte::FilesManagementWidget::FilesManagementWidget(World& world, const Compone
 
 void OrByte::FilesManagementWidget::_compile()
 {
-    std::cout << "compile" << std::endl;
+    std::cout << "Compiling game client" << std::endl;
+    system("cmake -S cmake/GameEngine -B build-solo && cmake --build build-solo");
+    std::cout << "Done." << std::endl << "Don't forget to save your game to run it." << std::endl;
+    std::cout << "Usage: ./OrByte-gameClient <path to game file>" << std::endl;
 }
 
 void OrByte::FilesManagementWidget::_save()

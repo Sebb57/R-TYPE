@@ -2,8 +2,7 @@
 r-type_client
 r-type_server
 r-type_game-engine
-#temporary
-r-type_solo
+OrByte-gameClient
 
 # Prerequisites
 *.d
