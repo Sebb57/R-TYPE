@@ -9,7 +9,6 @@
 #include "plugins/Serialization.hpp"
 #include <fstream>
 #include <memory>
-#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -17,7 +16,7 @@ void OrByte::serializeWorld(const World& world, const std::filesystem::path& pat
 {
     std::fstream file{path, std::ios::out | std::ios::binary | std::ios::trunc};
     if (!file.is_open())
-        throw std::runtime_error("Cannot open " + path.string());
+        throw WorldOpenFailed(path);
     Serializer serializer{file};
     const std::vector<int> entities = world.getExistingEntities();
 
@@ -35,24 +34,24 @@ void OrByte::serializeWorld(const World& world, const std::filesystem::path& pat
     }
     serializer.adapter().flush();
     if (!file)
-        throw std::runtime_error("Cannot write " + path.string());
+        throw WorldWriteFailed(path);
 }
 
 void OrByte::deserializeWorld(World& world, const std::filesystem::path& path, const ComponentFactories& factories)
 {
     std::fstream file{path, std::ios::in | std::ios::binary};
     if (!file.is_open())
-        throw std::runtime_error("Cannot open " + path.string());
+        throw WorldOpenFailed(path);
     Deserializer deserializer{file};
     std::uint32_t magic = 0;
     std::uint32_t entityCount = 0;
 
     deserializer.value4b(magic);
     if (deserializer.adapter().error() != bitsery::ReaderError::NoError || magic != WORLD_MAGIC)
-        throw std::runtime_error(path.string() + " is not an OrByte world");
+        throw InvalidWorld(path, "is not an OrByte world");
     deserializer.value4b(entityCount);
     if (deserializer.adapter().error() != bitsery::ReaderError::NoError || entityCount > MaxContainerSize)
-        throw std::runtime_error(path.string() + " has an invalid entity count");
+        throw InvalidWorld(path, "has an invalid entity count");
 
     world.clearWorld();
     for (std::uint32_t i = 0; i < entityCount; ++i) {
@@ -62,7 +61,7 @@ void OrByte::deserializeWorld(World& world, const std::filesystem::path& path, c
         deserializer.value4b(id);
         deserializer.value4b(componentCount);
         if (deserializer.adapter().error() != bitsery::ReaderError::NoError || componentCount > static_cast<std::uint32_t>(ComponentType::ENUM_END))
-            throw std::runtime_error(path.string() + " has an invalid entity header");
+            throw InvalidWorld(path, "has an invalid entity header");
         world.createEntity(id);
         for (std::uint32_t c = 0; c < componentCount; c++) {
             ComponentType type{};
@@ -70,12 +69,12 @@ void OrByte::deserializeWorld(World& world, const std::filesystem::path& path, c
 
             auto factory = factories.find(type);
             if (factory == factories.end())
-                throw std::runtime_error(path.string() + " uses component type " + std::to_string(static_cast<int>(type)) + " which is not loaded");
+                throw MissingComponent(path, type);
             std::unique_ptr<IComponent> component{factory->second()};
             component->deserialize(deserializer);
             world.addComponentToEntity(id, std::move(component));
         }
         if (deserializer.adapter().error() != bitsery::ReaderError::NoError)
-            throw std::runtime_error(path.string() + " is truncated or corrupted");
+            throw InvalidWorld(path, "is truncated or corrupted");
     }
 }

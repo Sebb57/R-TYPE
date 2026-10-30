@@ -32,7 +32,7 @@ int main()
 {
     try {
         if (!std::filesystem::is_regular_file(OrByte::constants::GAME_WORLD))
-            throw std::runtime_error("error reading world file");
+            throw OrByte::WorldOpenFailed(OrByte::constants::GAME_WORLD);
         const OrByte::ComponentPlugins components = OrByte::loadComponentPlugins(OrByte::constants::COMPONENTS_DIR);
         client::ClientConfig config;
         client::Client client(std::move(config), engineGame(OrByte::constants::GAME_WORLD, components.factories));
