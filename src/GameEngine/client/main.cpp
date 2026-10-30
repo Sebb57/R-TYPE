@@ -28,19 +28,14 @@ server::GameInstance::Setup engineGame(std::filesystem::path path, const OrByte:
 
 } // namespace
 
-int main(int argc, char **argv)
+int main()
 {
     try {
-        if (argc != 2) {
-            std::cerr << "Usage: " << argv[0] << " <path to game file>" << std::endl;
-            return OrByte::constants::FAILURE;
-        }
-        const std::filesystem::path path = argv[1];
-        if (!std::filesystem::is_regular_file(path))
-            throw std::runtime_error(path.string() + " is not a game file");
+        if (!std::filesystem::is_regular_file(OrByte::constants::GAME_WORLD))
+            throw std::runtime_error("error reading world file");
         const OrByte::ComponentPlugins components = OrByte::loadComponentPlugins(OrByte::constants::COMPONENTS_DIR);
         client::ClientConfig config;
-        client::Client client(std::move(config), engineGame(path, components.factories));
+        client::Client client(std::move(config), engineGame(OrByte::constants::GAME_WORLD, components.factories));
         client.run();
         return OrByte::constants::SUCCESS;
     }
