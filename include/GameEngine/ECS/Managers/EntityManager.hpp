@@ -9,9 +9,7 @@
 #ifndef ENTITYMANAGER_HPP_
     #define ENTITYMANAGER_HPP_
 
-    #include "GameEngine/ECS/Components/IComponent.hpp"
     #include <map>
-    #include <memory>
     #include <vector>
 
 class EntityManager {
@@ -23,9 +21,10 @@ class EntityManager {
         ~EntityManager() = default;
 
         int createEntity();
+        int createEntity(int entityId);
         void destroyEntity(int entityId);
-        bool entityExists(int entityId) const;
-        std::vector<int> getExistingEntities() const;
+        [[nodiscard]] bool entityExists(int entityId) const;
+        [[nodiscard]] std::vector<int> getExistingEntities() const;
 };
 
 #endif /* ENTITYMANAGER_HPP_ */

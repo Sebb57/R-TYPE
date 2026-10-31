@@ -9,13 +9,12 @@
 #ifndef POISON_HPP_
     #define POISON_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
 
 namespace OrByte {
 
-struct Poison : public IComponent
+struct Poison : public OrByte::AComponent<OrByte::ComponentType::Poison>
 {
-    inline static constexpr ComponentType Type = ComponentType::Poison;
 
     Poison() = default;
     Poison(int damage, float duration) : damage(damage), duration(duration) {}
@@ -24,8 +23,22 @@ struct Poison : public IComponent
     int damage{100};
     float cooldown{1.0F};
     float duration{3.0F};
+
+    void serialize(Serializer& serializer) const final
+    {
+        serializer.value4b(this->damage);
+        serializer.value4b(this->cooldown);
+        serializer.value4b(this->duration);
+    }
+
+    void deserialize(Deserializer& deserializer) final
+    {
+        deserializer.value4b(this->damage);
+        deserializer.value4b(this->cooldown);
+        deserializer.value4b(this->duration);
+    }
 };
 
-}
+} // namespace OrByte
 
 #endif /* POISON_HPP_ */

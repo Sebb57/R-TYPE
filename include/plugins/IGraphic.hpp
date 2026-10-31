@@ -33,6 +33,15 @@ namespace OrByte {
         std::uint8_t a = 255;
     };
 
+    template <typename S>
+    void serialize(S& s, RGBA& color)
+    {
+        s.value1b(color.r);
+        s.value1b(color.g);
+        s.value1b(color.b);
+        s.value1b(color.a);
+    }
+
     class IGraphic {
         public:
             virtual void open(std::size_t width = 1920, std::size_t height = 1080, std::string title = "LayoutEngine") = 0;
@@ -43,10 +52,17 @@ namespace OrByte {
             [[nodiscard]] virtual bool isOpen() const noexcept = 0;
 
             virtual void drawRectangle(const Transform& transform, Vector2 size, RGBA fillColor = {255, 255, 255}, unsigned outlineThickness = 0, RGBA outlineColor = {0, 0, 0}) const = 0;
-            virtual void drawCircle(const Transform& transform, unsigned radius, RGBA fillColor = {255, 255, 255}, unsigned outlineThickness = 0, RGBA outlineColor = {0, 0, 0}) const = 0;
+            virtual void drawCircle(const Transform& transform, float radius, RGBA fillColor = {255, 255, 255}, unsigned outlineThickness = 0, RGBA outlineColor = {0, 0, 0}) const = 0;
             virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path) const = 0;
             virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, Rect rect) const = 0;
             virtual void drawText(const Transform& transform, std::string text, unsigned fontSize = 20, RGBA fillColor = {255, 255, 255}, unsigned outlineThickness = 0, RGBA outlineColor = {0, 0, 0}, std::filesystem::path font = constants::FONT_DEFAULT) const = 0;
+
+            virtual Vector2u regionSize() const = 0;
+            virtual void applyRegionView() const = 0;
+            virtual void pushRegion(const Rect& pixelRect) const = 0;
+            virtual void popRegion() const = 0;
+
+            virtual void setGameMode(bool enabled) const = 0;
 
             [[nodiscard]] virtual std::pair<unsigned, unsigned> getWindowSize() const noexcept = 0;
 

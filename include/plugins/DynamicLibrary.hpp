@@ -22,37 +22,48 @@
     #include <dlfcn.h>
 #endif
 #include <exception>
+#include <filesystem>
 #include <iostream>
 #include <string>
 
+namespace OrByte {
+
 class DynamicLibrary {
     void* _handle = nullptr;
-    std::string _path;
+    std::filesystem::path _path;
 
     public:
-        DynamicLibrary(const std::string& path);
+        enum PluginType: std::uint8_t {
+            GRAPHICAL_LIB,
+            COMPONENT,
+            SYSTEMS,
+        };
+
+        DynamicLibrary(const std::filesystem::path& path);
         ~DynamicLibrary() noexcept;
 
-        std::size_t (*type)() = nullptr;
+        PluginType (*type)() = nullptr;
 
-        std::string getPath() const noexcept { return this->_path; }
+        [[nodiscard]] std::string getPath() const noexcept { return this->_path; }
         template <typename T>
         T loadFunction(std::string symbol)
         {
-#ifdef _WIN32
+        #ifdef _WIN32
             T func = reinterpret_cast<T>(
                 GetProcAddress(static_cast<HMODULE>(this->_handle), symbol.c_str()));
 
             if (!func)
                 throw FunctionLoadFailed(symbol);
-#else
+        #else
             dlerror();
             T func = reinterpret_cast<T>(dlsym(this->_handle, symbol.c_str()));
             const char *error = dlerror();
 
-            if (error != nullptr || !func)
+            if (error != nullptr || !func) {
+                std::cerr << "ERROR: " << (error ? error : "symbol is null") << std::endl;
                 throw FunctionLoadFailed(symbol);
-#endif
+            }
+        #endif
             return func;
         }
 
@@ -62,7 +73,7 @@ class DynamicLibrary {
 
             public:
                 DynamicLibraryException(const std::string& msg) : _msg(msg) {}
-                virtual const char* what() const noexcept override { return this->_msg.c_str(); }
+                [[nodiscard]] virtual const char* what() const noexcept override { return this->_msg.c_str(); }
         };
 
         class LibraryLoadFailed : public DynamicLibraryException {
@@ -86,5 +97,7 @@ class DynamicLibrary {
                     : DynamicLibraryException("Error: '" + path + "' not a graphical library") {}
         };
 };
+
+} // namespace OrByte
 
 #endif /* DYNAMICLIBRARY_HPP_ */

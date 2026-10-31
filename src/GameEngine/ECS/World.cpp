@@ -6,20 +6,43 @@
 */
 
 #include "GameEngine/ECS/World.hpp"
+#include "GameEngine/ECS/Components/Name.hpp"
+#include <vector>
 
-int World::createEntity() {
-    return this->entityManager.createEntity();
+int World::createEntity()
+{
+    int id = this->entityManager.createEntity();
+    this->componentManager.addComponentToEntity<OrByte::Name>(id, "Entity_" + std::to_string(id));
+    return id;
 }
 
-void World::destroyEntity(int entityId) {
+int World::createEntity(int entityId)
+{
+    this->entityManager.createEntity(entityId);
+    this->componentManager.addComponentToEntity<OrByte::Name>(entityId, "Entity_" + std::to_string(entityId));
+    return entityId;
+}
+
+void World::destroyEntity(int entityId)
+{
     this->entityManager.destroyEntity(entityId);
     this->componentManager.removeAllComponentsFromEntity(entityId);
 }
 
-bool World::entityExists(int entityId) const {
+bool World::entityExists(int entityId) const
+{
     return this->entityManager.entityExists(entityId);
 }
 
-std::vector<int> World::getExistingEntities() const {
+std::vector<int> World::getExistingEntities() const
+{
     return this->entityManager.getExistingEntities();
 }
+
+void World::clearWorld()
+{
+    for (int id : this->getExistingEntities())
+        this->destroyEntity(id);
+    this->_selectedEntityId = -1;
+}
+

@@ -16,6 +16,7 @@
 #include "client/network/NetworkClient.hpp"
 #include "client/scenes/SceneContext.hpp"
 #include "client/scenes/SceneManager.hpp"
+#include "plugins/DynamicLibrary.hpp"
 #include "plugins/IGraphic.hpp"
 
 namespace client {
@@ -31,7 +32,8 @@ class Client {
         void pollEvents();
 
         ClientConfig _config;
-        std::unique_ptr<OrByte::IGraphic> _graphic;
+        OrByte::DynamicLibrary _graphicLoader;
+        std::unique_ptr<OrByte::IGraphic> _graphicLib;
         NetworkClient _network;
         SceneManager _scenes;
         Controls _controls;

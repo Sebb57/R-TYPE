@@ -9,13 +9,12 @@
 #ifndef HEALTH_HPP_
     #define HEALTH_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
 
 namespace OrByte {
 
-struct Health : public IComponent
+struct Health : public OrByte::AComponent<OrByte::ComponentType::Health>
 {
-    inline static constexpr ComponentType Type = ComponentType::Health;
 
     Health() = default;
     Health(int initHealth) : currentHealth(initHealth), maxHealth(initHealth) {}
@@ -27,6 +26,18 @@ struct Health : public IComponent
 
     int currentHealth{100};
     int maxHealth{100};
+
+    void serialize(Serializer& serializer) const final
+    {
+        serializer.value4b(this->currentHealth);
+        serializer.value4b(this->maxHealth);
+    }
+
+    void deserialize(Deserializer& deserializer) final
+    {
+        deserializer.value4b(this->currentHealth);
+        deserializer.value4b(this->maxHealth);
+    }
 };
 
 }
