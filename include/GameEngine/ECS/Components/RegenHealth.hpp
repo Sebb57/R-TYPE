@@ -23,8 +23,22 @@ struct RegenHealth : public OrByte::AComponent<OrByte::ComponentType::RegenHealt
     int regenAmount{100};
     float cooldown{1.0F};
     float duration{3.0F};
+
+    void serialize(Serializer& serializer) const final
+    {
+        serializer.value4b(this->regenAmount);
+        serializer.value4b(this->cooldown);
+        serializer.value4b(this->duration);
+    }
+
+    void deserialize(Deserializer& deserializer) final
+    {
+        deserializer.value4b(this->regenAmount);
+        deserializer.value4b(this->cooldown);
+        deserializer.value4b(this->duration);
+    }
 };
 
-}
+} // namespace OrByte
 
 #endif /* REGENHEALTH_HPP_ */

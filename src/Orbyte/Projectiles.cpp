@@ -10,11 +10,11 @@
 #include "constants.hpp"
 #include <cmath>
 
-RType::Projectiles::Projectiles(World *world, int shooterId, Team owner, float verticalOffset) : _owner(owner), _spawnPos{0.0f, 0.0f}, _velocity{0.0f, 0.0f}
+OrByte::Projectiles::Projectiles(World *world, int shooterId, OrByte::Team owner, float verticalOffset) : _owner(owner), _spawnPos{0.0f, 0.0f}, _velocity{0.0f, 0.0f}
 {
     constexpr float SPAWN_OFFSET = 50.0f;
     this->ID = world->createEntity();
-    const float dir = (owner == Team::Player) ? 1.0f : -1.0f;
+    const float dir = (owner == OrByte::Team::Player) ? 1.0f : -1.0f;
     OrByte::Transform *shooterTransform = world->getComponent<OrByte::Transform>(shooterId);
 
     if (shooterTransform != nullptr) {
@@ -26,17 +26,17 @@ RType::Projectiles::Projectiles(World *world, int shooterId, Team owner, float v
     this->_velocity.y = 0.0f;
 }
 
-void RType::Projectiles::CreateServeurComponent(World *world)
+void OrByte::Projectiles::CreateServeurComponent(World *world)
 {
     world->addComponentToEntity<Collider>(this->ID, Vector2(OrByte::constants::PROJECTILE_WIDTH * OrByte::constants::PROJECTILE_COLLIDER_SCALE,
         OrByte::constants::PROJECTILE_HEIGHT * OrByte::constants::PROJECTILE_COLLIDER_SCALE));
     world->addComponentToEntity<OrByte::Velocity>(this->ID, this->_velocity);
     world->addComponentToEntity<OrByte::Transform>(this->ID, this->_spawnPos, Vector2 {1.0f, 1.0f}, 0.0f);
     world->addComponentToEntity<OrByte::RemoveHealth>(this->ID, 10);
-    world->addComponentToEntity<Owner>(this->ID, _owner);
+    world->addComponentToEntity<OrByte::Owner>(this->ID, _owner);
 }
 
-void RType::Projectiles::CreateClientComponent(World *world)
+void OrByte::Projectiles::CreateClientComponent(World *world)
 {
     world->addComponentToEntity<OrByte::Transform>(this->ID, this->_spawnPos, Vector2 {1.0f, 1.0f}, 0.0f);
     OrByte::Animation animation;
@@ -67,13 +67,13 @@ static bool applyDamage(World *world, int attacker, int victim)
     return health->currentHealth <= 0;
 }
 
-void RType::Projectiles::CheckCollision(World *world, Vector2 entity)
+void OrByte::Projectiles::CheckCollision(World *world, Vector2 entity)
 {
     const int idA = static_cast<int>(entity.x);
     const int idB = static_cast<int>(entity.y);
 
-    Owner *ownerA = world->getComponent<Owner>(idA);
-    Owner *ownerB = world->getComponent<Owner>(idB);
+    OrByte::Owner *ownerA = world->getComponent<OrByte::Owner>(idA);
+    OrByte::Owner *ownerB = world->getComponent<OrByte::Owner>(idB);
     if (ownerA && ownerB && ownerA->team == ownerB->team)
         return;
 

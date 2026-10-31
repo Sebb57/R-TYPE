@@ -24,7 +24,7 @@ server::Server::Server(ServerConfig conf)
     , _tcp(this->_io, this->_rooms, this->_conf)
 {
     this->_signals.async_wait(
-        [this](const asio::error_code& ec, int /*signal*/) {
+        [this](const asio::error_code& ec, int) {
             if (!ec)
                 stop();
         }

@@ -21,18 +21,36 @@ struct Orbit : public OrByte::AComponent<OrByte::ComponentType::Orbit>
     Orbit() = default;
     Orbit(const Vector2 center, const float radius, float angleSpeed)
         : center(center), radius(radius), angleSpeed(angleSpeed) {}
-    Orbit(Transform* target, const float radius, float angleSpeed)
-        : target(target), radius(radius), angleSpeed(angleSpeed) {}
-    Orbit(const Vector2 center, Transform* target, const float radius, float angleSpeed)
-        : center(center), target(target), radius(radius), angleSpeed(angleSpeed) {}
+    Orbit(int targetEntity, const float radius, float angleSpeed)
+        : targetEntity(targetEntity), radius(radius), angleSpeed(angleSpeed) {}
+    Orbit(const Vector2 center, int targetEntity, const float radius, float angleSpeed)
+        : center(center), targetEntity(targetEntity), radius(radius), angleSpeed(angleSpeed) {}
 
     Vector2 center{0.0F, 0.0F};
-    Transform* target = nullptr;
+    int targetEntity = -1;
     float radius = 0.0F;
     float angle = 0.0F;
     float angleSpeed = 0.0F;
+
+    void serialize(Serializer& serializer) const final
+    {
+        serializer.object(this->center);
+        serializer.value4b(this->targetEntity);
+        serializer.value4b(this->radius);
+        serializer.value4b(this->angle);
+        serializer.value4b(this->angleSpeed);
+    }
+
+    void deserialize(Deserializer& deserializer) final
+    {
+        deserializer.object(this->center);
+        deserializer.value4b(this->targetEntity);
+        deserializer.value4b(this->radius);
+        deserializer.value4b(this->angle);
+        deserializer.value4b(this->angleSpeed);
+    }
 };
 
-}
+} // namespace OrByte
 
 #endif /* ORBIT_HPP_ */

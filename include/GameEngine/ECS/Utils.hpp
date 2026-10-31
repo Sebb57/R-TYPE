@@ -17,6 +17,13 @@ struct Vector2
     Vector2(float x = 0.0f, float y = 0.0f) : x(x), y(y) {}
 };
 
+template <typename S>
+void serialize(S& s, Vector2& vector)
+{
+    s.value4b(vector.x);
+    s.value4b(vector.y);
+}
+
 struct Vector2u
 {
     unsigned x;

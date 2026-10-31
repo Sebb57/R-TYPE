@@ -16,13 +16,16 @@
 class World {
     EntityManager entityManager;
     ComponentManager componentManager;
+    std::size_t _selectedEntityId = -1;
     
 public:
     World() = default;
     ~World() = default;
 
     int createEntity();
+    int createEntity(int entityId);
     void destroyEntity(int entityId);
+    void clearWorld();
     [[nodiscard]] bool entityExists(int entityId) const;
     [[nodiscard]] std::vector<int> getExistingEntities() const;
 
@@ -37,9 +40,19 @@ public:
     T* getComponent(int entityId) {
         return componentManager.getComponent<T>(entityId);
     }
+    [[nodiscard]] std::vector<OrByte::IComponent*> getComponents(int entityId) const {
+        return componentManager.getComponents(entityId);
+    }
     template <typename T>
     void removeComponentFromEntity(int entityId) {
         componentManager.removeComponentFromEntity<T>(entityId);
+    }
+
+    void setEntitySelected(int entityId) {
+        this->_selectedEntityId = entityId;
+    }
+    [[nodiscard]] int getSelectedEntity() const {
+        return static_cast<int>(this->_selectedEntityId);
     }
 };
 

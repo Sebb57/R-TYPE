@@ -20,8 +20,11 @@ struct RemoveHealth : public OrByte::AComponent<OrByte::ComponentType::RemoveHea
     RemoveHealth(int hitDamage) : hitDamage(hitDamage) {}
 
     int hitDamage{100};
+
+    void serialize(Serializer& serializer) const final { serializer.value4b(this->hitDamage); }
+    void deserialize(Deserializer& deserializer) final { deserializer.value4b(this->hitDamage); }
 };
 
-}
+} // namespace OrByte
 
 #endif /* REMOVEHEALTH_HPP_ */

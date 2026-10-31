@@ -2,6 +2,7 @@
 r-type_client
 r-type_server
 r-type_game-engine
+OrByte-gameClient
 
 # Prerequisites
 *.d

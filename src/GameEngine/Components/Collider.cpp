@@ -17,6 +17,6 @@ extern "C" {
 
     OrByte::IComponent *factory()
     {
-        return new Collider();
+        return new OrByte::Collider();
     }
 }

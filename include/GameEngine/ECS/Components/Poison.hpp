@@ -23,8 +23,22 @@ struct Poison : public OrByte::AComponent<OrByte::ComponentType::Poison>
     int damage{100};
     float cooldown{1.0F};
     float duration{3.0F};
+
+    void serialize(Serializer& serializer) const final
+    {
+        serializer.value4b(this->damage);
+        serializer.value4b(this->cooldown);
+        serializer.value4b(this->duration);
+    }
+
+    void deserialize(Deserializer& deserializer) final
+    {
+        deserializer.value4b(this->damage);
+        deserializer.value4b(this->cooldown);
+        deserializer.value4b(this->duration);
+    }
 };
 
-}
+} // namespace OrByte
 
 #endif /* POISON_HPP_ */

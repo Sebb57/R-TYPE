@@ -38,6 +38,14 @@ namespace OrByte {
         ResizeHorizontal,
         ResizeVertical,
     };
+    template <typename S>
+    void serialize(S& s, RGBA& color)
+    {
+        s.value1b(color.r);
+        s.value1b(color.g);
+        s.value1b(color.b);
+        s.value1b(color.a);
+    }
 
     class IGraphic {
         public:

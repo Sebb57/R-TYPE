@@ -13,17 +13,17 @@
 #include "GameEngine/ECS/Components/Owner.hpp"
 #include "GameEngine/ECS/Utils.hpp"
 
-namespace RType {
+namespace OrByte {
     class Projectiles {
         public:
-            Projectiles(World *world, int shooterId, Team owner, float verticalOffset = 0.0f);
+            Projectiles(World *world, int shooterId, OrByte::Team owner, float verticalOffset = 0.0f);
             void CreateServeurComponent(World *world);
             void CreateClientComponent(World *world);
             static void CheckCollision(World *world, Vector2 entity);
             int GetID() const { return ID; }
         private:
             int ID;
-            Team _owner;
+            OrByte::Team _owner;
             Vector2 _spawnPos;
             Vector2 _velocity;
     };

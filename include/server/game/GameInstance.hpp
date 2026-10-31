@@ -31,8 +31,6 @@ class World;
 namespace OrByte {
 class HealthSystem;
 class PhysicSystem;
-}
-namespace RType {
 class Playeur;
 class Bonus;
 }
@@ -91,8 +89,8 @@ class GameInstance {
         std::unordered_map<PlayerSlot, int> _playerEntities;
         std::unordered_map<PlayerSlot, OrByte::Chronometer> _fireClocks;
         std::unordered_map<int, EntityType> _types;
-        std::unordered_map<int, std::unique_ptr<RType::Playeur>> _playeurs;
-        std::unordered_map<int, std::unique_ptr<RType::Bonus>> _bonuses;
+        std::unordered_map<int, std::unique_ptr<OrByte::Playeur>> _playeurs;
+        std::unordered_map<int, std::unique_ptr<OrByte::Bonus>> _bonuses;
         std::unordered_map<int, PlayerSlot> _projectileOwners;
         std::array<std::uint32_t, 4> _scores{};
         std::uint32_t _nextEventId = 1;
