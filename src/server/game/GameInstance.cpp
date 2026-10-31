@@ -223,11 +223,11 @@ void server::GameInstance::update()
             }
             continue;
         }
-        const auto *ownerA = this->_world->getComponent<Owner>(first);
-        const auto *ownerB = this->_world->getComponent<Owner>(second);
+        const auto *ownerA = this->_world->getComponent<OrByte::Owner>(first);
+        const auto *ownerB = this->_world->getComponent<OrByte::Owner>(second);
         if (ownerA && ownerB && ownerA->team != ownerB->team) {
             if (firstType == EntityType::Projectile || secondType == EntityType::Projectile) {
-                RType::Projectiles::CheckCollision(this->_world.get(), Vector2(static_cast<float>(first), static_cast<float>(second)));
+                OrByte::Projectiles::CheckCollision(this->_world.get(), Vector2(static_cast<float>(first), static_cast<float>(second)));
                 const int enemy = firstType == EntityType::Enemy ? first : (secondType == EntityType::Enemy ? second : -1);
                 if (enemy >= 0) {
                     if (const auto *transform = this->_world->getComponent<OrByte::Transform>(enemy))
@@ -347,7 +347,7 @@ void server::GameInstance::removeOutOfBounds()
     std::vector<int> outside;
     for (const auto& [entity, type] : this->_types) {
         const auto *transform = this->_world->getComponent<OrByte::Transform>(entity);
-        const auto *collider = this->_world->getComponent<Collider>(entity);
+        const auto *collider = this->_world->getComponent<OrByte::Collider>(entity);
         if (type == EntityType::Player || transform == nullptr || collider == nullptr)
             continue;
         const float halfWidth = collider->size.x / 2.0f;
@@ -368,16 +368,16 @@ int server::GameInstance::spawn(EntityType type, Vector2 position, PlayerSlot pl
 {
     int entity = -1;
     if (type == EntityType::Player) {
-        auto player = std::make_unique<RType::Playeur>(this->_world.get());
+        auto player = std::make_unique<OrByte::Playeur>(this->_world.get());
         player->CreateServeurComponent(this->_world.get(), position, playerSlot);
         entity = player->GetID();
         this->_playeurs.emplace(entity, std::move(player));
     } else if (type == EntityType::Enemy) {
-        RType::Ennemies enemy(this->_world.get());
+        OrByte::Ennemies enemy(this->_world.get());
         enemy.CreateServeurComponent(this->_world.get());
         entity = enemy.GetID();
     } else if (type == EntityType::Bonus) {
-        auto bonus = std::make_unique<RType::Bonus>(this->_world.get(), extraShotBonus);
+        auto bonus = std::make_unique<OrByte::Bonus>(this->_world.get(), extraShotBonus);
         bonus->CreateServeurBonus(this->_world.get(), position);
         entity = bonus->GetID();
         this->_bonuses.emplace(entity, std::move(bonus));
@@ -393,7 +393,7 @@ void server::GameInstance::destroyEnemy(int entity)
     const auto *transform = this->_world->getComponent<OrByte::Transform>(entity);
     const Vector2 position = transform ? transform->position : Vector2{};
     this->emitCollisionEffect(CollisionEffect::EnemyDestroyed, entity, position);
-    if (RType::Ennemies::ShouldDropBonus())
+    if (OrByte::Ennemies::ShouldDropBonus())
         this->spawn(EntityType::Bonus, position);
     this->despawn(entity);
 }

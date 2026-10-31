@@ -11,6 +11,8 @@
 
     #include "plugins/AComponent.hpp"
 
+namespace OrByte {
+
 enum class Team { Player, Enemy };
 
 struct Owner : public OrByte::AComponent<OrByte::ComponentType::Owner>
@@ -20,6 +22,11 @@ struct Owner : public OrByte::AComponent<OrByte::ComponentType::Owner>
     Owner(Team t) : team(t) {}
 
     Team team{Team::Player};
+
+    void serialize(OrByte::Serializer& serializer) const final { serializer.value4b(this->team); }
+    void deserialize(OrByte::Deserializer& deserializer) final { deserializer.value4b(this->team); }
 };
+
+} // namespace OrByte
 
 #endif /* OWNER_HPP_ */

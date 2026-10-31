@@ -18,7 +18,7 @@
 namespace server {
 
 using RoomId = std::uint32_t;
-using SessionToken = std::uint64_t; // 0 = invalide
+using SessionToken = std::uint64_t;
 using PlayerSlot = std::uint8_t;
 using Clock = std::chrono::steady_clock;
 using Byte = std::uint8_t;

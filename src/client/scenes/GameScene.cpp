@@ -257,19 +257,19 @@ int client::GameScene::spawn(server::EntityType type, Vector2 position, std::uin
 {
     int entity = -1;
     if (type == server::EntityType::Player) {
-        RType::Playeur player(&this->_world);
+        OrByte::Playeur player(&this->_world);
         player.CreateClientComponent(&this->_world, static_cast<std::uint8_t>(flags & server::EntitySlotMask));
         entity = player.GetID();
     } else if (type == server::EntityType::Enemy) {
-        RType::Ennemies enemy(&this->_world);
+        OrByte::Ennemies enemy(&this->_world);
         enemy.CreateClientComponent(&this->_world);
         entity = enemy.GetID();
     } else if (type == server::EntityType::Projectile) {
-        RType::Projectiles projectile(&this->_world, -1, Team::Player);
+        OrByte::Projectiles projectile(&this->_world, -1, OrByte::Team::Player);
         projectile.CreateClientComponent(&this->_world);
         entity = projectile.GetID();
     } else if (type == server::EntityType::Bonus) {
-        RType::Bonus bonus(&this->_world);
+        OrByte::Bonus bonus(&this->_world);
         bonus.CreateClientBonus(&this->_world, (flags & server::BonusExtraShotFlag) != 0);
         entity = bonus.GetID();
     } else {

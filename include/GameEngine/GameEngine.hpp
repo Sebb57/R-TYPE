@@ -14,13 +14,14 @@
 #include "plugins/IGraphic.hpp"
 #include <filesystem>
 #include <memory>
-#include <vector>
+#include "GameEngine/ECS/World.hpp"
+#include "GameEngine/ECS/ComponentPlugins.hpp"
 
 namespace OrByte {
 
 class GameEngine {
     public:
-        enum GraphicalLibs {
+        enum GraphicalLibs : std::uint8_t {
             SFML,
         };
 
@@ -34,6 +35,8 @@ class GameEngine {
         DynamicLibrary _graphicLoader;
         std::unique_ptr<IGraphic> _graphicLib;
         std::unique_ptr<Widget> _root;
+        ComponentPlugins _components;
+        World _world;
         // std::vector<Event> _events;
 
         void _initLayout();
@@ -44,6 +47,6 @@ class GameEngine {
         void _render();
 };
 
-}
+} // namespace OrByte
 
 #endif /* GAMEENGINE_HPP_ */

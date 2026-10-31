@@ -62,15 +62,15 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/GameEngine/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Orbyte/*.cpp"
 )
-# Systems/Components are built as plugins, main.cpp as its own executable.
 list(FILTER ENGINE_SOURCES EXCLUDE REGEX "/src/GameEngine/(Systems/.*|Components/.*|main)\\.cpp$")
+list(FILTER ENGINE_SOURCES EXCLUDE REGEX "/src/GameEngine/(client|server)/")
 list(APPEND ENGINE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/plugins/DynamicLibrary.cpp")
 add_library(rtype_engine STATIC ${ENGINE_SOURCES})
 target_include_directories(rtype_engine PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/GameEngine/ECS/Managers"
 )
-target_link_libraries(rtype_engine PUBLIC ${CMAKE_DL_LIBS})
+target_link_libraries(rtype_engine PUBLIC ${CMAKE_DL_LIBS} bitsery)
 target_compile_features(rtype_engine PUBLIC cxx_std_23)
 
 # ---------------------------------------------------------------------------
@@ -120,11 +120,6 @@ set(SFML_BUILD_NETWORK OFF CACHE BOOL "" FORCE)
 if(WIN32)
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 endif()
-# Cross-compiling for Windows from Linux: SFML ships its dependencies prebuilt in
-# extlibs/. Allow lookups there despite the toolchain confining them to the
-# target sysroot, and point at OpenAL directly: FindOpenAL looks for "OpenAL32"
-# but the file is "libopenal32.a", which only matches on a case-insensitive
-# filesystem.
 if(CMAKE_CROSSCOMPILING AND MINGW)
     list(APPEND CMAKE_FIND_ROOT_PATH "${FETCHCONTENT_BASE_DIR}/sfml-src")
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -150,8 +145,6 @@ else()
     set(RTYPE_PLUGIN_SUFFIX ".so")
 endif()
 
-# $<1:...> prevents multi-config generators (MSVC) from appending Debug/Release.
-# On Windows a MODULE is a "runtime" artifact, so both properties are set.
 function(rtype_configure_plugin target output_name output_dir)
     set_target_properties(${target} PROPERTIES
         OUTPUT_NAME "${output_name}"
@@ -168,12 +161,13 @@ add_library(rtype_sfml MODULE src/plugins/SFML.cpp)
 rtype_configure_plugin(rtype_sfml "SFML" "${CMAKE_SOURCE_DIR}/plugins")
 target_include_directories(rtype_sfml PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(rtype_sfml PRIVATE
+    bitsery
     sfml-graphics
     sfml-window
     sfml-system
 )
 
-set(SYSTEM_PLUGINS Collider Display Health Physic)
+set(SYSTEM_PLUGINS Collider Control Display Health Physic)
 set(SYSTEM_TARGETS)
 foreach(system IN LISTS SYSTEM_PLUGINS)
     set(system_target "rtype_system_${system}")
@@ -184,8 +178,8 @@ foreach(system IN LISTS SYSTEM_PLUGINS)
 endforeach()
 
 set(COMPONENT_PLUGINS
-    AddHealth Animator Collider Health Orbit Owner Poison RegenHealth
-    RemoveHealth Sinus Spiral Sprite Transform Velocity Wither
+    AddHealth Animator Collider Controllable Health Orbit Owner Poison
+    RegenHealth RemoveHealth Sinus Spiral Sprite Transform Velocity Wither Name
 )
 set(COMPONENT_TARGETS)
 foreach(component IN LISTS COMPONENT_PLUGINS)
@@ -196,7 +190,6 @@ foreach(component IN LISTS COMPONENT_PLUGINS)
     list(APPEND COMPONENT_TARGETS ${component_target})
 endforeach()
 
-# The server loads the systems at runtime: make sure they are built with it.
 add_dependencies(r-type_server ${SYSTEM_TARGETS})
 
 # ---------------------------------------------------------------------------
@@ -214,8 +207,6 @@ set_target_properties(r-type_client PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}>"
 )
 
-# SFML is linked statically on Windows, but OpenAL stays a DLL (LGPL) and must
-# sit next to the client executable.
 if(WIN32)
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
         set(RTYPE_OPENAL_DLL "${sfml_SOURCE_DIR}/extlibs/bin/x64/openal32.dll")
@@ -289,3 +280,4 @@ if(MINGW)
         target_link_options(${target} PRIVATE -static)
     endforeach()
 endif()
+

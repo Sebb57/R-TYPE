@@ -4,7 +4,7 @@
 #include "GameEngine/ECS/World.hpp"
 #include "GameEngine/ECS/Utils.hpp"
 
-namespace RType {
+namespace OrByte {
     class Playeur;
     class Bonus {
         public:

@@ -10,8 +10,11 @@
 #ifndef ICOMPONENT_HPP_
     #define ICOMPONENT_HPP_
 
+#include <cstdint>
+#include "plugins/Serialization.hpp"
+
 namespace OrByte {
-    enum class ComponentType
+    enum class ComponentType : std::uint8_t
     {
         AddHealth,
         Collider,
@@ -27,12 +30,19 @@ namespace OrByte {
         Velocity,
         Wither,
         Animator,
-        Owner
+        Owner,
+        Controllable,
+        Name,
+
+        ENUM_END // no type bellow this one
     };
 
     class IComponent {
         public:
             [[nodiscard]] virtual ComponentType getType() const noexcept = 0;
+
+            virtual void serialize(Serializer& serializer) const = 0;
+            virtual void deserialize(Deserializer& deserializer) = 0;
 
             virtual ~IComponent() = default;
     };
