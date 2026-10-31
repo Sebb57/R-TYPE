@@ -15,8 +15,7 @@ enum class ComponentType
     Transform,
     Velocity,
     Wither,
-    Animator,
-    Owner
+    Animator
 };
 
 class IComponent

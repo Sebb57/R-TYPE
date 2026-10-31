@@ -26,6 +26,10 @@ public:
     bool entityExists(int entityId) const;
     std::vector<int> getExistingEntities() const;
 
+    std::vector<ComponentType> getComponentTypesOfEntity(int entityId) const {
+        return componentManager.getComponentTypesOfEntity(entityId);
+    }
+
     template <typename T, typename ... Args>
     void addComponentToEntity(int entityId, Args&& ... args) {
         componentManager.addComponentToEntity<T>(entityId, std::forward<Args>(args)...);

@@ -45,6 +45,27 @@ class ComponentManager
 
             return nullptr;
         }
+        
+
+        template <typename T>
+        bool setComponent(int entityId, T component) {
+            T* existing = getComponent<T>(entityId);
+            if (!existing)
+                return false;
+            *existing = std::move(component);
+            return true;
+        }
+
+        std::vector<ComponentType> ComponentManager::getComponentTypesOfEntity(int entityId) const
+        {
+            std::vector<ComponentType> types;
+
+            for (const auto& [type, entities] : _globalComponents) {
+                if (entities.find(entityId) != entities.end())
+                    types.push_back(type);
+            }
+            return types;
+        }
 
         void removeAllComponentsFromEntity(int entityId);
 };
