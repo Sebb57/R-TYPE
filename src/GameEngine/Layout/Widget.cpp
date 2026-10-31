@@ -156,10 +156,12 @@ void OrByte::Widget::render(const IGraphic& graphic)
         this->draw(graphic, Vector2u(static_cast<unsigned>(this->_content.w), static_cast<unsigned>(this->_content.h)));
         graphic.popRegion();
     }
-    for (const std::unique_ptr<Widget>& child : this->_children) {
+    for (const std::unique_ptr<Widget>& child : this->_children)
         if (child)
             child->render(graphic);
-    }
+
+    if (this->_parent == nullptr)
+        this->_renderDropPreview(graphic);
 }
 
 bool OrByte::Widget::handleEvent(const Event& event)
@@ -169,8 +171,12 @@ bool OrByte::Widget::handleEvent(const Event& event)
         return false;
     }
     if (isMouseEvent(event)) {
-        if (this->_parent == nullptr && this->_handleResize(event))
-            return true;
+        if (this->_parent == nullptr) {
+            if (this->_move.active)
+                return this->_handleMove(event);
+            if (this->_handleResize(event) || this->_handleMove(event))
+                return true;
+        }
         return this->_dispatchMouse(event);
     }
     return this->_dispatch(event);
@@ -242,7 +248,7 @@ int OrByte::Widget::_maxSize() const
     const int oppositeSize = (opposite != nullptr && opposite->_visible) ? opposite->_size : 0;
     const int extent = resizesVertically(this->_side) ? this->_parent->_rect.h : this->_parent->_rect.w;
 
-    return std::max(extent - oppositeSize - MIN_CONTENT, this->_minSize);
+    return std::max(extent - oppositeSize - MIN_CONTENT, this->_effectiveMinSize());
 }
 
 bool OrByte::Widget::_handleResize(const Event& event)
@@ -258,7 +264,7 @@ bool OrByte::Widget::_handleResize(const Event& event)
 
             if (target->_side == Side::Bottom || target->_side == Side::Right)
                 delta = -delta;
-            target->setSize(std::clamp(this->_drag.startSize + delta, target->_minSize, target->_maxSize()));
+            target->setSize(std::clamp(this->_drag.startSize + delta, target->_effectiveMinSize(), target->_maxSize()));
         } else if (event.type == Event::Type::MouseButtonReleased && event.mouseButton == Event::MouseButton::Left) {
             this->_drag = Drag{};
         }
@@ -282,4 +288,207 @@ bool OrByte::Widget::_handleResize(const Event& event)
         }
     }
     return false;
+}
+
+bool OrByte::Widget::_isInside(const Widget *ancestor) const
+{
+    for (const Widget *widget = this; widget; widget = widget->_parent)
+        if (widget == ancestor)
+            return true;
+    return false;
+}
+
+OrByte::Widget *OrByte::Widget::_findHeader(int x, int y)
+{
+    if (!this->_visible)
+        return nullptr;
+
+    for (const std::unique_ptr<Widget>& child : this->_children)
+        if (child) {
+            if (Widget *found = child->_findHeader(x, y))
+                return found;
+        }
+
+    const int header = this->getHeaderHeight();
+
+    if (this->_parent == nullptr || !this->_movable || header <= 0)
+        return nullptr;
+
+    const Rect bar(this->_content.x, this->_content.y, this->_content.w, std::min(header, this->_content.h));
+
+    return bar.contains(x, y) ? this : nullptr;
+}
+
+OrByte::Widget *OrByte::Widget::_findDropTarget(int x, int y, const Widget *source)
+{
+    if (!this->_visible || this == source || !this->_rect.contains(x, y))
+        return nullptr;
+
+    for (const std::unique_ptr<Widget>& child : this->_children)
+        if (child)
+            if (Widget *found = child->_findDropTarget(x, y, source))
+                return found;
+
+    return this;
+}
+
+int OrByte::Widget::_dockSize(const Widget& target, Side side)
+{
+    const int extent = resizesVertically(side) ? target._content.h : target._content.w;
+
+    return extent / (target._parent == nullptr ? 3 : 2);
+}
+
+bool OrByte::Widget::_canDock(const Widget& source, const Widget& target, Side side)
+{
+    if (target._isInside(&source))
+        return false;
+
+    const Widget *occupant = target._children.at(sideIndex(side)).get();
+
+    if (occupant == &source)
+        return false;
+    if (occupant != nullptr && source._children.at(sideIndex(side)) != nullptr)
+        return false;
+
+    const int extent = resizesVertically(side) ? target._content.h : target._content.w;
+    const int size = _dockSize(target, side);
+    const int keep = target._parent == nullptr ? MIN_CONTENT : target._minSize;
+
+    return size >= source._minSize && extent - size >= keep;
+}
+
+bool OrByte::Widget::_pickDropSide(const Widget& source, int x, int y, Side& side) const
+{
+    const Rect& c = this->_content;
+
+    if (c.w <= 0 || c.h <= 0)
+        return false;
+
+    std::array<std::pair<float, Side>, SIDE_COUNT> candidates = {{
+        { static_cast<float>(y - c.y) / static_cast<float>(c.h), Side::Top },
+        { static_cast<float>(c.x + c.w - x) / static_cast<float>(c.w), Side::Right },
+        { static_cast<float>(c.y + c.h - y) / static_cast<float>(c.h), Side::Bottom },
+        { static_cast<float>(x - c.x) / static_cast<float>(c.w), Side::Left },
+    }};
+
+    std::sort(candidates.begin(), candidates.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+    for (const auto& [distance, candidate] : candidates)
+        if (this->_canDock(source, *this, candidate)) {
+            side = candidate;
+            return true;
+        }
+
+        return false;
+}
+
+void OrByte::Widget::_dock(Widget& source, Widget& target, Side side)
+{
+    if (source._parent == nullptr || !OrByte::Widget::_canDock(source, target, side)) // ouin ouin jpp mettre de this dans les static
+        return;
+
+    Widget *parent = source._parent;
+    const Side from = source._side;
+
+    std::unique_ptr<Widget> moved = parent->detach(from);
+
+    if (std::unique_ptr<Widget> outer = moved->detach(from))
+        parent->attach(from, std::move(outer));
+
+    const int size = OrByte::Widget::_dockSize(target, side);
+    const Widget *occupant = target._children.at(sideIndex(side)).get();
+    const int pushed = (occupant != nullptr && occupant->_visible) ? occupant->_size : 0;
+
+    std::unique_ptr<Widget> displaced = target.detach(side);
+
+    if (displaced)
+        moved->attach(side, std::move(displaced));
+    moved->_size = size + pushed;
+    target.attach(side, std::move(moved));
+}
+
+void OrByte::Widget::_updateDropTarget(int x, int y)
+{
+    Move& move = this->_move;
+    Widget *target = this->_findDropTarget(x, y, move.source);
+    Side side {};
+
+    move.dropTarget = nullptr;
+    if (target == nullptr || !target->_content.contains(x, y))
+        return;
+    if (target->_pickDropSide(*move.source, x, y, side)) {
+        move.dropTarget = target;
+        move.dropSide = side;
+    }
+}
+
+bool OrByte::Widget::_handleMove(const Event& event)
+{
+    Move& move = this->_move;
+
+    if (event.type == Event::Type::MouseButtonPressed && event.mouseButton == Event::MouseButton::Left) {
+        Widget *header = this->_findHeader(event.windowX, event.windowY);
+
+        move = Move{};
+        if (header != nullptr) {
+            move.source = header;
+            move.pressed = true;
+            move.startX = event.windowX;
+            move.startY = event.windowY;
+        }
+        return false;
+    }
+    if (!move.pressed)
+        return false;
+
+    if (event.type == Event::Type::MouseMoved) {
+        if (!move.active) {
+            const int dx = event.windowX - move.startX;
+            const int dy = event.windowY - move.startY;
+
+            if (dx * dx + dy * dy < MOVE_THRESHOLD * MOVE_THRESHOLD)
+                return false;
+            move.active = true;
+        }
+        this->_updateDropTarget(event.windowX, event.windowY);
+        return true;
+    }
+    if (event.type == Event::Type::MouseButtonReleased && event.mouseButton == Event::MouseButton::Left) {
+        const bool wasActive = move.active;
+
+        if (wasActive && move.dropTarget != nullptr)
+            _dock(*move.source, *move.dropTarget, move.dropSide);
+        move = Move{};
+        return wasActive;
+    }
+    return false;
+}
+
+void OrByte::Widget::_renderDropPreview(const IGraphic& graphic) const
+{
+    if (!this->_move.active || this->_move.dropTarget == nullptr)
+        return;
+
+    Rect area = this->_move.dropTarget->_content;
+    const Rect band = cutSide(area, this->_move.dropSide, this->_dockSize(*this->_move.dropTarget, this->_move.dropSide));
+
+    graphic.pushRegion(this->_rect);
+    graphic.drawRectangle(Transform{ { band.x + band.w / 2.f, band.y + band.h / 2.f }, 0.f },
+        { static_cast<float>(band.w), static_cast<float>(band.h) },
+        RGBA{ 90, 150, 255, 90 }, 2, RGBA{ 90, 150, 255, 220 });
+    graphic.popRegion();
+}
+
+int OrByte::Widget::_effectiveMinSize() const
+{
+    const bool vertical = resizesVertically(this->_side);
+    const Widget *first = this->_children.at(sideIndex(vertical ? Side::Top : Side::Left)).get();
+    const Widget *second = this->_children.at(sideIndex(vertical ? Side::Bottom : Side::Right)).get();
+    int used = 0;
+
+    if (first != nullptr && first->_visible)
+        used += first->_size;
+    if (second != nullptr && second->_visible)
+        used += second->_size;
+    return used + this->_minSize;
 }

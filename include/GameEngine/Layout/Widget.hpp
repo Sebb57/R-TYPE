@@ -40,15 +40,18 @@ class Widget {
         Widget(const Widget& object) = delete;
         Widget(Widget&& object) = delete;
 
+        // Tree
         Widget& attach(Side side, std::unique_ptr<Widget> child);
         std::unique_ptr<Widget> detach(Side side);
         [[nodiscard]] Widget *getChild(Side side) const noexcept;
         [[nodiscard]] Widget *getParent() const noexcept { return this->_parent; }
 
+        // Rect
         void setRect(const Rect& rect);
         [[nodiscard]] const Rect& getRect() const noexcept { return this->_rect; }
         [[nodiscard]] const Rect& getContentRect() const noexcept { return this->_content; }
 
+        // Size
         void setSize(int size);
         [[nodiscard]] int getSize() const noexcept { return this->_size; }
         void setVisible(bool visible);
@@ -62,12 +65,18 @@ class Widget {
         [[nodiscard]] Side getSide() const noexcept { return this->_side; }
         [[nodiscard]] CursorType getCursor() const noexcept { return this->_cursor; }
 
+        // Position / Move
+        void setMovable(bool movable) noexcept { this->_movable = movable; }
+        [[nodiscard]] bool isMovable() const noexcept { return this->_movable; }
+
         void render(const IGraphic& graphic);
         bool handleEvent(const Event& event);
 
     protected:
         virtual void draw([[maybe_unused]] const IGraphic& graphic, [[maybe_unused]] Vector2u size) {}
         virtual bool onEvent([[maybe_unused]] const Event& event, [[maybe_unused]] Vector2 localMouse) { return false; }
+
+        [[nodiscard]] virtual int getHeaderHeight() const { return 0; }
 
     private:
         struct Drag {
@@ -76,8 +85,19 @@ class Widget {
             int startPos = 0;
         };
 
+        struct Move {
+            Widget *source = nullptr;
+            Widget *dropTarget = nullptr;
+            Side dropSide = Side::Top;
+            int startX = 0;
+            int startY = 0;
+            bool pressed = false;
+            bool active = false;
+        };
+
         static constexpr int GRIP = 4;
         static constexpr int MIN_CONTENT = 50;
+        static constexpr int MOVE_THRESHOLD = 6;
 
         std::string _title;
         int _size = 0;
@@ -93,6 +113,9 @@ class Widget {
         Drag _drag;
         CursorType _cursor = CursorType::Arrow;
 
+        bool _movable = true;
+        Move _move;
+
         void _layout();
         void _layoutParent();
         bool _dispatchMouse(const Event& event);
@@ -102,6 +125,18 @@ class Widget {
         Widget *_findGrip(int x, int y);
         [[nodiscard]] int _maxSize() const;
         bool _handleResize(const Event& event);
+
+        [[nodiscard]] int _effectiveMinSize() const;
+        [[nodiscard]] bool _isInside(const Widget *ancestor) const;
+        [[nodiscard]] Widget *_findHeader(int x, int y);
+        [[nodiscard]] Widget *_findDropTarget(int x, int y, const Widget *source);
+        [[nodiscard]] bool _pickDropSide(const Widget& source, int x, int y, Side& side) const;
+        [[nodiscard]] static bool _canDock(const Widget& source, const Widget& target, Side side);
+        [[nodiscard]] static int _dockSize(const Widget& target, Side side);
+        static void _dock(Widget& source, Widget& target, Side side);
+        bool _handleMove(const Event& event);
+        void _updateDropTarget(int x, int y);
+        void _renderDropPreview(const IGraphic& graphic) const;
 };
 
 } // namespace OrByte
