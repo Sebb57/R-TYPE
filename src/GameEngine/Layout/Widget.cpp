@@ -379,7 +379,7 @@ bool OrByte::Widget::_pickDropSide(const Widget& source, int x, int y, Side& sid
             return true;
         }
 
-        return false;
+    return false;
 }
 
 void OrByte::Widget::_dock(Widget& source, Widget& target, Side side)
