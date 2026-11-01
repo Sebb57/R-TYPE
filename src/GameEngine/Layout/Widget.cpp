@@ -304,10 +304,9 @@ OrByte::Widget *OrByte::Widget::_findHeader(int x, int y)
         return nullptr;
 
     for (const std::unique_ptr<Widget>& child : this->_children)
-        if (child) {
+        if (child)
             if (Widget *found = child->_findHeader(x, y))
                 return found;
-        }
 
     const int header = this->getHeaderHeight();
 
@@ -450,6 +449,7 @@ bool OrByte::Widget::_handleMove(const Event& event)
                 return false;
             move.active = true;
         }
+        this->_cursor = CursorType::Move;
         this->_updateDropTarget(event.windowX, event.windowY);
         return true;
     }
@@ -459,6 +459,8 @@ bool OrByte::Widget::_handleMove(const Event& event)
         if (wasActive && move.dropTarget != nullptr)
             _dock(*move.source, *move.dropTarget, move.dropSide);
         move = Move{};
+        if (wasActive)
+            this->_cursor = CursorType::Arrow;
         return wasActive;
     }
     return false;

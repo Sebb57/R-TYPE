@@ -37,6 +37,7 @@ namespace OrByte {
         Arrow,
         ResizeHorizontal,
         ResizeVertical,
+        Move,
     };
     template <typename S>
     void serialize(S& s, RGBA& color)
