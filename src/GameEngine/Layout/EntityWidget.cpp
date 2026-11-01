@@ -149,6 +149,8 @@ void OrByte::EntityWidget::_applyKeyAction(const Event& event)
             return;
 
         const std::size_t index = std::min(this->_selectedIndex, ids.size() - 1);
+        if (this->_world.getCameraEntity() == ids[index])
+            return;
         this->_cancelEditing();
         this->_world.destroyEntity(ids[index]);
 

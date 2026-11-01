@@ -33,6 +33,7 @@ namespace OrByte {
         Owner,
         Controllable,
         Name,
+        Camera,
 
         ENUM_END // no type bellow this one
     };

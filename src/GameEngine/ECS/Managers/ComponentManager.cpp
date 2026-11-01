@@ -27,6 +27,19 @@ std::vector<OrByte::IComponent*> ComponentManager::getComponents(int entityId) c
     return components;
 }
 
+std::vector<int> ComponentManager::getEntitiesWith(OrByte::ComponentType type) const
+{
+    std::vector<int> entities;
+
+    auto it = this->_globalComponents.find(type);
+    if (it == this->_globalComponents.end())
+        return entities;
+    entities.reserve(it->second.size());
+    for (const auto& [entityId, component] : it->second)
+        entities.push_back(entityId);
+    return entities;
+}
+
 void ComponentManager::removeAllComponentsFromEntity(int entityId)
 {
     for (auto& [type, components] : this->_globalComponents) {

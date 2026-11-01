@@ -24,6 +24,7 @@ class PhysicSystem : public ASystem {
     void _handleSinus(Transform* transform, int entity, double deltaTime);
     void _handleSpiral(Transform* transform, int entity, double deltaTime);
     void _handleVelocity(Transform* transform, int entity, double deltaTime);
+    void _handleBounds(Transform* transform, int entity);
 
     public:
         PhysicSystem(World& world);
