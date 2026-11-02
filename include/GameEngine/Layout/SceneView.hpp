@@ -12,6 +12,7 @@
 #include "GameEngine/ECS/World.hpp"
 #include "GameEngine/Layout/Panel.hpp"
 #include "plugins/IGraphic.hpp"
+#include <optional>
 
 namespace OrByte {
 
@@ -23,7 +24,7 @@ public:
 protected:
     void draw(const OrByte::IGraphic& graphicLib, Vector2u size) override;
     bool onEvent(const OrByte::Event& event, Vector2 local) override;
-    [[nodiscard]] bool capturesMouse() const override { return this->_isPanning; }
+    [[nodiscard]] bool capturesMouse() const override { return this->_isPanning || this->_draggedEntity.has_value(); }
 
 private:
     static constexpr float HEADER_HEIGHT = 24.0F;
@@ -35,9 +36,12 @@ private:
     float _zoom = 0.5F;
     Vector2 _viewCenter;
     Vector2 _lastMousePosition;
+    Vector2 _dragOffset;
+    std::optional<int> _draggedEntity;
     bool _isPanning = false;
 
     [[nodiscard]] Vector2 _screenPosition(const Transform& transform, Vector2u size) const;
+    [[nodiscard]] Vector2 _worldPositionAt(Vector2 local) const;
     [[nodiscard]] Vector2 _entitySize(int entity, const Transform& transform) const;
     [[nodiscard]] bool _hitTestEntity(int entity, Vector2 worldPosition) const;
     void _drawEntity(const IGraphic& graphic, int entity, Vector2u size) const;

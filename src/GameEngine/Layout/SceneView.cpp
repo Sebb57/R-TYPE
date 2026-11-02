@@ -49,6 +49,18 @@ Vector2 OrByte::SceneView::_screenPosition(const Transform& transform, Vector2u 
     };
 }
 
+Vector2 OrByte::SceneView::_worldPositionAt(Vector2 local) const
+{
+    const Rect& content = this->getContentRect();
+    const float areaHeight = std::max(0.0F, static_cast<float>(content.h) - HEADER_HEIGHT);
+    const float centerX = static_cast<float>(content.w) / 2.0F;
+    const float centerY = HEADER_HEIGHT + areaHeight / 2.0F;
+    return {
+        this->_viewCenter.x + (local.x - centerX) / this->_zoom,
+        this->_viewCenter.y + (local.y - centerY) / this->_zoom,
+    };
+}
+
 Vector2 OrByte::SceneView::_entitySize(int entity, const Transform& transform) const
 {
     Vector2 size;
@@ -80,6 +92,10 @@ bool OrByte::SceneView::_hitTestEntity(int entity, Vector2 worldPosition) const
 
     const float deltaX = worldPosition.x - transform->position.x;
     const float deltaY = worldPosition.y - transform->position.y;
+    if (this->_world.getComponent<Camera>(entity) != nullptr) {
+        const float pickRadius = 12.0F / this->_zoom;
+        return deltaX * deltaX + deltaY * deltaY <= pickRadius * pickRadius;
+    }
     if (const Collider *collider = this->_world.getComponent<Collider>(entity)) {
         const float width = collider->size.x * std::abs(transform->scale.x);
         const float height = collider->size.y * std::abs(transform->scale.y);
@@ -182,9 +198,10 @@ void OrByte::SceneView::_drawCamera(const IGraphic& graphic, Vector2u size) cons
 
 void OrByte::SceneView::_drawSelection(const IGraphic& graphic, Vector2u size) const
 {
-    const int entity = this->_world.getSelectedEntity();
-    if (entity < 0 || !this->_world.entityExists(entity))
+    const std::optional<int> selectedEntity = this->_world.getSelectedEntity();
+    if (!selectedEntity || !this->_world.entityExists(*selectedEntity))
         return;
+    const int entity = *selectedEntity;
 
     const Transform *transform = this->_world.getComponent<Transform>(entity);
     if (transform == nullptr)
@@ -282,6 +299,22 @@ void OrByte::SceneView::draw(const OrByte::IGraphic& graphicLib, Vector2u size)
 
 bool OrByte::SceneView::onEvent(const OrByte::Event& event, Vector2 local)
 {
+    if (this->_draggedEntity) {
+        if (event.type == Event::Type::MouseMoved) {
+            if (Transform *transform = this->_world.getComponent<Transform>(*this->_draggedEntity)) {
+                const Vector2 mouseWorld = this->_worldPositionAt(local);
+                transform->position = {mouseWorld.x + this->_dragOffset.x, mouseWorld.y + this->_dragOffset.y};
+            } else {
+                this->_draggedEntity.reset();
+            }
+            return true;
+        }
+        if (event.type == Event::Type::MouseButtonReleased && event.mouseButton == Event::MouseButton::Left) {
+            this->_draggedEntity.reset();
+            return true;
+        }
+    }
+
     if (this->_isPanning) {
         if (event.type == Event::Type::MouseMoved) {
             const float deltaX = local.x - this->_lastMousePosition.x;
@@ -308,20 +341,18 @@ bool OrByte::SceneView::onEvent(const OrByte::Event& event, Vector2 local)
         const float areaHeight = std::max(0.0F, static_cast<float>(this->getContentRect().h) - HEADER_HEIGHT);
         if (local.y < HEADER_HEIGHT || areaHeight <= 0.0F)
             return false;
-        const float centerX = static_cast<float>(this->getContentRect().w) / 2.0F;
-        const float centerY = HEADER_HEIGHT + areaHeight / 2.0F;
-        const Vector2 worldPosition{
-            this->_viewCenter.x + (local.x - centerX) / this->_zoom,
-            this->_viewCenter.y + (local.y - centerY) / this->_zoom,
-        };
+        const Vector2 worldPosition = this->_worldPositionAt(local);
         const std::vector<int> entities = this->_world.getExistingEntities();
         for (auto it = entities.rbegin(); it != entities.rend(); ++it) {
             if (this->_hitTestEntity(*it, worldPosition)) {
                 this->_world.setEntitySelected(*it);
+                this->_draggedEntity = *it;
+                if (const Transform *transform = this->_world.getComponent<Transform>(*it))
+                    this->_dragOffset = {transform->position.x - worldPosition.x, transform->position.y - worldPosition.y};
                 return true;
             }
         }
-        this->_world.setEntitySelected(-1);
+        this->_world.clearSelectedEntity();
         return true;
     }
 
@@ -332,12 +363,10 @@ bool OrByte::SceneView::onEvent(const OrByte::Event& event, Vector2 local)
     if (local.y < HEADER_HEIGHT || areaHeight <= 0.0F)
         return false;
 
-    const float centerX = static_cast<float>(this->getContentRect().w) / 2.0F;
+    const Vector2 worldUnderMouse = this->_worldPositionAt(local);
+    const Rect& content = this->getContentRect();
+    const float centerX = static_cast<float>(content.w) / 2.0F;
     const float centerY = HEADER_HEIGHT + areaHeight / 2.0F;
-    const Vector2 worldUnderMouse{
-        this->_viewCenter.x + (local.x - centerX) / this->_zoom,
-        this->_viewCenter.y + (local.y - centerY) / this->_zoom,
-    };
 
     const float factor = event.wheelDelta > 0.0 ? ZOOM_FACTOR : 1.0F / ZOOM_FACTOR;
     this->_zoom = std::clamp(this->_zoom * factor, MIN_ZOOM, MAX_ZOOM);

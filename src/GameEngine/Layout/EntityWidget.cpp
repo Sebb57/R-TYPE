@@ -159,7 +159,7 @@ void OrByte::EntityWidget::_applyKeyAction(const Event& event)
         if (remainingIds.empty()) {
             this->_selectedIndex = 0;
             this->_scrollOffset = 0;
-            this->_world.setEntitySelected(-1);
+            this->_world.clearSelectedEntity();
             return;
         }
 
@@ -229,11 +229,12 @@ void OrByte::EntityWidget::_selectRow(Vector2 localMouse)
 void OrByte::EntityWidget::draw(const IGraphic& graphic, Vector2u size)
 {
     const auto ids = this->_entityIds();
-    const int selectedEntityId = this->_world.getSelectedEntity();
+    const std::optional<int> selectedEntityId = this->_world.getSelectedEntity();
     const int width = static_cast<int>(size.x);
     const int height = static_cast<int>(size.y);
     const auto metrics = makeLayout(Rect(0, 0, width, height));
-    const auto selectedIt = std::find(ids.begin(), ids.end(), selectedEntityId);
+    const auto selectedIt = selectedEntityId
+        ? std::find(ids.begin(), ids.end(), *selectedEntityId) : ids.end();
     if (selectedIt != ids.end()) {
         this->_selectedIndex = static_cast<std::size_t>(std::distance(ids.begin(), selectedIt));
         const std::size_t maxScroll = maxScrollOffset(ids.size(), metrics.visibleRows);
@@ -269,7 +270,7 @@ void OrByte::EntityWidget::draw(const IGraphic& graphic, Vector2u size)
             break;
 
         const int entityId = ids[entityIndex];
-        const bool selected = entityId == selectedEntityId;
+        const bool selected = selectedEntityId && entityId == *selectedEntityId;
         const bool editingThis = this->_editing && this->_editingEntityId == entityId;
         const float rowTop = rowTopIndex(index, metrics);
         const float rowBottom = rowTop + metrics.rowHeight;

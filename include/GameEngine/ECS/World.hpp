@@ -18,7 +18,7 @@
 class World {
     EntityManager entityManager;
     ComponentManager componentManager;
-    std::size_t _selectedEntityId = -1;
+    std::optional<int> _selectedEntityId;
 
     void _releaseCamera(int newHolder);
 
@@ -64,8 +64,11 @@ public:
     void setEntitySelected(int entityId) {
         this->_selectedEntityId = entityId;
     }
-    [[nodiscard]] int getSelectedEntity() const {
-        return static_cast<int>(this->_selectedEntityId);
+    void clearSelectedEntity() {
+        this->_selectedEntityId.reset();
+    }
+    [[nodiscard]] std::optional<int> getSelectedEntity() const {
+        return this->_selectedEntityId;
     }
 };
 

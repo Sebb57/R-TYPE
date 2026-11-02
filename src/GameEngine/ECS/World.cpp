@@ -70,7 +70,7 @@ void World::clearWorld()
         this->entityManager.destroyEntity(id);
         this->componentManager.removeAllComponentsFromEntity(id);
     }
-    this->_selectedEntityId = -1;
+    this->_selectedEntityId.reset();
 }
 
 void World::_releaseCamera(int newHolder)
