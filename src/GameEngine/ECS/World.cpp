@@ -34,6 +34,9 @@ int World::createEntity(int entityId)
 
 void World::destroyEntity(int entityId)
 {
+    if (this->_pendingEntityDrag == entityId)
+        this->_pendingEntityDrag.reset();
+
     const std::optional<int> holder = this->getCameraEntity();
     if (!holder || *holder != entityId) {
         this->entityManager.destroyEntity(entityId);
@@ -71,6 +74,7 @@ void World::clearWorld()
         this->componentManager.removeAllComponentsFromEntity(id);
     }
     this->_selectedEntityId.reset();
+    this->_pendingEntityDrag.reset();
 }
 
 void World::_releaseCamera(int newHolder)

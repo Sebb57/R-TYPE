@@ -41,6 +41,7 @@ class EntityWidget final : public Panel {
         void _applyTextInput(const Event& event);
         void _applyKeyAction(const Event& event);
         void _selectRow(Vector2 localMouse);
+        void _addEntity();
         void _setSelectedIndex(std::size_t index);
 };
 

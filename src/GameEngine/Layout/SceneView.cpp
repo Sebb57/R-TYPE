@@ -179,8 +179,10 @@ bool OrByte::SceneView::_hitTestEntity(int entity, Vector2 worldPosition) const
     }
 
     const Vector2 size = this->_entitySize(entity, *transform);
-    if (size.x <= 0.0F || size.y <= 0.0F)
-        return false;
+    if (size.x <= 0.0F || size.y <= 0.0F) {
+        const float anchorRadius = 8.0F / this->_zoom;
+        return deltaX * deltaX + deltaY * deltaY <= anchorRadius * anchorRadius;
+    }
     const float radians = transform->rotation * std::numbers::pi_v<float> / 180.0F;
     const float localX = deltaX * std::cos(radians) + deltaY * std::sin(radians);
     const float localY = -deltaX * std::sin(radians) + deltaY * std::cos(radians);
@@ -340,15 +342,31 @@ void OrByte::SceneView::_drawEntity(const IGraphic& graphic, int entity, Vector2
     const Transform viewTransform(position,
         {worldTransform->scale.x * this->_zoom, worldTransform->scale.y * this->_zoom},
         worldTransform->rotation);
+    if (this->_world.getComponent<Camera>(entity) != nullptr)
+        return;
+
+    const auto drawAnchor = [&]() {
+        const auto selectedEntity = this->_world.getSelectedEntity();
+        const RGBA color = selectedEntity && *selectedEntity == entity
+            ? RGBA{255, 255, 255, 255} : RGBA{175, 190, 210, 255};
+        const Transform anchorTransform(position, {1.0F, 1.0F}, 0.0F);
+        graphic.drawCircle(anchorTransform, 3.0F, color);
+        graphic.drawRectangle(anchorTransform, {12.0F, 2.0F}, color);
+        graphic.drawRectangle(anchorTransform, {2.0F, 12.0F}, color);
+    };
 
     if (const Animator *animator = this->_world.getComponent<Animator>(entity)) {
         const Animation *animation = animator->getCurrentAnimation();
-        if (animation == nullptr || animation->frameCount == 0)
+        if (animation == nullptr || animation->frameCount == 0) {
+            drawAnchor();
             return;
+        }
 
         if (animation->isSpriteSheet) {
-            if (animation->columns == 0 || animation->frameSize.x <= 0.0F || animation->frameSize.y <= 0.0F)
+            if (animation->columns == 0 || animation->frameSize.x <= 0.0F || animation->frameSize.y <= 0.0F) {
+                drawAnchor();
                 return;
+            }
             const std::size_t frame = animation->firstFrame;
             const Rect frameRect(
                 static_cast<int>((frame % animation->columns) * animation->frameSize.x),
@@ -364,8 +382,10 @@ void OrByte::SceneView::_drawEntity(const IGraphic& graphic, int entity, Vector2
             return;
         }
 
-        if (animation->spritePaths.empty() || animation->frameSize.x <= 0.0F || animation->frameSize.y <= 0.0F)
+        if (animation->spritePaths.empty() || animation->frameSize.x <= 0.0F || animation->frameSize.y <= 0.0F) {
+            drawAnchor();
             return;
+        }
         graphic.drawImage(viewTransform,
             {animation->frameSize.x * std::abs(worldTransform->scale.x) * this->_zoom,
                 animation->frameSize.y * std::abs(worldTransform->scale.y) * this->_zoom},
@@ -374,8 +394,10 @@ void OrByte::SceneView::_drawEntity(const IGraphic& graphic, int entity, Vector2
     }
 
     const Sprite *sprite = this->_world.getComponent<Sprite>(entity);
-    if (sprite == nullptr || sprite->texturePath.empty() || sprite->size.x <= 0.0F || sprite->size.y <= 0.0F)
+    if (sprite == nullptr || sprite->texturePath.empty() || sprite->size.x <= 0.0F || sprite->size.y <= 0.0F) {
+        drawAnchor();
         return;
+    }
     graphic.drawImage(viewTransform,
         {sprite->size.x * std::abs(worldTransform->scale.x) * this->_zoom,
             sprite->size.y * std::abs(worldTransform->scale.y) * this->_zoom},
@@ -504,14 +526,34 @@ void OrByte::SceneView::draw(const OrByte::IGraphic& graphicLib, Vector2u size)
         graphicLib.drawRectangle(Transform({centerX, y}, {1.0F, 1.0F}, 0.0F), {width, 1.0F}, color);
     }
 
-    for (const int entity : this->_world.getExistingEntities())
-        this->_drawEntity(graphicLib, entity, size);
+    for (const int entity : this->_world.getExistingEntities()) {
+        if (this->_world.getComponent<Transform>(entity) != nullptr)
+            this->_drawEntity(graphicLib, entity, size);
+    }
     this->_drawSelection(graphicLib, size);
     this->_drawCamera(graphicLib, size);
 }
 
 bool OrByte::SceneView::onEvent(const OrByte::Event& event, Vector2 local)
 {
+    if (const std::optional<int> draggedEntity = this->_world.getPendingEntityDrag()) {
+        if (event.type == Event::Type::MouseButtonReleased && event.mouseButton == Event::MouseButton::Left) {
+            const Rect& content = this->getContentRect();
+            const bool droppedOnScene = local.x >= 0.0F && local.x < static_cast<float>(content.w)
+                && local.y >= HEADER_HEIGHT && local.y < static_cast<float>(content.h);
+            if (droppedOnScene && this->_world.entityExists(*draggedEntity)) {
+                const Vector2 worldPosition = this->_worldPositionAt(local);
+                if (Transform *transform = this->_world.getComponent<Transform>(*draggedEntity))
+                    transform->position = worldPosition;
+                else
+                    this->_world.addComponentToEntity<Transform>(*draggedEntity, worldPosition);
+                this->_world.setEntitySelected(*draggedEntity);
+            }
+            this->_world.clearPendingEntityDrag();
+        }
+        return true;
+    }
+
     if (event.type == Event::Type::MouseMoved && !this->_scaleDrag && !this->_draggedEntity && !this->_isPanning)
         this->setCursorType(this->_scaleCursorAt(local));
 
@@ -587,6 +629,7 @@ bool OrByte::SceneView::onEvent(const OrByte::Event& event, Vector2 local)
                 return true;
             }
         }
+
         this->_world.clearSelectedEntity();
         return true;
     }

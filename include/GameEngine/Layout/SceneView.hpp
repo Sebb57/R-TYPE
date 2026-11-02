@@ -26,7 +26,8 @@ protected:
     bool onEvent(const OrByte::Event& event, Vector2 local) override;
     [[nodiscard]] bool capturesMouse() const override
     {
-        return this->_isPanning || this->_draggedEntity.has_value() || this->_scaleDrag.has_value();
+        return this->_isPanning || this->_draggedEntity.has_value() || this->_scaleDrag.has_value()
+            || this->_world.getPendingEntityDrag().has_value();
     }
 
 private:

@@ -144,16 +144,19 @@ void OrByte::EntityWidget::_applyTextInput(const Event& event)
 
 void OrByte::EntityWidget::_applyKeyAction(const Event& event)
 {
-    if (event.key == Event::Key::Delete) {
+    if (event.key == Event::Key::Delete ||
+        (event.key == Event::Key::Backspace && !this->_editing)) {
         const auto ids = this->_entityIds();
-        if (ids.empty())
+        const std::optional<int> selectedEntity = this->_world.getSelectedEntity();
+        if (ids.empty() || !selectedEntity)
             return;
 
-        const std::size_t index = std::min(this->_selectedIndex, ids.size() - 1);
-        if (this->_world.getCameraEntity() == ids[index])
+        const auto selected = std::find(ids.begin(), ids.end(), *selectedEntity);
+        if (selected == ids.end() || this->_world.getCameraEntity() == *selectedEntity)
             return;
+        const std::size_t index = static_cast<std::size_t>(std::distance(ids.begin(), selected));
         this->_cancelEditing();
-        this->_world.destroyEntity(ids[index]);
+        this->_world.destroyEntity(*selectedEntity);
 
         const auto remainingIds = this->_entityIds();
         if (remainingIds.empty()) {
@@ -226,6 +229,15 @@ void OrByte::EntityWidget::_selectRow(Vector2 localMouse)
     this->_setSelectedIndex(target);
 }
 
+void OrByte::EntityWidget::_addEntity()
+{
+    if (this->_editing)
+        this->_finishEditing();
+
+    const int entityId = this->_world.createEntity();
+    this->_world.setEntitySelected(entityId);
+}
+
 void OrByte::EntityWidget::draw(const IGraphic& graphic, Vector2u size)
 {
     const auto ids = this->_entityIds();
@@ -262,6 +274,15 @@ void OrByte::EntityWidget::draw(const IGraphic& graphic, Vector2u size)
     graphic.drawRectangle({{centerX, headerCenterY}, {1.0f, 1.0f}, 0.0f},
         {static_cast<float>(width), static_cast<float>(metrics.headerHeight)}, headerColor, 0, RGBA{0, 0, 0});
     graphic.drawText({{6.0f, 3.0f}, {1.0f, 1.0f}, 0.0f}, this->getTitle(), 14, textColor, 0, RGBA{0, 0, 0, 0}, constants::FONT_DEFAULT);
+
+    const float addButtonWidth = std::min(22.0f, static_cast<float>(width));
+    const float addButtonX = static_cast<float>(width) - addButtonWidth - 2.0f;
+    const float addButtonHeight = std::max(0.0f, metrics.headerHeight - 4.0f);
+    const float addButtonY = (metrics.headerHeight - addButtonHeight) * 0.5f;
+    graphic.drawRectangle({{addButtonX + addButtonWidth * 0.5f, addButtonY + addButtonHeight * 0.5f},
+        {1.0f, 1.0f}, 0.0f}, {addButtonWidth, addButtonHeight}, RGBA{76, 92, 108}, 1, borderColor);
+    graphic.drawText({{addButtonX + addButtonWidth * 0.5f - 4.0f, addButtonY}, {1.0f, 1.0f}, 0.0f},
+        "+", 16, textColor, 0, RGBA{0, 0, 0, 0}, constants::FONT_DEFAULT);
 
     const std::size_t rowsToDraw = std::min<std::size_t>(ids.size(), metrics.visibleRows);
     for (std::size_t index = 0; index < rowsToDraw; ++index) {
@@ -334,8 +355,15 @@ bool OrByte::EntityWidget::onEvent(const Event& event, Vector2 localMouse)
     }
 
     if (event.type == Event::Type::MouseButtonPressed && event.mouseButton == Event::MouseButton::Left) {
-        const auto ids = this->_entityIds();
         const auto content = this->getContentRect();
+        const float addButtonLeft = static_cast<float>(content.w) - 24.0f;
+        if (localMouse.y < TitleHeight && localMouse.x >= addButtonLeft &&
+            localMouse.x < static_cast<float>(content.w)) {
+            this->_addEntity();
+            return true;
+        }
+
+        const auto ids = this->_entityIds();
         const auto metrics = makeLayout(content);
         const float trackTop = metrics.headerHeight + 3.0f;
         const float trackHeight = std::max(0.0f, static_cast<float>(content.h) - trackTop - 3.0f);
@@ -345,7 +373,14 @@ bool OrByte::EntityWidget::onEvent(const Event& event, Vector2 localMouse)
             localMouse.y <= trackTop + trackHeight) {
             return true;
         }
+        const int rowIndex = rowIndexAt(localMouse.y, metrics);
+        const bool clickedRow = rowIndex >= 0 && rowIndex < static_cast<int>(
+            std::min(ids.size(), metrics.visibleRows));
         this->_selectRow(localMouse);
+        if (clickedRow) {
+            if (const std::optional<int> selected = this->_world.getSelectedEntity())
+                this->_world.setPendingEntityDrag(*selected);
+        }
         return true;
     }
     if (event.type == Event::Type::TextEntered) {
