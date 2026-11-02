@@ -47,6 +47,8 @@ constexpr RGBA READONLY_COLOR{34, 38, 44, 255};
 constexpr RGBA BORDER_COLOR{80, 80, 80, 255};
 constexpr RGBA EDIT_BORDER_COLOR{120, 160, 200, 255};
 constexpr RGBA SELECTION_COLOR{60, 95, 140, 255};
+constexpr RGBA BUTTON_COLOR{45, 85, 130, 255};
+constexpr RGBA REMOVE_COLOR{120, 50, 50, 255};
 constexpr RGBA TEXT_COLOR{220, 220, 220, 255};
 constexpr RGBA MUTED_COLOR{170, 180, 196, 255};
 constexpr RGBA NO_COLOR{0, 0, 0, 0};
@@ -241,7 +243,6 @@ Detail::Field key(std::string label, Event::Key& value)
     return { std::move(label), { std::move(cell) } };
 }
 
-// Read-only value.
 Detail::Field info(std::string label, std::string value)
 {
     Detail::Cell cell;
@@ -374,8 +375,54 @@ int displayRank(ComponentType type)
 }
 }
 
-OrByte::Detail::Detail(World& world, int width) : Widget("Details", width), _world(world)
+OrByte::Detail::Detail(World& world, const ComponentFactories& factories, int width)
+    : Widget("Details", width), _world(world), _factories(factories)
 {
+}
+
+std::vector<OrByte::ComponentType> OrByte::Detail::_addableComponents(int entityId) const
+{
+    std::vector<ComponentType> types;
+
+    for (std::size_t i = 0; i < static_cast<std::size_t>(ComponentType::ENUM_END); ++i) {
+        const auto type = static_cast<ComponentType>(i);
+        const auto factory = this->_factories.find(type);
+
+        if (type == ComponentType::Camera)
+            continue;
+        if (factory == this->_factories.end() || factory->second == nullptr)
+            continue;
+        if (this->_world.getComponent(entityId, type) != nullptr)
+            continue;
+        types.push_back(type);
+    }
+    std::sort(types.begin(), types.end(), [](ComponentType a, ComponentType b) {
+        return std::string(componentName(a)) < std::string(componentName(b));
+    });
+    return types;
+}
+
+void OrByte::Detail::_addComponent(int entityId, ComponentType type)
+{
+    const auto factory = this->_factories.find(type);
+    if (factory == this->_factories.end() || factory->second == nullptr)
+        return;
+
+    std::unique_ptr<IComponent> component(factory->second());
+    if (component == nullptr || component->getType() != type)
+        return;
+    this->_world.addComponentToEntity(entityId, std::move(component));
+    this->_collapsed.erase(type);
+}
+
+void OrByte::Detail::_removeComponent(int entityId, ComponentType type)
+{
+    if (!World::isComponentRemovable(type))
+        return;
+    if (this->_edit.active && this->_edit.type == type)
+        this->_cancelEdit();
+    this->_world.removeComponentFromEntity(entityId, type);
+    this->_clampScroll();
 }
 
 std::vector<OrByte::Detail::Row> OrByte::Detail::_buildRows(int entityId)
@@ -391,16 +438,26 @@ std::vector<OrByte::Detail::Row> OrByte::Detail::_buildRows(int entityId)
         if (component == nullptr)
             continue;
 
-        rows.push_back(Row{ y, static_cast<float>(SECTION_HEIGHT), type, -1, Field{ componentName(type), {} } });
+        rows.push_back(Row{ RowKind::Section, y, static_cast<float>(SECTION_HEIGHT), type, -1, Field{ componentName(type), {} } });
         y += static_cast<float>(SECTION_HEIGHT);
         if (this->_collapsed.count(type) == 0) {
             std::vector<Field> fields = describe(*component);
             for (std::size_t i = 0; i < fields.size(); ++i) {
-                rows.push_back(Row{ y, static_cast<float>(ROW_HEIGHT), type, static_cast<int>(i), std::move(fields[i]) });
+                rows.push_back(Row{ RowKind::Value, y, static_cast<float>(ROW_HEIGHT), type, static_cast<int>(i), std::move(fields[i]) });
                 y += static_cast<float>(ROW_HEIGHT);
             }
         }
         y += 4.f;
+    }
+
+    y += 6.f;
+    rows.push_back(Row{ RowKind::AddButton, y, static_cast<float>(SECTION_HEIGHT), ComponentType::ENUM_END, -1, Field{ "+ Add Component", {} } });
+    y += static_cast<float>(SECTION_HEIGHT);
+    if (this->_addMenuOpen) {
+        for (ComponentType type : this->_addableComponents(entityId)) {
+            rows.push_back(Row{ RowKind::AddChoice, y, static_cast<float>(ROW_HEIGHT), type, -1, Field{ componentName(type), {} } });
+            y += static_cast<float>(ROW_HEIGHT);
+        }
     }
     this->_contentHeight = y + this->_scroll - top + static_cast<float>(PADDING);
     return rows;
@@ -417,9 +474,15 @@ Rect OrByte::Detail::_cellRect(const Row& row, std::size_t cellIndex, int width)
         static_cast<int>(row.y) + 2, cellWidth, static_cast<int>(row.height) - 4);
 }
 
+Rect OrByte::Detail::_removeRect(const Row& row, int width) const
+{
+    const int size = static_cast<int>(row.height) - 8;
+    return Rect(width - PADDING - size, static_cast<int>(row.y) + 4, size, size);
+}
+
 bool OrByte::Detail::_isEditing(const Row& row, std::size_t cellIndex) const
 {
-    return this->_edit.active && this->_edit.type == row.type && this->_edit.fieldIndex == row.fieldIndex
+    return this->_edit.active && row.kind == RowKind::Value && this->_edit.type == row.type && this->_edit.fieldIndex == row.fieldIndex
         && this->_edit.cellIndex == static_cast<int>(cellIndex);
 }
 
@@ -432,6 +495,7 @@ void OrByte::Detail::_syncSelection()
     if (selected != this->_shownEntity) {
         this->_shownEntity = selected;
         this->_scroll = 0.f;
+        this->_addMenuOpen = false;
     }
 }
 
@@ -486,7 +550,7 @@ void OrByte::Detail::_editNextCell()
 
     this->_commitEdit();
     for (const Row& row : this->_buildRows(previous.entity)) {
-        if (row.fieldIndex < 0)
+        if (row.kind != RowKind::Value)
             continue;
         for (std::size_t i = 0; i < row.field.cells.size(); ++i) {
             if (!passed) {
@@ -545,8 +609,32 @@ bool OrByte::Detail::_onClick(Vector2 localMouse)
         if (localMouse.y < row.y || localMouse.y >= row.y + row.height)
             continue;
 
-        if (row.fieldIndex < 0) {
-            this->_commitEdit();
+        if (row.kind == RowKind::Value) {
+            for (std::size_t i = 0; i < row.field.cells.size(); ++i)
+                if (this->_isEditing(row, i)
+                    && this->_cellRect(row, i, width).contains(static_cast<int>(localMouse.x), static_cast<int>(localMouse.y)))
+                    return true;
+        }
+        this->_commitEdit();
+        if (row.kind == RowKind::AddButton) {
+            this->_addMenuOpen = !this->_addMenuOpen && !this->_addableComponents(entityId).empty();
+            this->_clampScroll();
+            return true;
+        }
+        if (row.kind == RowKind::AddChoice) {
+            this->_addComponent(entityId, row.type);
+            this->_addMenuOpen = false;
+            this->_clampScroll();
+            return true;
+        }
+        this->_addMenuOpen = false;
+        if (row.kind == RowKind::Section) {
+            const Rect remove = this->_removeRect(row, width);
+            if (World::isComponentRemovable(row.type)
+                && remove.contains(static_cast<int>(localMouse.x), static_cast<int>(localMouse.y))) {
+                this->_removeComponent(entityId, row.type);
+                return true;
+            }
             if (!this->_collapsed.erase(row.type))
                 this->_collapsed.insert(row.type);
             this->_clampScroll();
@@ -556,10 +644,6 @@ bool OrByte::Detail::_onClick(Vector2 localMouse)
             const Rect rect = this->_cellRect(row, i, width);
             if (!rect.contains(static_cast<int>(localMouse.x), static_cast<int>(localMouse.y)))
                 continue;
-            if (this->_isEditing(row, i))
-                return true;
-
-            this->_commitEdit();
             const Cell& cell = row.field.cells[i];
             if (cell.click)
                 cell.click();
@@ -567,9 +651,10 @@ bool OrByte::Detail::_onClick(Vector2 localMouse)
                 this->_startEdit(entityId, row, i);
             return true;
         }
-        break;
+        return true;
     }
     this->_commitEdit();
+    this->_addMenuOpen = false;
     return true;
 }
 
@@ -592,8 +677,13 @@ bool OrByte::Detail::_onText(const Event& event)
 
 bool OrByte::Detail::_onKey(const Event& event)
 {
-    if (!this->_edit.active)
+    if (!this->_edit.active) {
+        if (this->_addMenuOpen && event.key == Event::Key::Escape) {
+            this->_addMenuOpen = false;
+            return true;
+        }
         return false;
+    }
 
     switch (event.key) {
         case Event::Key::Backspace:
@@ -623,10 +713,32 @@ void OrByte::Detail::_drawRow(const IGraphic& graphic, const Row& row, int width
 {
     const float w = static_cast<float>(width);
 
-    if (row.fieldIndex < 0) {
+    if (row.kind == RowKind::Section) {
         const std::string arrow = (this->_collapsed.count(row.type) != 0) ? "> " : "v ";
         fillRect(graphic, 0.f, row.y, w, row.height - 1.f, SECTION_COLOR);
         drawLabel(graphic, static_cast<float>(PADDING), row.y + 4.f, arrow + row.field.label, SECTION_FONT, TEXT_COLOR);
+        if (World::isComponentRemovable(row.type)) {
+            const Rect remove = this->_removeRect(row, width);
+            fillRect(graphic, static_cast<float>(remove.x), static_cast<float>(remove.y), static_cast<float>(remove.w), static_cast<float>(remove.h),
+                REMOVE_COLOR, 1, BORDER_COLOR);
+            drawLabel(graphic, static_cast<float>(remove.x) + static_cast<float>(remove.w) / 2.f - 3.5f, static_cast<float>(remove.y) - 2.f,
+                "x", SECTION_FONT, TEXT_COLOR);
+        }
+        return;
+    }
+    if (row.kind == RowKind::AddButton) {
+        const bool available = !this->_addableComponents(this->_shownEntity).empty();
+        fillRect(graphic, static_cast<float>(PADDING), row.y, w - static_cast<float>(PADDING * 2), row.height - 2.f,
+            available ? BUTTON_COLOR : READONLY_COLOR, 1, this->_addMenuOpen ? EDIT_BORDER_COLOR : BORDER_COLOR);
+        drawLabel(graphic, static_cast<float>(PADDING * 2), row.y + 4.f, available ? row.field.label : "No component to add",
+            SECTION_FONT, available ? TEXT_COLOR : MUTED_COLOR);
+        return;
+    }
+    if (row.kind == RowKind::AddChoice) {
+        fillRect(graphic, static_cast<float>(PADDING), row.y, w - static_cast<float>(PADDING * 2), row.height,
+            CELL_COLOR, 1, BORDER_COLOR);
+        drawLabel(graphic, static_cast<float>(PADDING * 3), row.y + (row.height - static_cast<float>(FIELD_FONT)) / 2.f - 2.f,
+            row.field.label, FIELD_FONT, TEXT_COLOR);
         return;
     }
 
@@ -686,6 +798,7 @@ void OrByte::Detail::draw(const IGraphic& graphic, Vector2u size)
     } else {
         drawLabel(graphic, static_cast<float>(PADDING), static_cast<float>(HEADER + 8), "Select an entity in the Hierarchy", FIELD_FONT, MUTED_COLOR);
     }
+
     fillRect(graphic, 0.f, 0.f, w, static_cast<float>(HEADER), HEADER_COLOR);
     drawLabel(graphic, 6.f, 3.f, this->getTitle(), 14, TEXT_COLOR);
     if (hasEntity) {
