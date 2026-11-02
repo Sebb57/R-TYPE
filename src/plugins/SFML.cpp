@@ -437,7 +437,7 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     this->_window->draw(sprite);
 }
 
-void OrByte::SFML::drawText(const Transform& transform, std::string text, unsigned fontSize, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor, std::filesystem::path font) const
+void OrByte::SFML::drawText(const Transform& transform, std::string text, unsigned fontSize, float maxWidth, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor, std::filesystem::path font) const
 {
     if (!this->_isOpen || !this->_window)
         return;
@@ -455,6 +455,22 @@ void OrByte::SFML::drawText(const Transform& transform, std::string text, unsign
     sfmlText.setOutlineThickness(outlineThickness);
     sfmlText.setOutlineColor(colorNormalize(outlineColor));
     sfmlText.setString(text);
+
+    if (maxWidth > 0.f) {
+        const float limit = maxWidth * ratio.x;
+
+        if (sfmlText.getLocalBounds().width > limit) {
+            const std::string ellipsis = "...";
+            while (!text.empty()) {
+                text.pop_back();
+                sfmlText.setString(text + ellipsis);
+                if (sfmlText.getLocalBounds().width <= limit)
+                    break;
+            }
+            if (text.empty())
+                sfmlText.setString(ellipsis);
+        }
+    }
 
     sfmlText.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x, offset.y + transform.position.y * ratio.y));
     this->_window->draw(sfmlText);

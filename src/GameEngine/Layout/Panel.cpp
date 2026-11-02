@@ -18,5 +18,5 @@ void OrByte::Panel::draw(const IGraphic& graphicLib, Vector2u size)
     if (headerHeight <= 0.f)
         return;
     graphicLib.drawRectangle(Transform{ { w/2, headerHeight/2 }, 0.f }, { w, headerHeight }, RGBA{ 60, 60, 60, 255 }, 0, RGBA{ 0, 0, 0, 0 });
-    graphicLib.drawText(Transform{ { 6.f, 3.f }, 0.f }, this->getTitle(), 14, RGBA{ 220, 220, 220, 255 }, 0, RGBA{ 0, 0, 0, 0 }, OrByte::constants::FONT_DEFAULT);
+    graphicLib.drawText(Transform{ { 6.f, 3.f }, 0.f }, this->getTitle(), 14, 0.f, RGBA{ 220, 220, 220, 255 }, 0, RGBA{ 0, 0, 0, 0 }, OrByte::constants::FONT_DEFAULT);
 }

@@ -246,7 +246,7 @@ void OrByte::EntityWidget::draw(const IGraphic& graphic, Vector2u size)
         {static_cast<float>(width), static_cast<float>(height)}, bgColor, 1, borderColor);
     graphic.drawRectangle({{centerX, headerCenterY}, {1.0f, 1.0f}, 0.0f},
         {static_cast<float>(width), static_cast<float>(metrics.headerHeight)}, headerColor, 0, RGBA{0, 0, 0});
-    graphic.drawText({{6.0f, 3.0f}, {1.0f, 1.0f}, 0.0f}, this->getTitle(), 14, textColor, 0, RGBA{0, 0, 0, 0}, constants::FONT_DEFAULT);
+    graphic.drawText({{6.0f, 3.0f}, {1.0f, 1.0f}, 0.0f}, this->getTitle(), 14, 0.f, textColor, 0, RGBA{0, 0, 0, 0}, constants::FONT_DEFAULT);
 
     const std::size_t rowsToDraw = std::min<std::size_t>(ids.size(), metrics.visibleRows);
     for (std::size_t index = 0; index < rowsToDraw; ++index) {
@@ -273,8 +273,8 @@ void OrByte::EntityWidget::draw(const IGraphic& graphic, Vector2u size)
 
         graphic.drawRectangle({{centerX, rowCenterY}, {1.0f, 1.0f}, 0.0f},
             {static_cast<float>(width), metrics.rowHeight}, rowFill, 1, outline);
-        graphic.drawText({{labelX, textY}, {1.0f, 1.0f}, 0.0f}, label, static_cast<unsigned>(metrics.rowTextSize), textColor, 0, RGBA{0, 0, 0}, constants::FONT_DEFAULT);
-        graphic.drawText({{idX, textY + 1.0f}, {1.0f, 1.0f}, 0.0f}, "id: " + std::to_string(entityId), static_cast<unsigned>(std::max(10.0f, metrics.rowTextSize * 0.85f)), mutedText, 0, RGBA{0, 0, 0}, constants::FONT_DEFAULT);
+        graphic.drawText({{labelX, textY}, {1.0f, 1.0f}, 0.0f}, label, static_cast<unsigned>(metrics.rowTextSize), 0.f, textColor, 0, RGBA{0, 0, 0}, constants::FONT_DEFAULT);
+        graphic.drawText({{idX, textY + 1.0f}, {1.0f, 1.0f}, 0.0f}, "id: " + std::to_string(entityId), static_cast<unsigned>(std::max(10.0f, metrics.rowTextSize * 0.85f)), 0.f, mutedText, 0, RGBA{0, 0, 0}, constants::FONT_DEFAULT);
     }
 
     if (ids.size() > metrics.visibleRows) {
