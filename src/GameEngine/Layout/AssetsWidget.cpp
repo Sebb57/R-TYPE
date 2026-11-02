@@ -9,8 +9,12 @@
 #include <cmath>
 #include <filesystem>
 #include <iostream>
+#include <sys/stat.h>
 
 namespace {
+
+inline const std::filesystem::path ICON_PATH = "assets/file.png";
+inline const std::filesystem::path HICON_PATH = "assets/directory.png";
 
 constexpr float TITLE_HEIGHT = 24.f;
 constexpr float MINIMUM_ROW_HEIGHT = 32.f;
@@ -68,6 +72,27 @@ std::size_t getFileSize(const std::filesystem::path path)
             size += std::filesystem::file_size(entry.path());
 
     return size;
+}
+
+bool isFileImage(const std::filesystem::path file)
+{
+    if (file.extension() == ".png" ||
+        file.extension() == ".jpg"||
+        file.extension() == ".jpeg"||
+        file.extension() == ".webp")
+        return true;
+    return false;
+}
+
+bool isFileDir(const std::filesystem::path path)
+{
+    struct stat s;
+
+    if (stat(path.c_str(), &s) == 0)
+        if (s.st_mode & S_IFDIR)
+            return true;
+    std::cout << path.c_str() << std::endl;
+    return false;
 }
 
 } // namespace
@@ -134,11 +159,8 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
 
     const RGBA bgColor = RGBA{40, 40, 40, 255};
     const RGBA headerColor = RGBA{60, 60, 60, 255};
-    const RGBA entryColor = RGBA{80, 80, 80};
-    const RGBA selectedColor = RGBA{52, 62, 74};
     const RGBA borderColor = RGBA{80, 80, 80, 255};
     const RGBA textColor = RGBA{220, 220, 220, 255};
-    const RGBA mutedText = RGBA{170, 180, 196};
 
     const float centerX = static_cast<float>(width) * 0.5f;
     const float centerY = static_cast<float>(height) * 0.5f;
@@ -156,14 +178,18 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
     const float minOffset = (ENTRY_SIZE * (nRow + 1) + ENTRY_GAP_Y * (nRow + 0.5) - effectiveHeight) * -1;
 
     this->_scrollOffset = std::min(0.f, std::max(minOffset, this->_scrollOffset));
-    std::cout << minOffset << " " << this->_scrollOffset << std::endl;
     for (std::size_t i = 0; i < this->_entries.size(); i++) {
         const int row = i / entriesPerRow;
         const int col = i % entriesPerRow;
         const float centerX = ENTRY_OFFSET_X + (col + 0.5) * ENTRY_SIZE + col * ENTRY_GAP_X;
         const float centerY = ENTRY_OFFSET_Y + (row + 0.5) * ENTRY_SIZE + row * ENTRY_GAP_Y + TITLE_HEIGHT + this->_scrollOffset;
 
-        graphic.drawRectangle({{centerX, centerY}}, {ENTRY_SIZE, ENTRY_SIZE}, entryColor);
+        if (isFileImage(this->_entries[i]))
+            graphic.drawImage({{centerX, centerY}}, {ENTRY_SIZE, ENTRY_SIZE}, this->_entries[i]);
+        else if (isFileDir(this->_dirPath / this->_entries[i]))
+            graphic.drawImage({{centerX, centerY}}, {ENTRY_SIZE, ENTRY_SIZE}, HICON_PATH);
+        else
+            graphic.drawImage({{centerX, centerY}}, {ENTRY_SIZE, ENTRY_SIZE}, ICON_PATH);
         graphic.drawText({{centerX - ENTRY_SIZE / 2, centerY + TEXT_GAP + ENTRY_SIZE / 2}}, this->_entries[i], TEXT_SIZE, ENTRY_SIZE);
     }
 
@@ -175,9 +201,6 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
 
 bool OrByte::AssetsWidget::onEvent(const Event& event, Vector2 localMouse)
 {
-    (void) localMouse;
-
-    Rect rect = this->getRect();
     switch (event.type) {
         case Event::Type::MouseWheelScrolled:
             if (localMouse.y > TITLE_HEIGHT) {

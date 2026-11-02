@@ -34,7 +34,7 @@ class AssetsWidget final : public Widget {
 
         World& _world;
 
-        std::string _dirPath;
+        std::filesystem::path _dirPath;
         DIR* _dir;
         std::vector<std::string> _entries;
 
