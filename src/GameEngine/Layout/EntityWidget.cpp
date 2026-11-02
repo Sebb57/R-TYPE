@@ -9,6 +9,7 @@
 #include "GameEngine/ECS/Components/Name.hpp"
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <string>
 
 namespace {
@@ -228,9 +229,20 @@ void OrByte::EntityWidget::_selectRow(Vector2 localMouse)
 void OrByte::EntityWidget::draw(const IGraphic& graphic, Vector2u size)
 {
     const auto ids = this->_entityIds();
+    const int selectedEntityId = this->_world.getSelectedEntity();
     const int width = static_cast<int>(size.x);
     const int height = static_cast<int>(size.y);
     const auto metrics = makeLayout(Rect(0, 0, width, height));
+    const auto selectedIt = std::find(ids.begin(), ids.end(), selectedEntityId);
+    if (selectedIt != ids.end()) {
+        this->_selectedIndex = static_cast<std::size_t>(std::distance(ids.begin(), selectedIt));
+        const std::size_t maxScroll = maxScrollOffset(ids.size(), metrics.visibleRows);
+        this->_scrollOffset = std::clamp(this->_scrollOffset, std::size_t{0}, maxScroll);
+        if (this->_selectedIndex < this->_scrollOffset)
+            this->_scrollOffset = this->_selectedIndex;
+        else if (this->_selectedIndex >= this->_scrollOffset + metrics.visibleRows)
+            this->_scrollOffset = this->_selectedIndex - metrics.visibleRows + 1;
+    }
 
     const RGBA bgColor = RGBA{40, 40, 40, 255};
     const RGBA headerColor = RGBA{60, 60, 60, 255};
@@ -257,7 +269,7 @@ void OrByte::EntityWidget::draw(const IGraphic& graphic, Vector2u size)
             break;
 
         const int entityId = ids[entityIndex];
-        const bool selected = entityIndex == this->_selectedIndex;
+        const bool selected = entityId == selectedEntityId;
         const bool editingThis = this->_editing && this->_editingEntityId == entityId;
         const float rowTop = rowTopIndex(index, metrics);
         const float rowBottom = rowTop + metrics.rowHeight;

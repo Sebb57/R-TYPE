@@ -7,11 +7,14 @@
 
 #include "GameEngine/Layout/SceneView.hpp"
 #include "GameEngine/ECS/Components/Animator.hpp"
+#include "GameEngine/ECS/Components/Camera.hpp"
+#include "GameEngine/ECS/Components/Collider.hpp"
 #include "GameEngine/ECS/Components/Sprite.hpp"
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "constants.hpp"
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 
 namespace {
 
@@ -44,6 +47,58 @@ Vector2 OrByte::SceneView::_screenPosition(const Transform& transform, Vector2u 
         static_cast<float>(size.x) / 2.0F + (transform.position.x - this->_viewCenter.x) * this->_zoom,
         HEADER_HEIGHT + areaHeight / 2.0F + (transform.position.y - this->_viewCenter.y) * this->_zoom,
     };
+}
+
+Vector2 OrByte::SceneView::_entitySize(int entity, const Transform& transform) const
+{
+    Vector2 size;
+    if (const Animator *animator = this->_world.getComponent<Animator>(entity)) {
+        const Animation *animation = animator->getCurrentAnimation();
+        if (animation == nullptr || animation->frameCount == 0)
+            return {};
+        if (animation->isSpriteSheet) {
+            size = animation->displaySize.x > 0.0F && animation->displaySize.y > 0.0F
+                ? animation->displaySize : animation->frameSize;
+        } else {
+            if (animation->spritePaths.empty())
+                return {};
+            size = animation->frameSize;
+        }
+    } else if (const Sprite *sprite = this->_world.getComponent<Sprite>(entity)) {
+        if (sprite->texturePath.empty())
+            return {};
+        size = sprite->size;
+    }
+    return {size.x * std::abs(transform.scale.x), size.y * std::abs(transform.scale.y)};
+}
+
+bool OrByte::SceneView::_hitTestEntity(int entity, Vector2 worldPosition) const
+{
+    const Transform *transform = this->_world.getComponent<Transform>(entity);
+    if (transform == nullptr)
+        return false;
+
+    const float deltaX = worldPosition.x - transform->position.x;
+    const float deltaY = worldPosition.y - transform->position.y;
+    if (const Collider *collider = this->_world.getComponent<Collider>(entity)) {
+        const float width = collider->size.x * std::abs(transform->scale.x);
+        const float height = collider->size.y * std::abs(transform->scale.y);
+        if (collider->colliderShape == ColliderShape::Circle) {
+            const float radius = width / 2.0F;
+            if (deltaX * deltaX + deltaY * deltaY <= radius * radius)
+                return true;
+        } else if (std::abs(deltaX) <= width / 2.0F && std::abs(deltaY) <= height / 2.0F) {
+            return true;
+        }
+    }
+
+    const Vector2 size = this->_entitySize(entity, *transform);
+    if (size.x <= 0.0F || size.y <= 0.0F)
+        return false;
+    const float radians = transform->rotation * std::numbers::pi_v<float> / 180.0F;
+    const float localX = deltaX * std::cos(radians) + deltaY * std::sin(radians);
+    const float localY = -deltaX * std::sin(radians) + deltaY * std::cos(radians);
+    return std::abs(localX) <= size.x / 2.0F && std::abs(localY) <= size.y / 2.0F;
 }
 
 void OrByte::SceneView::_drawEntity(const IGraphic& graphic, int entity, Vector2u size) const
@@ -98,6 +153,88 @@ void OrByte::SceneView::_drawEntity(const IGraphic& graphic, int entity, Vector2
         sprite->texturePath);
 }
 
+void OrByte::SceneView::_drawCamera(const IGraphic& graphic, Vector2u size) const
+{
+    const std::optional<int> cameraEntity = this->_world.getCameraEntity();
+    if (!cameraEntity)
+        return;
+
+    const Transform *transform = this->_world.getComponent<Transform>(*cameraEntity);
+    const Camera *camera = this->_world.getComponent<Camera>(*cameraEntity);
+    if (transform == nullptr || camera == nullptr)
+        return;
+
+    const Vector2 center = this->_screenPosition(*transform, size);
+    const Transform viewTransform(center, {1.0F, 1.0F}, transform->rotation);
+    const float viewWidth = static_cast<float>(constants::SERVER_WINDOW_X) * this->_zoom;
+    const float viewHeight = static_cast<float>(constants::SERVER_WINDOW_Y) * this->_zoom;
+    graphic.drawRectangle(viewTransform, {viewWidth, viewHeight}, RGBA{0, 0, 0, 0}, 2, RGBA{70, 205, 255, 255});
+
+    constexpr float indicatorRadius = 5.0F;
+    constexpr float indicatorArm = 16.0F;
+    const RGBA indicatorColor{100, 225, 255, 255};
+    graphic.drawCircle(viewTransform, indicatorRadius, indicatorColor);
+    graphic.drawRectangle(Transform({center.x, center.y}, {1.0F, 1.0F}, 0.0F),
+        {indicatorArm, 2.0F}, indicatorColor);
+    graphic.drawRectangle(Transform({center.x, center.y}, {1.0F, 1.0F}, 0.0F),
+        {2.0F, indicatorArm}, indicatorColor);
+}
+
+void OrByte::SceneView::_drawSelection(const IGraphic& graphic, Vector2u size) const
+{
+    const int entity = this->_world.getSelectedEntity();
+    if (entity < 0 || !this->_world.entityExists(entity))
+        return;
+
+    const Transform *transform = this->_world.getComponent<Transform>(entity);
+    if (transform == nullptr)
+        return;
+
+    const Vector2 position = this->_screenPosition(*transform, size);
+    const Transform viewTransform(position, {1.0F, 1.0F}, transform->rotation);
+    const Transform hitboxTransform(position, {1.0F, 1.0F}, 0.0F);
+    const Collider *collider = this->_world.getComponent<Collider>(entity);
+    if (collider != nullptr) {
+        const RGBA hitboxColor{80, 255, 100, 255};
+        const float width = collider->size.x * std::abs(transform->scale.x) * this->_zoom;
+        const float height = collider->size.y * std::abs(transform->scale.y) * this->_zoom;
+        if (collider->colliderShape == ColliderShape::Circle) {
+            graphic.drawCircle(hitboxTransform, width / 2.0F, RGBA{0, 0, 0, 0}, 2, hitboxColor);
+        } else {
+            graphic.drawRectangle(hitboxTransform, {width, height}, RGBA{0, 0, 0, 0}, 2, hitboxColor);
+        }
+    }
+
+    const Vector2 entitySize = this->_entitySize(entity, *transform);
+    const RGBA selectionColor{255, 220, 45, 255};
+    if (entitySize.x > 0.0F && entitySize.y > 0.0F) {
+        graphic.drawRectangle(viewTransform,
+            {entitySize.x * this->_zoom, entitySize.y * this->_zoom},
+            RGBA{0, 0, 0, 0}, 2, selectionColor);
+        return;
+    }
+
+    if (this->_world.getComponent<Camera>(entity) != nullptr) {
+        graphic.drawRectangle(viewTransform,
+            {static_cast<float>(constants::SERVER_WINDOW_X) * this->_zoom,
+                static_cast<float>(constants::SERVER_WINDOW_Y) * this->_zoom},
+            RGBA{0, 0, 0, 0}, 3, selectionColor);
+        return;
+    }
+
+    if (collider != nullptr) {
+        const float width = collider->size.x * std::abs(transform->scale.x) * this->_zoom;
+        const float height = collider->size.y * std::abs(transform->scale.y) * this->_zoom;
+        if (collider->colliderShape == ColliderShape::Circle)
+            graphic.drawCircle(hitboxTransform, width / 2.0F, RGBA{0, 0, 0, 0}, 3, selectionColor);
+        else
+            graphic.drawRectangle(hitboxTransform, {width, height}, RGBA{0, 0, 0, 0}, 3, selectionColor);
+        return;
+    }
+
+    graphic.drawRectangle(viewTransform, {16.0F, 16.0F}, RGBA{0, 0, 0, 0}, 2, selectionColor);
+}
+
 void OrByte::SceneView::draw(const OrByte::IGraphic& graphicLib, Vector2u size)
 {
     Panel::draw(graphicLib, size);
@@ -139,6 +276,8 @@ void OrByte::SceneView::draw(const OrByte::IGraphic& graphicLib, Vector2u size)
 
     for (const int entity : this->_world.getExistingEntities())
         this->_drawEntity(graphicLib, entity, size);
+    this->_drawSelection(graphicLib, size);
+    this->_drawCamera(graphicLib, size);
 }
 
 bool OrByte::SceneView::onEvent(const OrByte::Event& event, Vector2 local)
@@ -162,6 +301,27 @@ bool OrByte::SceneView::onEvent(const OrByte::Event& event, Vector2 local)
         && local.y >= HEADER_HEIGHT) {
         this->_isPanning = true;
         this->_lastMousePosition = local;
+        return true;
+    }
+
+    if (event.type == Event::Type::MouseButtonPressed && event.mouseButton == Event::MouseButton::Left) {
+        const float areaHeight = std::max(0.0F, static_cast<float>(this->getContentRect().h) - HEADER_HEIGHT);
+        if (local.y < HEADER_HEIGHT || areaHeight <= 0.0F)
+            return false;
+        const float centerX = static_cast<float>(this->getContentRect().w) / 2.0F;
+        const float centerY = HEADER_HEIGHT + areaHeight / 2.0F;
+        const Vector2 worldPosition{
+            this->_viewCenter.x + (local.x - centerX) / this->_zoom,
+            this->_viewCenter.y + (local.y - centerY) / this->_zoom,
+        };
+        const std::vector<int> entities = this->_world.getExistingEntities();
+        for (auto it = entities.rbegin(); it != entities.rend(); ++it) {
+            if (this->_hitTestEntity(*it, worldPosition)) {
+                this->_world.setEntitySelected(*it);
+                return true;
+            }
+        }
+        this->_world.setEntitySelected(-1);
         return true;
     }
 

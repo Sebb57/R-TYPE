@@ -38,7 +38,11 @@ private:
     bool _isPanning = false;
 
     [[nodiscard]] Vector2 _screenPosition(const Transform& transform, Vector2u size) const;
+    [[nodiscard]] Vector2 _entitySize(int entity, const Transform& transform) const;
+    [[nodiscard]] bool _hitTestEntity(int entity, Vector2 worldPosition) const;
     void _drawEntity(const IGraphic& graphic, int entity, Vector2u size) const;
+    void _drawSelection(const IGraphic& graphic, Vector2u size) const;
+    void _drawCamera(const IGraphic& graphic, Vector2u size) const;
 };
 
 } // namespace OrByte
