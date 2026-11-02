@@ -71,6 +71,7 @@ class ComponentManager
         }
 
         [[nodiscard]] std::vector<OrByte::IComponent*> getComponents(int entityId) const;
+        [[nodiscard]] std::vector<int> getEntitiesWith(OrByte::ComponentType type) const;
 
         void removeAllComponentsFromEntity(int entityId);
 };

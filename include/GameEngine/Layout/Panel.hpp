@@ -17,11 +17,15 @@
 namespace OrByte {
 
 class Panel : public Widget {
-public:
-    Panel(std::string title, int size) : Widget(std::move(title), size) {}
+    public:
+        Panel(std::string title, int size) : Widget(std::move(title), size) {}
 
-protected:
-    void draw(const IGraphic& graphicLib, Vector2u size) override;
+    protected:
+        static constexpr int TITLE_HEIGHT = 24;
+
+        void draw(const IGraphic& graphicLib, Vector2u size) override;
+
+        [[nodiscard]] int getHeaderHeight() const override { return this->getTitle().empty() ? 0 : TITLE_HEIGHT; }
 };
 
 } // namespace OrByte

@@ -32,6 +32,11 @@ namespace OrByte {
         mutable std::unordered_map<std::string, sf::Texture> _textures;
         mutable std::vector<Rect> _regions;
 
+        sf::Cursor _cursorArrow;
+        sf::Cursor _cursorHorizontal;
+        sf::Cursor _cursorVertical;
+        CursorType _currentCursor = CursorType::Arrow;
+
         const sf::Font *getFont(const std::filesystem::path& path) const;
         const sf::Texture *getTexture(const std::filesystem::path& path) const;
 
@@ -60,6 +65,7 @@ namespace OrByte {
             virtual void applyRegionView() const override;
             virtual void pushRegion(const Rect& pixelRect) const override;
             virtual void popRegion() const override;
+            virtual void setCursor(CursorType type) override;
 
             std::pair<unsigned, unsigned> getWindowSize() const noexcept final;
     };
