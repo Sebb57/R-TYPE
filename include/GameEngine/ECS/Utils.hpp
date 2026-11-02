@@ -9,12 +9,14 @@
 #ifndef UTILS_HPP_
     #define UTILS_HPP_
 
+#include <algorithm>
+
 struct Vector2
 {
     float x;
     float y;
 
-    Vector2(float x = 0.0f, float y = 0.0f) : x(x), y(y) {}
+    Vector2(float x = 0.0F, float y = 0.0F) : x(x), y(y) {}
 };
 
 template <typename S>
@@ -49,5 +51,14 @@ struct Rect {
         return px >= x && px < x + w && py >= y && py < y + h;
     }
 };
+
+[[nodiscard]] inline float clampToBound(float center, float halfSize, float bound)
+{
+    if (bound <= 0.0F)
+        return center;
+    if (halfSize * 2.0F >= bound)
+        return bound / 2.0F;
+    return std::clamp(center, halfSize, bound - halfSize);
+}
 
 #endif /* UTILS_HPP_ */

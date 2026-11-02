@@ -29,6 +29,7 @@ class DisplaySystem : public ASystem {
     void _updateAnimator(Animator* animator, float deltaTime);
     void _handleControllable(Transform* transform, int entity);
     bool _hasImage(const std::string& path);
+    [[nodiscard]] static Transform _toView(const Transform& transform, const Vector2& origin);
 
     public:
         DisplaySystem(World& world, IGraphic& graphic) : _world(world), _graphic(graphic) {}

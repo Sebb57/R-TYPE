@@ -12,12 +12,16 @@
     #include "plugins/IComponent.hpp"
     #include "Managers/EntityManager.hpp"
     #include "Managers/ComponentManager.hpp"
-    
+    #include "GameEngine/ECS/Utils.hpp"
+    #include <optional>
+
 class World {
     EntityManager entityManager;
     ComponentManager componentManager;
     std::size_t _selectedEntityId = -1;
-    
+
+    void _releaseCamera(int newHolder);
+
 public:
     World() = default;
     ~World() = default;
@@ -31,9 +35,13 @@ public:
 
     template <typename T, typename ... Args>
     void addComponentToEntity(int entityId, Args&& ... args) {
+        if (T::Type == OrByte::ComponentType::Camera)
+            this->_releaseCamera(entityId);
         componentManager.addComponentToEntity<T>(entityId, std::forward<Args>(args)...);
     }
     void addComponentToEntity(int entityId, std::unique_ptr<OrByte::IComponent> component) {
+        if (component != nullptr && component->getType() == OrByte::ComponentType::Camera)
+            this->_releaseCamera(entityId);
         componentManager.addComponentToEntity(entityId, std::move(component));
     }
     template <typename T>
@@ -45,8 +53,13 @@ public:
     }
     template <typename T>
     void removeComponentFromEntity(int entityId) {
-        componentManager.removeComponentFromEntity<T>(entityId);
+        if (T::Type != OrByte::ComponentType::Camera)
+            componentManager.removeComponentFromEntity<T>(entityId);
     }
+
+    int ensureCamera();
+    [[nodiscard]] std::optional<int> getCameraEntity() const;
+    [[nodiscard]] Vector2 getCameraOrigin(const Vector2& view);
 
     void setEntitySelected(int entityId) {
         this->_selectedEntityId = entityId;

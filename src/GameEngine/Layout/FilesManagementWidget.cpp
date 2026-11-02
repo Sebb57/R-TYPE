@@ -198,6 +198,7 @@ void OrByte::FilesManagementWidget::_load(const std::filesystem::path& path)
     } catch (const std::exception& error) {
         std::cerr << "Cannot load world: " << error.what() << std::endl;
     }
+    this->_world.ensureCamera();
     this->_world.setEntitySelected(-1);
     this->_close();
 }

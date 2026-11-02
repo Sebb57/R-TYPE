@@ -118,13 +118,24 @@ void OrByte::DisplaySystem::_updateAnimator(Animator* animator, float deltaTime)
     }
 }
 
+OrByte::Transform OrByte::DisplaySystem::_toView(const Transform& transform, const Vector2& origin)
+{
+    Transform view = transform;
+
+    view.position = Vector2(transform.position.x - origin.x, transform.position.y - origin.y);
+    return view;
+}
+
 void OrByte::DisplaySystem::update()
 {
+    const Vector2 origin = this->_world.getCameraOrigin(Vector2(constants::SERVER_WINDOW_X, constants::SERVER_WINDOW_Y));
     std::vector<int> entities = this->_world.getExistingEntities();
     for (int entity: entities) {
-        auto* transform = this->_world.getComponent<Transform>(entity);
-        if (transform == nullptr)
+        auto* worldTransform = this->_world.getComponent<Transform>(entity);
+        if (worldTransform == nullptr)
             continue;
+        Transform view = _toView(*worldTransform, origin);
+        Transform* transform = &view;
         auto* animator = this->_world.getComponent<Animator>(entity);
         if (animator != nullptr) {
             this->_updateAnimator(animator, 1.0F / constants::FPS_LIMIT);
