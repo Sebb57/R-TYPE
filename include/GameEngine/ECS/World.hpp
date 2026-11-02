@@ -34,6 +34,10 @@ public:
     [[nodiscard]] bool entityExists(int entityId) const;
     [[nodiscard]] std::vector<int> getExistingEntities() const;
 
+    [[nodiscard]] std::vector<OrByte::ComponentType> getComponentTypesOfEntity(int entityId) const {
+        return componentManager.getComponentTypesOfEntity(entityId);
+    }
+
     template <typename T, typename ... Args>
     void addComponentToEntity(int entityId, Args&& ... args) {
         if (T::Type == OrByte::ComponentType::Camera)
@@ -48,6 +52,9 @@ public:
     template <typename T>
     T* getComponent(int entityId) {
         return componentManager.getComponent<T>(entityId);
+    }
+    [[nodiscard]] OrByte::IComponent* getComponent(int entityId, OrByte::ComponentType type) const {
+        return componentManager.getComponent(entityId, type);
     }
     [[nodiscard]] std::vector<OrByte::IComponent*> getComponents(int entityId) const {
         return componentManager.getComponents(entityId);
