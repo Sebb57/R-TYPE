@@ -488,7 +488,7 @@ bool OrByte::Detail::_isEditing(const Row& row, std::size_t cellIndex) const
 
 void OrByte::Detail::_syncSelection()
 {
-    const int selected = this->_world.getSelectedEntity();
+    const int selected = this->_world.getSelectedEntity().value_or(-1);
 
     if (this->_edit.active && this->_edit.entity != selected)
         this->_commitEdit();
@@ -598,7 +598,7 @@ bool OrByte::Detail::_onClick(Vector2 localMouse)
         return false;
     }
 
-    const int entityId = this->_world.getSelectedEntity();
+    const int entityId = this->_world.getSelectedEntity().value_or(-1);
     if (entityId < 0 || !this->_world.entityExists(entityId)) {
         this->_commitEdit();
         return true;
@@ -782,7 +782,7 @@ void OrByte::Detail::draw(const IGraphic& graphic, Vector2u size)
     const int width = static_cast<int>(size.x);
     const float w = static_cast<float>(size.x);
     const float h = static_cast<float>(size.y);
-    const int entityId = this->_world.getSelectedEntity();
+    const int entityId = this->_world.getSelectedEntity().value_or(-1);
     const bool hasEntity = entityId >= 0 && this->_world.entityExists(entityId);
 
     this->_syncSelection();
