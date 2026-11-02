@@ -49,6 +49,13 @@ std::vector<int> ComponentManager::getEntitiesWith(OrByte::ComponentType type) c
     return entities;
 }
 
+void ComponentManager::removeComponentFromEntity(int entityId, OrByte::ComponentType type)
+{
+    auto it = this->_globalComponents.find(type);
+    if (it != this->_globalComponents.end())
+        it->second.erase(entityId);
+}
+
 void ComponentManager::removeAllComponentsFromEntity(int entityId)
 {
     for (auto& [type, components] : this->_globalComponents) {

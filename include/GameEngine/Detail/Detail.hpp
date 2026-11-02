@@ -9,15 +9,15 @@
 #ifndef DETAIL_HPP_
     #define DETAIL_HPP_
 
+    #include "GameEngine/ECS/WorldSerializer.hpp"
     #include "GameEngine/Layout/Widget.hpp"
     #include "plugins/IComponent.hpp"
     #include <cstddef>
+    #include <cstdint>
     #include <functional>
     #include <set>
     #include <string>
     #include <vector>
-
-class World;
 
 namespace OrByte {
 
@@ -35,7 +35,7 @@ class Detail final : public Widget {
             std::vector<Cell> cells;
         };
 
-        explicit Detail(World& world, int width = 300);
+        Detail(World& world, const ComponentFactories& factories, int width = 300);
         ~Detail() override = default;
 
     protected:
@@ -50,7 +50,15 @@ class Detail final : public Widget {
         static constexpr int PADDING = 8;
         static constexpr int CELL_GAP = 4;
 
+        enum class RowKind : std::uint8_t {
+            Section,
+            Value,
+            AddButton,
+            AddChoice,
+        };
+
         struct Row {
+            RowKind kind = RowKind::Value;
             float y = 0.f;
             float height = 0.f;
             ComponentType type = ComponentType::ENUM_END;
@@ -69,6 +77,8 @@ class Detail final : public Widget {
         };
 
         World& _world;
+        const ComponentFactories& _factories;
+        bool _addMenuOpen = false;
         float _scroll = 0.f;
         float _contentHeight = 0.f;
         int _shownEntity = -1;
@@ -77,6 +87,8 @@ class Detail final : public Widget {
 
         [[nodiscard]] std::vector<Row> _buildRows(int entityId);
         [[nodiscard]] Rect _cellRect(const Row& row, std::size_t cellIndex, int width) const;
+        [[nodiscard]] Rect _removeRect(const Row& row, int width) const;
+        [[nodiscard]] std::vector<ComponentType> _addableComponents(int entityId) const;
         [[nodiscard]] bool _isEditing(const Row& row, std::size_t cellIndex) const;
 
         void _syncSelection();
@@ -85,6 +97,8 @@ class Detail final : public Widget {
         void _commitEdit();
         void _cancelEdit();
         void _editNextCell();
+        void _addComponent(int entityId, ComponentType type);
+        void _removeComponent(int entityId, ComponentType type);
 
         bool _onClick(Vector2 localMouse);
         bool _onText(const Event& event);

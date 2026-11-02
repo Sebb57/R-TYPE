@@ -59,10 +59,19 @@ public:
     [[nodiscard]] std::vector<OrByte::IComponent*> getComponents(int entityId) const {
         return componentManager.getComponents(entityId);
     }
+    [[nodiscard]] static bool isComponentRemovable(OrByte::ComponentType type) {
+        return type != OrByte::ComponentType::Camera
+            && type != OrByte::ComponentType::Name
+            && type != OrByte::ComponentType::Transform;
+    }
     template <typename T>
     void removeComponentFromEntity(int entityId) {
-        if (T::Type != OrByte::ComponentType::Camera)
+        if (isComponentRemovable(T::Type))
             componentManager.removeComponentFromEntity<T>(entityId);
+    }
+    void removeComponentFromEntity(int entityId, OrByte::ComponentType type) {
+        if (isComponentRemovable(type))
+            componentManager.removeComponentFromEntity(entityId, type);
     }
 
     int ensureCamera();

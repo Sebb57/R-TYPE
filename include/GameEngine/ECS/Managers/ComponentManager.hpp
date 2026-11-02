@@ -31,6 +31,8 @@ class ComponentManager
             }
         }
 
+        void removeComponentFromEntity(int entityId, OrByte::ComponentType type);
+
         template <typename T>
         T* getComponent(int entityId) {
             OrByte::ComponentType type = T::Type;
