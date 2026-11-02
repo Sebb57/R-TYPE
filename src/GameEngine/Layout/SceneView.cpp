@@ -13,10 +13,80 @@
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "constants.hpp"
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <numbers>
 
 namespace {
+
+struct HandleDirection {
+    int x;
+    int y;
+};
+
+constexpr std::array<HandleDirection, 4> CircleHandleDirections{{
+    {0, -1}, {1, 0}, {0, 1}, {-1, 0},
+}};
+
+OrByte::CursorType scaleCursorFor(HandleDirection direction, float rotationDegrees = 0.0F)
+{
+    const float radians = rotationDegrees * std::numbers::pi_v<float> / 180.0F;
+    const float cosine = std::cos(radians);
+    const float sine = std::sin(radians);
+    const float x = direction.x * cosine - direction.y * sine;
+    const float y = direction.x * sine + direction.y * cosine;
+
+    if (direction.x != 0 && direction.y != 0)
+        return x * y >= 0.0F ? OrByte::CursorType::ResizeDiagonalNWSE : OrByte::CursorType::ResizeDiagonalNESW;
+    if (std::abs(x) >= std::abs(y))
+        return OrByte::CursorType::ResizeHorizontal;
+    return OrByte::CursorType::ResizeVertical;
+}
+
+std::optional<HandleDirection> hitCircleScaleHandle(Vector2 mouse, Vector2 center, float width, float height)
+{
+    constexpr float HANDLE_HIT_RADIUS = 10.0F;
+    for (const HandleDirection direction : CircleHandleDirections) {
+        const float offsetX = direction.x * width / 2.0F;
+        const float offsetY = direction.y * height / 2.0F;
+        const float x = center.x + offsetX;
+        const float y = center.y + offsetY;
+        const float dx = mouse.x - x;
+        const float dy = mouse.y - y;
+        if (dx * dx + dy * dy <= HANDLE_HIT_RADIUS * HANDLE_HIT_RADIUS)
+            return direction;
+    }
+    return std::nullopt;
+}
+
+std::optional<HandleDirection> hitScaleBorder(Vector2 mouse, Vector2 center, float width, float height,
+    float rotationDegrees = 0.0F)
+{
+    constexpr float BORDER_HIT_RADIUS = 8.0F;
+    const float radians = -rotationDegrees * std::numbers::pi_v<float> / 180.0F;
+    const float cosine = std::cos(radians);
+    const float sine = std::sin(radians);
+    const float dx = mouse.x - center.x;
+    const float dy = mouse.y - center.y;
+    const float localX = dx * cosine - dy * sine;
+    const float localY = dx * sine + dy * cosine;
+    const float halfWidth = width / 2.0F;
+    const float halfHeight = height / 2.0F;
+    const float edgeX = std::abs(std::abs(localX) - halfWidth);
+    const float edgeY = std::abs(std::abs(localY) - halfHeight);
+    if (std::abs(localX) > halfWidth + BORDER_HIT_RADIUS ||
+        std::abs(localY) > halfHeight + BORDER_HIT_RADIUS ||
+        std::min(edgeX, edgeY) > BORDER_HIT_RADIUS)
+        return std::nullopt;
+
+    const int directionX = localX < 0.0F ? -1 : 1;
+    const int directionY = localY < 0.0F ? -1 : 1;
+    if (edgeX <= BORDER_HIT_RADIUS && edgeY <= BORDER_HIT_RADIUS)
+        return HandleDirection{directionX, directionY};
+    if (edgeX < edgeY)
+        return HandleDirection{directionX, 0};
+    return HandleDirection{0, directionY};
+}
 
 float gridSpacing(float zoom)
 {
@@ -115,6 +185,149 @@ bool OrByte::SceneView::_hitTestEntity(int entity, Vector2 worldPosition) const
     const float localX = deltaX * std::cos(radians) + deltaY * std::sin(radians);
     const float localY = -deltaX * std::sin(radians) + deltaY * std::cos(radians);
     return std::abs(localX) <= size.x / 2.0F && std::abs(localY) <= size.y / 2.0F;
+}
+
+OrByte::CursorType OrByte::SceneView::_scaleCursorAt(Vector2 localMouse) const
+{
+    const std::optional<int> selected = this->_world.getSelectedEntity();
+    if (!selected)
+        return CursorType::Arrow;
+    const Transform *transform = this->_world.getComponent<Transform>(*selected);
+    if (transform == nullptr)
+        return CursorType::Arrow;
+
+    const Rect& content = this->getContentRect();
+    const Vector2 center = this->_screenPosition(*transform,
+        Vector2u(static_cast<unsigned>(content.w), static_cast<unsigned>(content.h)));
+    if (const Collider *collider = this->_world.getComponent<Collider>(*selected)) {
+        const bool circle = collider->colliderShape == ColliderShape::Circle;
+        const float width = collider->size.x * std::abs(transform->scale.x) * this->_zoom;
+        const float height = circle ? width : collider->size.y * std::abs(transform->scale.y) * this->_zoom;
+        const auto direction = circle
+            ? hitCircleScaleHandle(localMouse, center, width, height)
+            : hitScaleBorder(localMouse, center, width, height);
+        if (direction)
+            return scaleCursorFor(*direction);
+    }
+
+    const Vector2 imageSize = this->_entitySize(*selected, *transform);
+    if (imageSize.x > 0.0F && imageSize.y > 0.0F) {
+        const auto direction = hitScaleBorder(localMouse, center,
+            imageSize.x * this->_zoom, imageSize.y * this->_zoom, transform->rotation);
+        if (direction)
+            return scaleCursorFor(*direction, transform->rotation);
+    }
+    return CursorType::Arrow;
+}
+
+bool OrByte::SceneView::_beginScaleDrag(int entity, Vector2 localMouse)
+{
+    const Transform *transform = this->_world.getComponent<Transform>(entity);
+    if (transform == nullptr)
+        return false;
+
+    const Vector2 center = this->_screenPosition(*transform,
+        Vector2u(static_cast<unsigned>(this->getContentRect().w), static_cast<unsigned>(this->getContentRect().h)));
+    const Vector2 mouseWorld = this->_worldPositionAt(localMouse);
+    if (const Collider *collider = this->_world.getComponent<Collider>(entity)) {
+        const bool circle = collider->colliderShape == ColliderShape::Circle;
+        const float width = collider->size.x * std::abs(transform->scale.x);
+        const float height = circle ? width : collider->size.y * std::abs(transform->scale.y);
+        const auto direction = circle
+            ? hitCircleScaleHandle(localMouse, center, width * this->_zoom, height * this->_zoom)
+            : hitScaleBorder(localMouse, center, width * this->_zoom, height * this->_zoom);
+        if (direction) {
+            this->_scaleDrag = ScaleDrag{
+                entity, ScaleTarget::Collider, mouseWorld, {width, height}, direction->x, direction->y, circle};
+            return true;
+        }
+    }
+
+    const Vector2 imageSize = this->_entitySize(entity, *transform);
+    if (imageSize.x > 0.0F && imageSize.y > 0.0F) {
+        if (const auto direction = hitScaleBorder(localMouse, center,
+            imageSize.x * this->_zoom, imageSize.y * this->_zoom, transform->rotation)) {
+            this->_scaleDrag = ScaleDrag{
+                entity, ScaleTarget::Image, mouseWorld, imageSize, direction->x, direction->y, false,
+                transform->rotation};
+            return true;
+        }
+    }
+    return false;
+}
+
+void OrByte::SceneView::_updateScaleDrag(Vector2 localMouse)
+{
+    if (!this->_scaleDrag)
+        return;
+    ScaleDrag& drag = *this->_scaleDrag;
+    Transform *transform = this->_world.getComponent<Transform>(drag.entity);
+    if (transform == nullptr) {
+        this->_scaleDrag.reset();
+        return;
+    }
+
+    const Vector2 mouseWorld = this->_worldPositionAt(localMouse);
+    const float worldDeltaX = mouseWorld.x - drag.startMouseWorld.x;
+    const float worldDeltaY = mouseWorld.y - drag.startMouseWorld.y;
+    float deltaX = worldDeltaX;
+    float deltaY = worldDeltaY;
+    if (drag.target == ScaleTarget::Image) {
+        const float radians = drag.rotation * std::numbers::pi_v<float> / 180.0F;
+        deltaX = worldDeltaX * std::cos(radians) + worldDeltaY * std::sin(radians);
+        deltaY = -worldDeltaX * std::sin(radians) + worldDeltaY * std::cos(radians);
+        const float width = drag.directionX == 0 ? drag.startSize.x
+            : std::max(8.0F, drag.startSize.x + 2.0F * deltaX * static_cast<float>(drag.directionX));
+        const float height = drag.directionY == 0 ? drag.startSize.y
+            : std::max(8.0F, drag.startSize.y + 2.0F * deltaY * static_cast<float>(drag.directionY));
+        const float ratioX = width / drag.startSize.x;
+        const float ratioY = height / drag.startSize.y;
+        this->_scaleImage(drag.entity, ratioX / drag.appliedRatioX, ratioY / drag.appliedRatioY);
+        drag.appliedRatioX = ratioX;
+        drag.appliedRatioY = ratioY;
+        return;
+    }
+
+    Collider *collider = this->_world.getComponent<Collider>(drag.entity);
+    if (collider == nullptr) {
+        this->_scaleDrag.reset();
+        return;
+    }
+    const float scaleX = std::max(std::abs(transform->scale.x), 0.0001F);
+    const float scaleY = std::max(std::abs(transform->scale.y), 0.0001F);
+    if (drag.circle) {
+        const float radialDelta = deltaX * static_cast<float>(drag.directionX)
+            + deltaY * static_cast<float>(drag.directionY);
+        const float diameter = std::max(8.0F, drag.startSize.x + 2.0F * radialDelta);
+        collider->size = {diameter / scaleX, diameter / scaleY};
+        return;
+    }
+    const float width = drag.directionX == 0 ? drag.startSize.x
+        : std::max(8.0F, drag.startSize.x + 2.0F * deltaX * static_cast<float>(drag.directionX));
+    const float height = drag.directionY == 0 ? drag.startSize.y
+        : std::max(8.0F, drag.startSize.y + 2.0F * deltaY * static_cast<float>(drag.directionY));
+    collider->size = {width / scaleX, height / scaleY};
+}
+
+void OrByte::SceneView::_scaleImage(int entity, float ratioX, float ratioY)
+{
+    if (Sprite *sprite = this->_world.getComponent<Sprite>(entity)) {
+        sprite->size.x *= ratioX;
+        sprite->size.y *= ratioY;
+    }
+    if (Animator *animator = this->_world.getComponent<Animator>(entity)) {
+        for (auto& entry : animator->animations) {
+            Animation& animation = entry.second;
+            if (animation.isSpriteSheet) {
+                const Vector2 baseSize = animation.displaySize.x > 0.0F && animation.displaySize.y > 0.0F
+                    ? animation.displaySize : animation.frameSize;
+                animation.displaySize = {baseSize.x * ratioX, baseSize.y * ratioY};
+            } else {
+                animation.frameSize.x *= ratioX;
+                animation.frameSize.y *= ratioY;
+            }
+        }
+    }
 }
 
 void OrByte::SceneView::_drawEntity(const IGraphic& graphic, int entity, Vector2u size) const
@@ -223,7 +436,7 @@ void OrByte::SceneView::_drawSelection(const IGraphic& graphic, Vector2u size) c
     }
 
     const Vector2 entitySize = this->_entitySize(entity, *transform);
-    const RGBA selectionColor{255, 220, 45, 255};
+    const RGBA selectionColor{255, 255, 255, 255};
     if (entitySize.x > 0.0F && entitySize.y > 0.0F) {
         graphic.drawRectangle(viewTransform,
             {entitySize.x * this->_zoom, entitySize.y * this->_zoom},
@@ -299,6 +512,21 @@ void OrByte::SceneView::draw(const OrByte::IGraphic& graphicLib, Vector2u size)
 
 bool OrByte::SceneView::onEvent(const OrByte::Event& event, Vector2 local)
 {
+    if (event.type == Event::Type::MouseMoved && !this->_scaleDrag && !this->_draggedEntity && !this->_isPanning)
+        this->setCursorType(this->_scaleCursorAt(local));
+
+    if (this->_scaleDrag) {
+        if (event.type == Event::Type::MouseMoved) {
+            this->_updateScaleDrag(local);
+            return true;
+        }
+        if (event.type == Event::Type::MouseButtonReleased && event.mouseButton == Event::MouseButton::Left) {
+            this->_scaleDrag.reset();
+            this->setCursorType(this->_scaleCursorAt(local));
+            return true;
+        }
+    }
+
     if (this->_draggedEntity) {
         if (event.type == Event::Type::MouseMoved) {
             if (Transform *transform = this->_world.getComponent<Transform>(*this->_draggedEntity)) {
@@ -341,6 +569,13 @@ bool OrByte::SceneView::onEvent(const OrByte::Event& event, Vector2 local)
         const float areaHeight = std::max(0.0F, static_cast<float>(this->getContentRect().h) - HEADER_HEIGHT);
         if (local.y < HEADER_HEIGHT || areaHeight <= 0.0F)
             return false;
+        if (const std::optional<int> selected = this->_world.getSelectedEntity();
+            selected && this->_beginScaleDrag(*selected, local)) {
+            const ScaleDrag& drag = *this->_scaleDrag;
+            this->setCursorType(scaleCursorFor({drag.directionX, drag.directionY}, drag.rotation));
+            return true;
+        }
+
         const Vector2 worldPosition = this->_worldPositionAt(local);
         const std::vector<int> entities = this->_world.getExistingEntities();
         for (auto it = entities.rbegin(); it != entities.rend(); ++it) {

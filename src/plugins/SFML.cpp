@@ -69,6 +69,8 @@ void OrByte::SFML::open(const std::size_t width, const std::size_t height, std::
     this->_cursorArrow.loadFromSystem(sf::Cursor::Arrow);
     this->_cursorHorizontal.loadFromSystem(sf::Cursor::SizeHorizontal);
     this->_cursorVertical.loadFromSystem(sf::Cursor::SizeVertical);
+    this->_cursorDiagonalNWSE.loadFromSystem(sf::Cursor::SizeTopLeft);
+    this->_cursorDiagonalNESW.loadFromSystem(sf::Cursor::SizeTopRight);
     this->_currentCursor = CursorType::Arrow;
 
     this->_isOpen = true;
@@ -402,10 +404,13 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     const Vector2 ratio = this->currentRatio();
     const Vector2 offset = this->currentOffset();
     const sf::Vector2u textureSize = texture->getSize();
-    const float scale = (size.y * ratio.y) / static_cast<float>(textureSize.y);
+    const Vector2 scale{
+        (size.x * ratio.x) / static_cast<float>(textureSize.x),
+        (size.y * ratio.y) / static_cast<float>(textureSize.y),
+    };
 
     sprite.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x, offset.y + transform.position.y * ratio.y));
-    sprite.setScale({ scale, scale });
+    sprite.setScale({ scale.x, scale.y });
     sprite.setTexture(*texture);
     sprite.setOrigin({ textureSize.x / 2.f, textureSize.y / 2.f });
     sprite.setRotation(transform.rotation);
@@ -424,10 +429,13 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     sf::Sprite sprite;
     const Vector2 ratio = this->currentRatio();
     const Vector2 offset = this->currentOffset();
-    const float scale = (size.y * ratio.y) / static_cast<float>(rect.h);
+    const Vector2 scale{
+        (size.x * ratio.x) / static_cast<float>(rect.w),
+        (size.y * ratio.y) / static_cast<float>(rect.h),
+    };
 
     sprite.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x, offset.y + transform.position.y * ratio.y));
-    sprite.setScale({ scale, scale });
+    sprite.setScale({ scale.x, scale.y });
     sprite.setTexture(*texture);
     sprite.setTextureRect(sf::IntRect(rect.x, rect.y, rect.w, rect.h));
     sprite.setOrigin({ rect.w / 2.f, rect.h / 2.f });
@@ -536,6 +544,12 @@ void OrByte::SFML::setCursor(CursorType type)
             break;
         case CursorType::ResizeVertical:
             this->_window->setMouseCursor(this->_cursorVertical);
+            break;
+        case CursorType::ResizeDiagonalNWSE:
+            this->_window->setMouseCursor(this->_cursorDiagonalNWSE);
+            break;
+        case CursorType::ResizeDiagonalNESW:
+            this->_window->setMouseCursor(this->_cursorDiagonalNESW);
             break;
         default:
             this->_window->setMouseCursor(this->_cursorArrow);

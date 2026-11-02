@@ -64,6 +64,7 @@ class Widget {
         [[nodiscard]] int getMinSize() const noexcept { return this->_minSize; }
         [[nodiscard]] Side getSide() const noexcept { return this->_side; }
         [[nodiscard]] CursorType getCursor() const noexcept { return this->_cursor; }
+        void setCursorType(CursorType cursor) noexcept { this->_cursor = cursor; }
 
         // Position / Move
         void setMovable(bool movable) noexcept { this->_movable = movable; }
