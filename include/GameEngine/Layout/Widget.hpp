@@ -64,6 +64,7 @@ class Widget {
         [[nodiscard]] int getMinSize() const noexcept { return this->_minSize; }
         [[nodiscard]] Side getSide() const noexcept { return this->_side; }
         [[nodiscard]] CursorType getCursor() const noexcept { return this->_cursor; }
+        void setCursorType(CursorType cursor) noexcept { this->_cursor = cursor; }
 
         // Position / Move
         void setMovable(bool movable) noexcept { this->_movable = movable; }
@@ -75,6 +76,7 @@ class Widget {
     protected:
         virtual void draw([[maybe_unused]] const IGraphic& graphic, [[maybe_unused]] Vector2u size) {}
         virtual bool onEvent([[maybe_unused]] const Event& event, [[maybe_unused]] Vector2 localMouse) { return false; }
+        [[nodiscard]] virtual bool capturesMouse() const { return false; }
 
         [[nodiscard]] virtual int getHeaderHeight() const { return 0; }
 
