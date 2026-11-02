@@ -6,6 +6,10 @@
 */
 
 #include "GameEngine/GameEngine.hpp"
+#include "GameEngine/ECS/Components/Camera.hpp"
+#include "GameEngine/ECS/Components/Controllable.hpp"
+#include "GameEngine/ECS/Components/Name.hpp"
+#include "GameEngine/ECS/Components/Script.hpp"
 #include "GameEngine/Layout/Panel.hpp"
 #include "GameEngine/Layout/SceneView.hpp"
 #include "GameEngine/Layout/EntityWidget.hpp"
@@ -41,6 +45,16 @@ std::filesystem::path getGraphicalPlugin(OrByte::GameEngine::GraphicalLibs graph
 OrByte::GameEngine::GameEngine(GraphicalLibs graphicalLib) : _graphicLoader(getGraphicalPlugin(graphicalLib)), _graphicLib(this->_graphicLoader.loadFunction<IGraphic* (*)()>("factory")()), _components(loadComponentPlugins(constants::COMPONENTS_DIR))
 {
     this->_world.ensureCamera();
+
+    const int player = this->_world.createEntity();
+
+    this->_world.addComponentToEntity<Name>(player, "Player");
+    this->_world.addComponentToEntity<Transform>(player, Vector2(constants::SERVER_WINDOW_X / 2.0F, constants::SERVER_WINDOW_Y / 2.0F));
+    this->_world.addComponentToEntity<Controllable>(player, Vector2(64.0F, 64.0F));
+    this->_world.addComponentToEntity<Camera>(player);
+    this->_world.addComponentToEntity<Script>(player, "test.lua");
+
+
     this->_graphicLib->open();
     this->_initLayout();
 }
