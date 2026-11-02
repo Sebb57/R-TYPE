@@ -63,7 +63,7 @@ struct EntityLayout {
 } // namespace
 
 OrByte::EntityWidget::EntityWidget(World& world, int width)
-    : Widget("Hierarchy", width), _world(world)
+    : Panel("Hierarchy", width), _world(world)
 {
 }
 

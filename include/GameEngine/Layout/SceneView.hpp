@@ -9,28 +9,36 @@
 #ifndef SCENEVIEW_HPP_
     #define SCENEVIEW_HPP_
 
-#include "GameEngine/ECS/Components/Transform.hpp"
-#include "GameEngine/Layout/Widget.hpp"
+#include "GameEngine/ECS/World.hpp"
+#include "GameEngine/Layout/Panel.hpp"
 #include "plugins/IGraphic.hpp"
-#include <functional>
 
 namespace OrByte {
 
-class SceneView : public OrByte::Widget {
+class SceneView final : public Panel {
 public:
-    using RenderFn = std::function<void(const OrByte::IGraphic&)>;
-    using EventFn  = std::function<bool(const OrByte::Event&)>;
-
-    SceneView(RenderFn render, EventFn onGameEvent = nullptr)
-        : Widget("Scene"), _render(std::move(render)), _onGameEvent(std::move(onGameEvent)) {}
+    explicit SceneView(World& world);
+    ~SceneView() override = default;
 
 protected:
     void draw(const OrByte::IGraphic& graphicLib, Vector2u size) override;
     bool onEvent(const OrByte::Event& event, Vector2 local) override;
+    [[nodiscard]] bool capturesMouse() const override { return this->_isPanning; }
 
 private:
-    RenderFn _render;
-    EventFn  _onGameEvent;
+    static constexpr float HEADER_HEIGHT = 24.0F;
+    static constexpr float MIN_ZOOM = 0.1F;
+    static constexpr float MAX_ZOOM = 4.0F;
+    static constexpr float ZOOM_FACTOR = 1.15F;
+
+    World& _world;
+    float _zoom = 0.5F;
+    Vector2 _viewCenter;
+    Vector2 _lastMousePosition;
+    bool _isPanning = false;
+
+    [[nodiscard]] Vector2 _screenPosition(const Transform& transform, Vector2u size) const;
+    void _drawEntity(const IGraphic& graphic, int entity, Vector2u size) const;
 };
 
 } // namespace OrByte

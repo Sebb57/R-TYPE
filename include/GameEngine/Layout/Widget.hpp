@@ -75,6 +75,7 @@ class Widget {
     protected:
         virtual void draw([[maybe_unused]] const IGraphic& graphic, [[maybe_unused]] Vector2u size) {}
         virtual bool onEvent([[maybe_unused]] const Event& event, [[maybe_unused]] Vector2 localMouse) { return false; }
+        [[nodiscard]] virtual bool capturesMouse() const { return false; }
 
         [[nodiscard]] virtual int getHeaderHeight() const { return 0; }
 

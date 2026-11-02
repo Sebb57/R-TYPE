@@ -10,13 +10,13 @@
     #define ENTITYWIDGET_HPP_
 
     #include "GameEngine/ECS/World.hpp"
-    #include "GameEngine/Layout/Widget.hpp"
+    #include "GameEngine/Layout/Panel.hpp"
     #include <string>
     #include <vector>
 
 namespace OrByte {
 
-class EntityWidget final : public Widget {
+class EntityWidget final : public Panel {
     public:
         explicit EntityWidget(World& world, int width = 480);
         ~EntityWidget() override = default;
