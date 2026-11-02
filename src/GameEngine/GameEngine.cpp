@@ -37,7 +37,7 @@ std::filesystem::path getGraphicalPlugin(OrByte::GameEngine::GraphicalLibs graph
     return PLUGINS_DIR / path;
 }
 
-}
+} // namespace
 
 OrByte::GameEngine::GameEngine(GraphicalLibs graphicalLib) : _graphicLoader(getGraphicalPlugin(graphicalLib)), _graphicLib(this->_graphicLoader.loadFunction<IGraphic* (*)()>("factory")()), _components(loadComponentPlugins(constants::COMPONENTS_DIR))
 {
