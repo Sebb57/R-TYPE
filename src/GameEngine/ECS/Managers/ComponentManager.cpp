@@ -15,6 +15,15 @@ void ComponentManager::addComponentToEntity(int entityId, std::unique_ptr<OrByte
     this->_globalComponents[type][entityId] = std::move(component);
 }
 
+OrByte::IComponent* ComponentManager::getComponent(int entityId, OrByte::ComponentType type) const
+{
+    auto it = this->_globalComponents.find(type);
+    if (it == this->_globalComponents.end())
+        return nullptr;
+    auto entityIt = it->second.find(entityId);
+    return entityIt != it->second.end() ? entityIt->second.get() : nullptr;
+}
+
 std::vector<OrByte::IComponent*> ComponentManager::getComponents(int entityId) const
 {
     std::vector<OrByte::IComponent*> components;

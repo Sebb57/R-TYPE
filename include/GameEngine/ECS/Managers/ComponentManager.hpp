@@ -21,9 +21,6 @@ class ComponentManager
         }
 
         void addComponentToEntity(int entityId, std::unique_ptr<OrByte::IComponent> component);
-
-        //exemple d'utilisation : addComponentToEntity<Transform>(entityId, Vector2(0, 0), Vector2(1, 1), 0.0f); car Transform a un constructeur qui prend ces paramètres : KK Alexis 
-
         template <typename T>
         void removeComponentFromEntity(int entityId) {
             OrByte::ComponentType type = T::Type;
@@ -59,17 +56,16 @@ class ComponentManager
             return true;
         }
 
-        std::vector<ComponentType> ComponentManager::getComponentTypesOfEntity(int entityId) const
+        [[nodiscard]] std::vector<OrByte::ComponentType> getComponentTypesOfEntity(int entityId) const
         {
-            std::vector<ComponentType> types;
-
-            for (const auto& [type, entities] : _globalComponents) {
-                if (entities.find(entityId) != entities.end())
+            std::vector<OrByte::ComponentType> types;
+            for (const auto& [type, entities] : _globalComponents)
+                if (entities.count(entityId) != 0)
                     types.push_back(type);
-            }
             return types;
         }
 
+        [[nodiscard]] OrByte::IComponent* getComponent(int entityId, OrByte::ComponentType type) const;
         [[nodiscard]] std::vector<OrByte::IComponent*> getComponents(int entityId) const;
         [[nodiscard]] std::vector<int> getEntitiesWith(OrByte::ComponentType type) const;
 

@@ -7,7 +7,7 @@
 
 #include "GameEngine/ECS/Managers/EntityManager.hpp"
 
-EntityManager::EntityManager() : _nextEntityId(-1) {}
+EntityManager::EntityManager() : _nextEntityId(0) {}
 
 int EntityManager::createEntity()
 {

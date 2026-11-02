@@ -33,7 +33,7 @@ public:
     [[nodiscard]] bool entityExists(int entityId) const;
     [[nodiscard]] std::vector<int> getExistingEntities() const;
 
-    std::vector<ComponentType> getComponentTypesOfEntity(int entityId) const {
+    [[nodiscard]] std::vector<OrByte::ComponentType> getComponentTypesOfEntity(int entityId) const {
         return componentManager.getComponentTypesOfEntity(entityId);
     }
 
@@ -51,6 +51,9 @@ public:
     template <typename T>
     T* getComponent(int entityId) {
         return componentManager.getComponent<T>(entityId);
+    }
+    [[nodiscard]] OrByte::IComponent* getComponent(int entityId, OrByte::ComponentType type) const {
+        return componentManager.getComponent(entityId, type);
     }
     [[nodiscard]] std::vector<OrByte::IComponent*> getComponents(int entityId) const {
         return componentManager.getComponents(entityId);
