@@ -43,6 +43,9 @@ class AssetsWidget final : public Widget {
         bool _ascending = true;
         float _scrollOffset = 0.f;
 
+        std::size_t _hovered = -1;
+        std::size_t _selected = -1;
+
         void _getEntries();
         void _sortEntries(SortType type, bool ascending = true);
 };

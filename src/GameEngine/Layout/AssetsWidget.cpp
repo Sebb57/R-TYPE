@@ -6,6 +6,7 @@
 */
 
 #include "GameEngine/Layout/AssetsWidget.hpp"
+#include "GameEngine/ECS/Utils.hpp"
 #include <cmath>
 #include <filesystem>
 #include <iostream>
@@ -91,8 +92,24 @@ bool isFileDir(const std::filesystem::path path)
     if (stat(path.c_str(), &s) == 0)
         if (s.st_mode & S_IFDIR)
             return true;
-    std::cout << path.c_str() << std::endl;
     return false;
+}
+
+int getEntriesPerRow(const int width)
+{
+    const int effectiveWidth = width - ENTRY_OFFSET_X * 2;
+
+    return std::max(1, 1 + static_cast<int>((effectiveWidth - ENTRY_SIZE) / (ENTRY_SIZE + ENTRY_GAP_X)));
+}
+
+Vector2 getEntryPos(const int i, const int entriesPerRow, const float scrollOffset)
+{
+    const int row = i / entriesPerRow;
+    const int col = i % entriesPerRow;
+    const float centerX = ENTRY_OFFSET_X + (col + 0.5) * ENTRY_SIZE + col * ENTRY_GAP_X;
+    const float centerY = ENTRY_OFFSET_Y + (row + 0.5) * ENTRY_SIZE + row * ENTRY_GAP_Y + TITLE_HEIGHT + scrollOffset;
+
+    return {centerX, centerY};
 }
 
 } // namespace
@@ -161,6 +178,8 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
     const RGBA headerColor = RGBA{60, 60, 60, 255};
     const RGBA borderColor = RGBA{80, 80, 80, 255};
     const RGBA textColor = RGBA{220, 220, 220, 255};
+    const RGBA hoverColor = RGBA{124, 136, 148};
+    const RGBA selectedColor = RGBA{88, 100, 112};
 
     const float centerX = static_cast<float>(width) * 0.5f;
     const float centerY = static_cast<float>(height) * 0.5f;
@@ -171,26 +190,28 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
         {static_cast<float>(width), static_cast<float>(height)}, bgColor, 1, borderColor);
 
     // Entries
-    const int effectiveWidth = this->getRect().w - ENTRY_OFFSET_X * 2;
+    const Rect rect = this->getRect();
+    const int entriesPerRow = getEntriesPerRow(rect.w);
     const int effectiveHeight = this->getRect().h - ENTRY_OFFSET_Y * 2 - TITLE_HEIGHT;
-    const int entriesPerRow = std::max(1, 1 + static_cast<int>((effectiveWidth - ENTRY_SIZE) / (ENTRY_SIZE + ENTRY_GAP_X)));
     const int nRow = this->_entries.size() / entriesPerRow;
     const float minOffset = (ENTRY_SIZE * (nRow + 1) + ENTRY_GAP_Y * (nRow + 0.5) - effectiveHeight) * -1;
 
     this->_scrollOffset = std::min(0.f, std::max(minOffset, this->_scrollOffset));
     for (std::size_t i = 0; i < this->_entries.size(); i++) {
-        const int row = i / entriesPerRow;
-        const int col = i % entriesPerRow;
-        const float centerX = ENTRY_OFFSET_X + (col + 0.5) * ENTRY_SIZE + col * ENTRY_GAP_X;
-        const float centerY = ENTRY_OFFSET_Y + (row + 0.5) * ENTRY_SIZE + row * ENTRY_GAP_Y + TITLE_HEIGHT + this->_scrollOffset;
+        const Vector2 center = getEntryPos(i, entriesPerRow, this->_scrollOffset);
+
+        if (this->_selected == i)
+            graphic.drawRectangle({{center.x, center.y}}, {ENTRY_SIZE, ENTRY_SIZE}, selectedColor);
+        else if (this->_hovered == i)
+            graphic.drawRectangle({{center.x, center.y}}, {ENTRY_SIZE, ENTRY_SIZE}, hoverColor);
 
         if (isFileImage(this->_entries[i]))
-            graphic.drawImage({{centerX, centerY}}, {ENTRY_SIZE, ENTRY_SIZE}, this->_entries[i]);
+            graphic.drawImage({{center.x, center.y}}, {ENTRY_SIZE, ENTRY_SIZE}, this->_entries[i]);
         else if (isFileDir(this->_dirPath / this->_entries[i]))
-            graphic.drawImage({{centerX, centerY}}, {ENTRY_SIZE, ENTRY_SIZE}, HICON_PATH);
+            graphic.drawImage({{center.x, center.y}}, {ENTRY_SIZE, ENTRY_SIZE}, HICON_PATH);
         else
-            graphic.drawImage({{centerX, centerY}}, {ENTRY_SIZE, ENTRY_SIZE}, ICON_PATH);
-        graphic.drawText({{centerX - ENTRY_SIZE / 2, centerY + TEXT_GAP + ENTRY_SIZE / 2}}, this->_entries[i], TEXT_SIZE, ENTRY_SIZE);
+            graphic.drawImage({{center.x, center.y}}, {ENTRY_SIZE, ENTRY_SIZE}, ICON_PATH);
+        graphic.drawText({{center.x - ENTRY_SIZE / 2, center.y + TEXT_GAP + ENTRY_SIZE / 2}}, this->_entries[i], TEXT_SIZE, ENTRY_SIZE);
     }
 
     // Header
@@ -201,12 +222,38 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
 
 bool OrByte::AssetsWidget::onEvent(const Event& event, Vector2 localMouse)
 {
+    const int entriesPerRow = getEntriesPerRow(this->getRect().w);
+
     switch (event.type) {
         case Event::Type::MouseWheelScrolled:
             if (localMouse.y > TITLE_HEIGHT) {
                 this->_scrollOffset += event.wheelDelta * SCROLL_SENSITIVITY;
                 return true;
             }
+            return false;
+        case Event::Type::MouseButtonPressed:
+            for (std::size_t i = 0; i < this->_entries.size(); i++) {
+                const Vector2 center = getEntryPos(i, entriesPerRow, this->_scrollOffset);
+
+                if (localMouse.x >= center.x - ENTRY_SIZE / 2 && localMouse.x < center.x + ENTRY_SIZE / 2 &&
+                    localMouse.y >= center.y - ENTRY_SIZE / 2 && localMouse.y < center.y + ENTRY_SIZE / 2) {
+                    this->_selected = i;
+                    return true;
+                }
+            }
+            this->_selected = -1;
+            return false;
+        case Event::Type::MouseMoved:
+            for (std::size_t i = 0; i < this->_entries.size(); i++) {
+                const Vector2 center = getEntryPos(i, entriesPerRow, this->_scrollOffset);
+
+                if (localMouse.x >= center.x - ENTRY_SIZE / 2 && localMouse.x < center.x + ENTRY_SIZE / 2 &&
+                    localMouse.y >= center.y - ENTRY_SIZE / 2 && localMouse.y < center.y + ENTRY_SIZE / 2) {
+                    this->_hovered = i;
+                    return true;
+                }
+            }
+            this->_hovered = -1;
             return false;
         default:
             break;
