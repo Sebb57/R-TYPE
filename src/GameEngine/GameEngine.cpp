@@ -54,11 +54,7 @@ OrByte::GameEngine::GameEngine(std::filesystem::path graphicPath) : _graphicLoad
 
 void OrByte::GameEngine::_initLayout()
 {
-    auto scene = std::make_unique<SceneView>(
-        [this](const IGraphic& graphicLib) {
-            (void) graphicLib; // TODO: remove when below is done and using this parameter
-            // TODO: Game Render
-        });
+    auto scene = std::make_unique<SceneView>(this->_world);
 
     Widget& toolbar = scene->attach(Widget::Side::Top, std::make_unique<Panel>("", 40));
     toolbar.attach(Widget::Side::Left, std::make_unique<FilesManagementWidget>(this->_world, this->_components.factories));

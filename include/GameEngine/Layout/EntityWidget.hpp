@@ -10,13 +10,13 @@
     #define ENTITYWIDGET_HPP_
 
     #include "GameEngine/ECS/World.hpp"
-    #include "GameEngine/Layout/Widget.hpp"
+    #include "GameEngine/Layout/Panel.hpp"
     #include <string>
     #include <vector>
 
 namespace OrByte {
 
-class EntityWidget final : public Widget {
+class EntityWidget final : public Panel {
     public:
         explicit EntityWidget(World& world, int width = 480);
         ~EntityWidget() override = default;
@@ -41,6 +41,7 @@ class EntityWidget final : public Widget {
         void _applyTextInput(const Event& event);
         void _applyKeyAction(const Event& event);
         void _selectRow(Vector2 localMouse);
+        void _addEntity();
         void _setSelectedIndex(std::size_t index);
 };
 
