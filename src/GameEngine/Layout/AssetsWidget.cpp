@@ -17,14 +17,27 @@ namespace {
 inline const std::filesystem::path ICON_PATH = "assets/file.png";
 inline const std::filesystem::path HICON_PATH = "assets/directory.png";
 
+constexpr OrByte::RGBA bgColor {40, 40, 40, 255};
+constexpr OrByte::RGBA headerColor {60, 60, 60, 255};
+constexpr OrByte::RGBA borderColor {80, 80, 80, 255};
+constexpr OrByte::RGBA textColor {220, 220, 220, 255};
+constexpr OrByte::RGBA hoverColor {124, 136, 148};
+constexpr OrByte::RGBA selectedColor {88, 100, 112};
+constexpr OrByte::RGBA dirsColor {80, 80, 80, 255};
+
 constexpr float TITLE_HEIGHT = 24.f;
+constexpr float DIRS_HEIGHT = 24.f;
+constexpr float HEADER_HEIGHT = TITLE_HEIGHT + DIRS_HEIGHT;
 constexpr float MINIMUM_ROW_HEIGHT = 32.f;
 constexpr float TEXT_GAP = 4.f;
 constexpr float TEXT_SIZE = 12.f;
+constexpr float DIRS_OFFSET_X = 8.f;
 constexpr float ENTRY_OFFSET_X = 16.f;
 constexpr float ENTRY_OFFSET_Y = 16.f;
 constexpr float ENTRY_GAP_X = 16.f;
 constexpr float ENTRY_GAP_Y = 16.f + TEXT_SIZE;
+constexpr float DIRS_GAP = 4.f;
+constexpr float DIRS_MARGIN = 4.f;
 constexpr float ENTRY_SIZE = 80.f;
 constexpr float SCROLL_SENSITIVITY = 10.f;
 
@@ -43,7 +56,7 @@ struct AssetsLayout {
 {
     const float width = std::max(1.f, static_cast<float>(bounds.w));
     const float height = std::max(1.f, static_cast<float>(bounds.h));
-    const float headerHeight = std::min(height, TITLE_HEIGHT);
+    const float headerHeight = std::min(height, HEADER_HEIGHT);
     const float rowsHeight = height - headerHeight;
     const auto visibleRows = std::max<std::size_t>(1, static_cast<std::size_t>(std::floor(rowsHeight / MINIMUM_ROW_HEIGHT)));
     const float rowHeight = std::max(1.f, rowsHeight / static_cast<float>(visibleRows));
@@ -109,9 +122,19 @@ Vector2 getEntryPos(const int i, const int entriesPerRow, const float scrollOffs
     const int row = i / entriesPerRow;
     const int col = i % entriesPerRow;
     const float centerX = ENTRY_OFFSET_X + (col + 0.5) * ENTRY_SIZE + col * ENTRY_GAP_X;
-    const float centerY = ENTRY_OFFSET_Y + (row + 0.5) * ENTRY_SIZE + row * ENTRY_GAP_Y + TITLE_HEIGHT + scrollOffset;
+    const float centerY = ENTRY_OFFSET_Y + (row + 0.5) * ENTRY_SIZE + row * ENTRY_GAP_Y + HEADER_HEIGHT + scrollOffset;
 
     return {centerX, centerY};
+}
+
+Vector2 drawButton(const OrByte::IGraphic& graphic, Vector2 topLeft, const std::string string)
+{
+    const Vector2 textSize = graphic.getTextSize(string, TEXT_SIZE);
+
+    graphic.drawRectangle({{topLeft.x + textSize.x / 2 + DIRS_MARGIN, topLeft.y + textSize.y / 2 + DIRS_MARGIN}},
+        {textSize.x + DIRS_MARGIN*2, textSize.y + DIRS_MARGIN*2}, dirsColor, 1, borderColor);
+    graphic.drawText({{topLeft.x + DIRS_MARGIN, topLeft.y + DIRS_MARGIN}}, string, TEXT_SIZE, 0.f, {255, 255, 255});
+    return { textSize.x + DIRS_MARGIN*2, textSize.y + DIRS_MARGIN*2 };
 }
 
 } // namespace
@@ -123,6 +146,7 @@ OrByte::AssetsWidget::AssetsWidget(World& world, int width) : Widget("Assets", w
     if (!pwd)
         throw std::runtime_error("'PWD' isn't set in the environment");
     this->_dirPath = pwd;
+    this->_startPath = this->_dirPath;
 
     this->_chronoClick.reset();
     this->_getEntries();
@@ -178,13 +202,6 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
     const int height = static_cast<int>(size.y);
     const auto metrics = makeLayout(Rect(0, 0, width, height));
 
-    const RGBA bgColor = RGBA{40, 40, 40, 255};
-    const RGBA headerColor = RGBA{60, 60, 60, 255};
-    const RGBA borderColor = RGBA{80, 80, 80, 255};
-    const RGBA textColor = RGBA{220, 220, 220, 255};
-    const RGBA hoverColor = RGBA{124, 136, 148};
-    const RGBA selectedColor = RGBA{88, 100, 112};
-
     const float centerX = static_cast<float>(width) * 0.5f;
     const float centerY = static_cast<float>(height) * 0.5f;
     const float headerCenterY = static_cast<float>(metrics.headerHeight) * 0.5f;
@@ -196,7 +213,7 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
     // Entries
     const Rect rect = this->getRect();
     const int entriesPerRow = getEntriesPerRow(rect.w);
-    const int effectiveHeight = this->getRect().h - ENTRY_OFFSET_Y * 2 - TITLE_HEIGHT;
+    const int effectiveHeight = this->getRect().h - ENTRY_OFFSET_Y * 2 - HEADER_HEIGHT;
     const int nRow = this->_entries.size() / entriesPerRow;
     const float minOffset = (ENTRY_SIZE * (nRow + 1) + ENTRY_GAP_Y * (nRow + 0.5) - effectiveHeight) * -1;
 
@@ -221,7 +238,26 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
     // Header
     graphic.drawRectangle({{centerX, headerCenterY}, {1.f, 1.f}, 0.f},
         {static_cast<float>(width), static_cast<float>(metrics.headerHeight)}, headerColor, 0, RGBA{0, 0, 0});
+    graphic.drawRectangle({{centerX, TITLE_HEIGHT * 1.5}, {1.f, 1.f}, 0.f},
+        {static_cast<float>(width), TITLE_HEIGHT}, headerColor, 2, borderColor);
     graphic.drawText({{6.f, 3.f}, {1.f, 1.f}, 0.f}, this->getTitle(), 14, 0.f, textColor, 0, RGBA{0, 0, 0, 0}, constants::FONT_DEFAULT);
+
+
+    // Dirs
+    std::filesystem::path relative = this->_dirPath.lexically_relative(this->_startPath);
+    std::filesystem::path current = this->_startPath;
+    float currX = DIRS_OFFSET_X;
+
+    currX += drawButton(graphic, {currX, TITLE_HEIGHT + 2.f}, current.filename()).x + DIRS_GAP;
+    for (const auto& component: relative) {
+        if (component.filename() == ".")
+            break;
+
+        current /= component;
+
+        currX += graphic.drawText({{currX, TITLE_HEIGHT + 2.f}}, ">", TEXT_SIZE*1.45, 0.f, {255, 255, 255}).x + DIRS_GAP;
+        currX += drawButton(graphic, {currX, TITLE_HEIGHT + 2.f}, current.filename()).x + DIRS_GAP;
+    }
 }
 
 bool OrByte::AssetsWidget::onEvent(const Event& event, Vector2 localMouse)
@@ -230,7 +266,7 @@ bool OrByte::AssetsWidget::onEvent(const Event& event, Vector2 localMouse)
 
     switch (event.type) {
         case Event::Type::MouseWheelScrolled:
-            if (localMouse.y > TITLE_HEIGHT) {
+            if (localMouse.y > HEADER_HEIGHT) {
                 this->_scrollOffset += event.wheelDelta * SCROLL_SENSITIVITY;
                 return true;
             }

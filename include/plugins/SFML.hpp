@@ -59,7 +59,8 @@ namespace OrByte {
             virtual void drawCircle(const Transform& transform, float radius, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor) const final;
             virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, bool contain) const final;
             virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, Rect rect, bool contain) const final;
-            virtual void drawText(const Transform& transform, std::string text, unsigned fontSize, float maxWidth, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor, std::filesystem::path font) const final;
+            virtual Vector2 drawText(const Transform& transform, std::string text, unsigned fontSize, float maxWidth, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor, std::filesystem::path font) const final;
+            virtual Vector2 getTextSize(std::string text, unsigned fontSize = 20, float maxWidth = 0.f, std::filesystem::path font = constants::FONT_DEFAULT) const;
 
             // Layout
             virtual Vector2u regionSize() const override;

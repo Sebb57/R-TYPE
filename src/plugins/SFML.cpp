@@ -449,13 +449,13 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     this->_window->draw(sprite);
 }
 
-void OrByte::SFML::drawText(const Transform& transform, std::string text, unsigned fontSize, float maxWidth, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor, std::filesystem::path font) const
+Vector2 OrByte::SFML::drawText(const Transform& transform, std::string text, unsigned fontSize, float maxWidth, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor, std::filesystem::path font) const
 {
     if (!this->_isOpen || !this->_window)
-        return;
+        return {0.f, 0.f};
     const sf::Font *sfmlFont = this->getFont(font);
     if (sfmlFont == nullptr)
-        return;
+        return {0.f, 0.f};
 
     sf::Text sfmlText;
     const Vector2 ratio = this->currentRatio();
@@ -486,6 +486,44 @@ void OrByte::SFML::drawText(const Transform& transform, std::string text, unsign
 
     sfmlText.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x, offset.y + transform.position.y * ratio.y));
     this->_window->draw(sfmlText);
+
+    const auto localBounds = sfmlText.getLocalBounds();
+    return {localBounds.width, localBounds.height};
+}
+
+Vector2 OrByte::SFML::getTextSize(std::string text, unsigned fontSize, float maxWidth, std::filesystem::path font) const
+{
+    if (!this->_isOpen || !this->_window)
+        return {0.f, 0.f};
+    const sf::Font *sfmlFont = this->getFont(font);
+    if (sfmlFont == nullptr)
+        return {0.f, 0.f};
+
+    sf::Text sfmlText;
+    const Vector2 ratio = this->currentRatio();
+
+    sfmlText.setFont(*sfmlFont);
+    sfmlText.setCharacterSize(static_cast<unsigned>(static_cast<float>(fontSize) * ratio.y));
+    sfmlText.setString(text);
+
+    if (maxWidth > 0.f) {
+        const float limit = maxWidth * ratio.x;
+
+        if (sfmlText.getLocalBounds().width > limit) {
+            const std::string ellipsis = "...";
+            while (!text.empty()) {
+                text.pop_back();
+                sfmlText.setString(text + ellipsis);
+                if (sfmlText.getLocalBounds().width <= limit)
+                    break;
+            }
+            if (text.empty())
+                sfmlText.setString(ellipsis);
+        }
+    }
+
+    const auto localBounds = sfmlText.getLocalBounds();
+    return {localBounds.width, localBounds.height};
 }
 
 Vector2u OrByte::SFML::regionSize() const
