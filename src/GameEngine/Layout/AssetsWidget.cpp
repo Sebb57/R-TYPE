@@ -196,6 +196,15 @@ void OrByte::AssetsWidget::_sortEntries(SortType type, bool ascending)
     }
 }
 
+void OrByte::AssetsWidget::_navigateTo(const std::filesystem::path& path)
+{
+    this->_dirPath = path;
+    this->_selected = -1;
+    this->_hovered = -1;
+    this->_scrollOffset = 0.f;
+    this->_getEntries();
+}
+
 void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
 {
     const int width = static_cast<int>(size.x);
@@ -247,16 +256,26 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
     std::filesystem::path relative = this->_dirPath.lexically_relative(this->_startPath);
     std::filesystem::path current = this->_startPath;
     float currX = DIRS_OFFSET_X;
+    constexpr float crumbY = TITLE_HEIGHT + 2.f;
 
-    currX += drawButton(graphic, {currX, TITLE_HEIGHT + 2.f}, current.filename()).x + DIRS_GAP;
-    for (const auto& component: relative) {
+    this->_dirButtons.clear();
+
+    const auto addDirButton = [&](const std::filesystem::path& path) {
+        const Vector2 size = drawButton(graphic, {currX, crumbY}, path.filename());
+
+        this->_dirButtons.push_back({currX, crumbY, size.x, size.y, path});
+        currX += size.x + DIRS_GAP;
+    };
+
+    addDirButton(current);
+    for (const auto& component : relative) {
         if (component.filename() == ".")
             break;
 
         current /= component;
 
-        currX += graphic.drawText({{currX, TITLE_HEIGHT + 2.f}}, ">", TEXT_SIZE*1.45, 0.f, {255, 255, 255}).x + DIRS_GAP;
-        currX += drawButton(graphic, {currX, TITLE_HEIGHT + 2.f}, current.filename()).x + DIRS_GAP;
+        currX += graphic.drawText({{currX, crumbY}}, ">", TEXT_SIZE * 1.45, 0.f, {255, 255, 255}).x + DIRS_GAP;
+        addDirButton(current);
     }
 }
 
@@ -272,6 +291,22 @@ bool OrByte::AssetsWidget::onEvent(const Event& event, Vector2 localMouse)
             }
             return false;
         case Event::Type::MouseButtonPressed:
+            if (localMouse.y < HEADER_HEIGHT) {
+                if (event.mouseButton == Event::MouseButton::Left) {
+                    for (const DirectoryButton& dirButton : this->_dirButtons) {
+                        if (localMouse.x < dirButton.x || localMouse.x >= dirButton.x + dirButton.w ||
+                            localMouse.y < dirButton.y || localMouse.y >= dirButton.y + dirButton.h)
+                            continue;
+
+                        const std::filesystem::path target = dirButton.path;
+
+                        if (target != this->_dirPath)
+                            this->_navigateTo(target);
+                        return true;
+                    }
+                }
+                return false;
+            }
             for (std::size_t i = 0; i < this->_entries.size(); i++) {
                 const Vector2 center = getEntryPos(i, entriesPerRow, this->_scrollOffset);
 

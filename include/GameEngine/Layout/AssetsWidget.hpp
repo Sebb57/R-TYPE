@@ -14,6 +14,7 @@
 #include "Widget.hpp"
 #include <dirent.h>
 #include <filesystem>
+#include <vector>
 
 namespace OrByte {
 
@@ -33,6 +34,14 @@ class AssetsWidget final : public Widget {
             Size
         };
 
+        struct DirectoryButton {
+            float x;
+            float y;
+            float w;
+            float h;
+            std::filesystem::path path;
+        };
+
         World& _world;
 
         std::filesystem::path _startPath;
@@ -48,9 +57,11 @@ class AssetsWidget final : public Widget {
         std::size_t _hovered = -1;
         std::size_t _selected = -1;
         Chronometer _chronoClick;
+        std::vector<DirectoryButton> _dirButtons;
 
         void _getEntries();
         void _sortEntries(SortType type, bool ascending = true);
+        void _navigateTo(const std::filesystem::path& path);
 };
 
 } // namespace OrByte
