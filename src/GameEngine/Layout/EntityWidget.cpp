@@ -247,15 +247,19 @@ void OrByte::EntityWidget::draw(const IGraphic& graphic, Vector2u size)
     const auto metrics = makeLayout(Rect(0, 0, width, height));
     const auto selectedIt = selectedEntityId
         ? std::find(ids.begin(), ids.end(), *selectedEntityId) : ids.end();
+    const std::size_t maxScroll = maxScrollOffset(ids.size(), metrics.visibleRows);
+    this->_scrollOffset = std::min(this->_scrollOffset, maxScroll);
     if (selectedIt != ids.end()) {
         this->_selectedIndex = static_cast<std::size_t>(std::distance(ids.begin(), selectedIt));
-        const std::size_t maxScroll = maxScrollOffset(ids.size(), metrics.visibleRows);
-        this->_scrollOffset = std::clamp(this->_scrollOffset, std::size_t{0}, maxScroll);
-        if (this->_selectedIndex < this->_scrollOffset)
-            this->_scrollOffset = this->_selectedIndex;
-        else if (this->_selectedIndex >= this->_scrollOffset + metrics.visibleRows)
-            this->_scrollOffset = this->_selectedIndex - metrics.visibleRows + 1;
+        // Follow a new selection without undoing manual scrolling on every frame.
+        if (selectedEntityId != this->_lastSelectedEntityId) {
+            if (this->_selectedIndex < this->_scrollOffset)
+                this->_scrollOffset = this->_selectedIndex;
+            else if (this->_selectedIndex >= this->_scrollOffset + metrics.visibleRows)
+                this->_scrollOffset = this->_selectedIndex - metrics.visibleRows + 1;
+        }
     }
+    this->_lastSelectedEntityId = selectedEntityId;
 
     const RGBA bgColor = RGBA{40, 40, 40, 255};
     const RGBA headerColor = RGBA{60, 60, 60, 255};

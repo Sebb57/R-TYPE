@@ -14,7 +14,7 @@
 #include "plugins/IGraphic.hpp"
 #include <filesystem>
 #include <memory>
-#include "GameEngine/ECS/World.hpp"
+#include "GameEngine/ECS/SceneCollection.hpp"
 #include "GameEngine/ECS/ComponentPlugins.hpp"
 
 namespace OrByte {
@@ -36,7 +36,7 @@ class GameEngine {
         std::unique_ptr<IGraphic> _graphicLib;
         std::unique_ptr<Widget> _root;
         ComponentPlugins _components;
-        World _world;
+        SceneCollection _scenes;
         // std::vector<Event> _events;
 
         void _initLayout();
