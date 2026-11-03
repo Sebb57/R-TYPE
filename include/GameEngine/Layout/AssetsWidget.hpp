@@ -9,6 +9,7 @@
 #ifndef ASSETSWIDGET_HPP_
     #define ASSETSWIDGET_HPP_
 
+#include "Chronometer.hpp"
 #include "GameEngine/ECS/World.hpp"
 #include "Widget.hpp"
 #include <dirent.h>
@@ -45,6 +46,7 @@ class AssetsWidget final : public Widget {
 
         std::size_t _hovered = -1;
         std::size_t _selected = -1;
+        Chronometer _chronoClick;
 
         void _getEntries();
         void _sortEntries(SortType type, bool ascending = true);

@@ -28,6 +28,8 @@ constexpr float ENTRY_GAP_Y = 16.f + TEXT_SIZE;
 constexpr float ENTRY_SIZE = 80.f;
 constexpr float SCROLL_SENSITIVITY = 10.f;
 
+constexpr float DOUBLE_CLICK_GAP = 0.5f;
+
 struct AssetsLayout {
     float headerHeight;
     float rowHeight;
@@ -114,6 +116,7 @@ Vector2 getEntryPos(const int i, const int entriesPerRow, const float scrollOffs
 
 } // namespace
 
+
 OrByte::AssetsWidget::AssetsWidget(World& world, int width) : Widget("Assets", width), _world(world)
 {
     const char* pwd = std::getenv("PWD");
@@ -121,6 +124,7 @@ OrByte::AssetsWidget::AssetsWidget(World& world, int width) : Widget("Assets", w
         throw std::runtime_error("'PWD' isn't set in the environment");
     this->_dirPath = pwd;
 
+    this->_chronoClick.reset();
     this->_getEntries();
 }
 
@@ -206,7 +210,7 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
             graphic.drawRectangle({{center.x, center.y}}, {ENTRY_SIZE, ENTRY_SIZE}, hoverColor);
 
         if (isFileImage(this->_entries[i]))
-            graphic.drawImage({{center.x, center.y}}, {ENTRY_SIZE, ENTRY_SIZE}, this->_entries[i]);
+            graphic.drawImage({{center.x, center.y}}, {ENTRY_SIZE, ENTRY_SIZE}, this->_dirPath / this->_entries[i], true);
         else if (isFileDir(this->_dirPath / this->_entries[i]))
             graphic.drawImage({{center.x, center.y}}, {ENTRY_SIZE, ENTRY_SIZE}, HICON_PATH);
         else
@@ -238,6 +242,14 @@ bool OrByte::AssetsWidget::onEvent(const Event& event, Vector2 localMouse)
                 if (localMouse.x >= center.x - ENTRY_SIZE / 2 && localMouse.x < center.x + ENTRY_SIZE / 2 &&
                     localMouse.y >= center.y - ENTRY_SIZE / 2 && localMouse.y < center.y + ENTRY_SIZE / 2) {
                     this->_selected = i;
+                    if (this->_selected == i && this->_chronoClick.getElapsedTime() <= DOUBLE_CLICK_GAP) {
+                        if (isFileDir(this->_dirPath / this->_entries[i])) {
+                            this->_dirPath = this->_dirPath / this->_entries[i];
+                            this->_selected = -1;
+                            this->_getEntries();
+                        }
+                    }
+                    this->_chronoClick.reset();
                     return true;
                 }
             }

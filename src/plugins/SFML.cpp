@@ -391,7 +391,7 @@ const sf::Texture *OrByte::SFML::getTexture(const std::filesystem::path& path) c
     return &texture->second;
 }
 
-void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::filesystem::path path) const
+void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, bool contain) const
 {
     if (!this->_isOpen || !this->_window)
         return;
@@ -399,22 +399,28 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     if (texture == nullptr)
         return;
 
+    const sf::Vector2u textureSize = texture->getSize();
+    if (textureSize.x == 0 || textureSize.y == 0)
+        return;
+
     sf::Sprite sprite;
     const Vector2 ratio = this->currentRatio();
     const Vector2 offset = this->currentOffset();
-    const sf::Vector2u textureSize = texture->getSize();
-    const float scale = (size.y * ratio.y) / static_cast<float>(textureSize.y);
+    const float scaleX = (size.x * ratio.x) / static_cast<float>(textureSize.x);
+    const float scaleY = (size.y * ratio.y) / static_cast<float>(textureSize.y);
+    const float scale = contain ? std::min(scaleX, scaleY) : scaleY;
 
-    sprite.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x, offset.y + transform.position.y * ratio.y));
-    sprite.setScale({ scale, scale });
     sprite.setTexture(*texture);
+    sprite.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x,
+                                    offset.y + transform.position.y * ratio.y));
+    sprite.setScale({ scale, scale });
     sprite.setOrigin({ textureSize.x / 2.f, textureSize.y / 2.f });
     sprite.setRotation(transform.rotation);
 
     this->_window->draw(sprite);
 }
 
-void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, Rect rect) const
+void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, Rect rect, bool contain) const
 {
     if (!this->_isOpen || !this->_window)
         return;
@@ -422,15 +428,21 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     if (texture == nullptr)
         return;
 
+    if (rect.w <= 0 || rect.h <= 0)
+        return;
+
     sf::Sprite sprite;
     const Vector2 ratio = this->currentRatio();
     const Vector2 offset = this->currentOffset();
-    const float scale = (size.y * ratio.y) / static_cast<float>(rect.h);
+    const float scaleX = (size.x * ratio.x) / static_cast<float>(rect.w);
+    const float scaleY = (size.y * ratio.y) / static_cast<float>(rect.h);
+    const float scale = contain ? std::min(scaleX, scaleY) : scaleY;
 
-    sprite.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x, offset.y + transform.position.y * ratio.y));
-    sprite.setScale({ scale, scale });
     sprite.setTexture(*texture);
     sprite.setTextureRect(sf::IntRect(rect.x, rect.y, rect.w, rect.h));
+    sprite.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x,
+                                    offset.y + transform.position.y * ratio.y));
+    sprite.setScale({ scale, scale });
     sprite.setOrigin({ rect.w / 2.f, rect.h / 2.f });
     sprite.setRotation(transform.rotation);
 
