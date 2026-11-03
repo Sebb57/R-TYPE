@@ -34,6 +34,10 @@ public:
     [[nodiscard]] bool entityExists(int entityId) const;
     [[nodiscard]] std::vector<int> getExistingEntities() const;
 
+    [[nodiscard]] std::vector<OrByte::ComponentType> getComponentTypesOfEntity(int entityId) const {
+        return componentManager.getComponentTypesOfEntity(entityId);
+    }
+
     template <typename T, typename ... Args>
     void addComponentToEntity(int entityId, Args&& ... args) {
         if (T::Type == OrByte::ComponentType::Camera)
@@ -49,13 +53,25 @@ public:
     T* getComponent(int entityId) {
         return componentManager.getComponent<T>(entityId);
     }
+    [[nodiscard]] OrByte::IComponent* getComponent(int entityId, OrByte::ComponentType type) const {
+        return componentManager.getComponent(entityId, type);
+    }
     [[nodiscard]] std::vector<OrByte::IComponent*> getComponents(int entityId) const {
         return componentManager.getComponents(entityId);
     }
+    [[nodiscard]] static bool isComponentRemovable(OrByte::ComponentType type) {
+        return type != OrByte::ComponentType::Camera
+            && type != OrByte::ComponentType::Name
+            && type != OrByte::ComponentType::Transform;
+    }
     template <typename T>
     void removeComponentFromEntity(int entityId) {
-        if (T::Type != OrByte::ComponentType::Camera)
+        if (isComponentRemovable(T::Type))
             componentManager.removeComponentFromEntity<T>(entityId);
+    }
+    void removeComponentFromEntity(int entityId, OrByte::ComponentType type) {
+        if (isComponentRemovable(type))
+            componentManager.removeComponentFromEntity(entityId, type);
     }
 
     int ensureCamera();

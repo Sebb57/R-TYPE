@@ -11,6 +11,7 @@
 #include "GameEngine/ECS/Components/Name.hpp"
 #include "GameEngine/ECS/Components/Script.hpp"
 #include "GameEngine/Layout/Panel.hpp"
+#include "GameEngine/Detail/Detail.hpp"
 #include "GameEngine/Layout/SceneView.hpp"
 #include "GameEngine/Layout/EntityWidget.hpp"
 #include "GameEngine/Layout/FilesManagementWidget.hpp"
@@ -64,7 +65,7 @@ void OrByte::GameEngine::_initLayout()
     toolbar.attach(Widget::Side::Left, std::make_unique<FilesManagementWidget>(this->_world, this->_components.factories));
     scene->attach(Widget::Side::Bottom, std::make_unique<Panel>("Console", 220));
     scene->attach(Widget::Side::Left, std::make_unique<EntityWidget>(this->_world, 250));
-    scene->attach(Widget::Side::Right, std::make_unique<Panel>("Inspector", 300));
+    scene->attach(Widget::Side::Right, std::make_unique<Detail>(this->_world, this->_components.factories, 300));
 
     const auto [w, h] = this->_graphicLib->getWindowSize();
 
