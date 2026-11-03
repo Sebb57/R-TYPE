@@ -172,6 +172,7 @@ void OrByte::FilesManagementWidget::_compile()
         std::cerr << "Cannot export world: " << error.what() << std::endl;
         return;
     }
+    this->_world.ensureCamera();
     system("cmake -S cmake/GameEngine -B build-solo && cmake --build build-solo");
 }
 
