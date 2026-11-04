@@ -70,6 +70,7 @@ class ScriptSystem : public ASystem {
 
         std::array<sol::object (*)(sol::state_view, IComponent*), static_cast<std::size_t>(ComponentType::ENUM_END)> _pushers{};
         std::array<std::vector<std::string>, static_cast<std::size_t>(ComponentType::ENUM_END)> _fields{};
+        std::array<void (*)(World&, int), static_cast<std::size_t>(ComponentType::ENUM_END)> _adders{};
 
         [[nodiscard]] static std::optional<ComponentType> _typeFromName(std::string_view name);
 
@@ -94,12 +95,16 @@ class ScriptSystem : public ASystem {
             this->_pushers[static_cast<std::size_t>(T::Type)] = [](sol::state_view lua, IComponent* component) {
                 return sol::make_object(lua, static_cast<T*>(component));
             };
+            this->_adders[static_cast<std::size_t>(T::Type)] = [](World& world, int entity) {
+                world.addComponentToEntity<T>(entity);
+            };
         }
 
         sol::protected_function _assign;    // function(obj, key, value) obj[key] = value end
 
         [[nodiscard]] sol::object _pushComponent(sol::state_view lua, int id, std::string_view name);
         bool _setComponentAttribute(int id, std::string_view name, const std::string& field, const sol::object& value, sol::this_state ts);
+        [[nodiscard]] sol::object _addComponent(int id, std::string_view name, const sol::optional<sol::table>& init, sol::this_state ts);
 
         [[nodiscard]] std::filesystem::path _resolve(const std::string& path) const { return this->_scriptsDir / path; }
         static void _reportError(int entity, std::string_view what) { std::cerr << "[ScriptSystem] entity " << entity << ": " << what << std::endl; }

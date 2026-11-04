@@ -145,6 +145,11 @@ void OrByte::ScriptSystem::_bindApi()
         return sol::as_table(type ? this->_fields[static_cast<std::size_t>(*type)] : std::vector<std::string>{});
     });
 
+    this->_lua.set_function("createEntity", [this]() { return this->_world.createEntity(); });
+    this->_lua.set_function("addComponent", [this](int id, std::string_view name, sol::optional<sol::table> init, sol::this_state ts) {
+        return this->_addComponent(id, name, init, ts);
+    });
+
     this->_assign = this->_lua.load("local obj, key, value = ...; obj[key] = value").get<sol::protected_function>();
     this->_lua.set_function("setComponentAttribute", [this](int id, std::string_view name, const std::string& field, const sol::object& value, sol::this_state ts) {
         return this->_setComponentAttribute(id, name, field, value, ts);
@@ -188,6 +193,34 @@ bool OrByte::ScriptSystem::_setComponentAttribute(int id, std::string_view name,
         return false;
     }
     return true;
+}
+
+sol::object OrByte::ScriptSystem::_addComponent(int id, std::string_view name, const sol::optional<sol::table>& init, sol::this_state ts)
+{
+    if (!this->_world.entityExists(id)) {
+        _reportError(id, "addComponent: entity does not exist");
+        return sol::lua_nil;
+    }
+    const auto type = _typeFromName(name);
+    if (!type || this->_adders[static_cast<std::size_t>(*type)] == nullptr) {
+        _reportError(id, "addComponent: unknown component '" + std::string(name) + "'");
+        return sol::lua_nil;
+    }
+
+    // never replace an existing component: Lua may still hold a reference to it
+    if (this->_world.getComponent(id, *type) == nullptr)
+        this->_adders[static_cast<std::size_t>(*type)](this->_world, id);
+
+    if (init) {
+        for (const auto& [key, value] : *init) {
+            if (key.get_type() != sol::type::string) {
+                _reportError(id, "addComponent: '" + std::string(name) + "' init keys must be attribute names");
+                continue;
+            }
+            this->_setComponentAttribute(id, name, key.as<std::string>(), value, ts);
+        }
+    }
+    return this->_pushComponent(sol::state_view(ts), id, name);
 }
 
 std::optional<OrByte::ComponentType> OrByte::ScriptSystem::_typeFromName(std::string_view name)
