@@ -28,11 +28,14 @@ struct Controllable : public OrByte::AComponent<OrByte::ComponentType::Controlla
     Event::Key down{Event::Key::Down};
     Event::Key left{Event::Key::Left};
     Event::Key right{Event::Key::Right};
-    float speed{400.0f};
+    float speed{400.0F};
 
-    Vector2 size{64.0f, 64.0f};
+    Vector2 size{64.0F, 64.0F};
     RGBA color{255, 255, 255};
     std::string image;
+
+    float boundX{0.0F};
+    float boundY{0.0F};
 
     void serialize(Serializer& serializer) const final
     {
@@ -44,6 +47,8 @@ struct Controllable : public OrByte::AComponent<OrByte::ComponentType::Controlla
         serializer.object(this->size);
         serializer.object(this->color);
         serializer.text1b(this->image, MaxStringSize);
+        serializer.value4b(this->boundX);
+        serializer.value4b(this->boundY);
     }
 
     void deserialize(Deserializer& deserializer) final
@@ -56,6 +61,8 @@ struct Controllable : public OrByte::AComponent<OrByte::ComponentType::Controlla
         deserializer.object(this->size);
         deserializer.object(this->color);
         deserializer.text1b(this->image, MaxStringSize);
+        deserializer.value4b(this->boundX);
+        deserializer.value4b(this->boundY);
     }
 };
 

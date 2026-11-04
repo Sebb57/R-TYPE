@@ -71,6 +71,8 @@ void OrByte::SFML::open(const std::size_t width, const std::size_t height, std::
     this->_cursorVertical.loadFromSystem(sf::Cursor::SizeVertical);
     this->_cursorMove.loadFromSystem(sf::Cursor::SizeAll);
     this->_cursorClick.loadFromSystem(sf::Cursor::Hand);
+    this->_cursorDiagonalNWSE.loadFromSystem(sf::Cursor::SizeTopLeft);
+    this->_cursorDiagonalNESW.loadFromSystem(sf::Cursor::SizeTopRight);
     this->_currentCursor = CursorType::Arrow;
 
     this->_isOpen = true;
@@ -610,6 +612,12 @@ void OrByte::SFML::setCursor(CursorType type)
             break;
         case CursorType::Click:
             this->_window->setMouseCursor(this->_cursorClick);
+            break;
+        case CursorType::ResizeDiagonalNWSE:
+            this->_window->setMouseCursor(this->_cursorDiagonalNWSE);
+            break;
+        case CursorType::ResizeDiagonalNESW:
+            this->_window->setMouseCursor(this->_cursorDiagonalNESW);
             break;
         default:
             this->_window->setMouseCursor(this->_cursorArrow);

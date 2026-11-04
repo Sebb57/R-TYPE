@@ -37,6 +37,8 @@ namespace OrByte {
         sf::Cursor _cursorVertical;
         sf::Cursor _cursorMove;
         sf::Cursor _cursorClick;
+        sf::Cursor _cursorDiagonalNWSE;
+        sf::Cursor _cursorDiagonalNESW;
         CursorType _currentCursor = CursorType::Arrow;
 
         const sf::Font *getFont(const std::filesystem::path& path) const;

@@ -172,6 +172,11 @@ bool OrByte::Widget::handleEvent(const Event& event)
     }
     if (isMouseEvent(event)) {
         if (this->_parent == nullptr) {
+            if (this->capturesMouse()) {
+                return this->onEvent(event, Vector2(
+                    static_cast<float>(event.windowX - this->_content.x),
+                    static_cast<float>(event.windowY - this->_content.y)));
+            }
             if (this->_move.active)
                 return this->_handleMove(event);
             if (this->_handleResize(event) || this->_handleMove(event))

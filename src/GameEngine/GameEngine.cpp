@@ -7,8 +7,8 @@
 
 #include "constants.hpp"
 #include "GameEngine/GameEngine.hpp"
-#include "GameEngine/ECS/Components/Controllable.hpp"
 #include "GameEngine/Layout/AssetsWidget.hpp"
+#include "GameEngine/Detail/Detail.hpp"
 #include "GameEngine/Layout/EntityWidget.hpp"
 #include "GameEngine/Layout/FilesManagementWidget.hpp"
 #include "GameEngine/Layout/Panel.hpp"
@@ -42,29 +42,27 @@ std::filesystem::path getGraphicalPlugin(OrByte::GameEngine::GraphicalLibs graph
 
 OrByte::GameEngine::GameEngine(GraphicalLibs graphicalLib) : _graphicLoader(getGraphicalPlugin(graphicalLib)), _graphicLib(this->_graphicLoader.loadFunction<IGraphic* (*)()>("factory")()), _components(loadComponentPlugins(constants::COMPONENTS_DIR))
 {
+    this->_world.ensureCamera();
     this->_graphicLib->open();
     this->_initLayout();
 }
 
 OrByte::GameEngine::GameEngine(std::filesystem::path graphicPath) : _graphicLoader(graphicPath), _graphicLib(this->_graphicLoader.loadFunction<IGraphic* (*)()>("factory")()), _components(loadComponentPlugins(constants::COMPONENTS_DIR))
 {
+    this->_world.ensureCamera();
     this->_graphicLib->open();
     this->_initLayout();
 }
 
 void OrByte::GameEngine::_initLayout()
 {
-    auto scene = std::make_unique<SceneView>(
-        [this](const IGraphic& graphicLib) {
-            (void) graphicLib; // TODO: remove when below is done and using this parameter
-            // TODO: Game Render
-        });
+    auto scene = std::make_unique<SceneView>(this->_world);
 
     Widget& toolbar = scene->attach(Widget::Side::Top, std::make_unique<Panel>("", 40));
     toolbar.attach(Widget::Side::Left, std::make_unique<FilesManagementWidget>(this->_world, this->_components.factories));
     scene->attach(Widget::Side::Bottom, std::make_unique<AssetsWidget>(this->_world, 220));
     scene->attach(Widget::Side::Left, std::make_unique<EntityWidget>(this->_world, 250));
-    scene->attach(Widget::Side::Right, std::make_unique<Panel>("Inspector", 300));
+    scene->attach(Widget::Side::Right, std::make_unique<Detail>(this->_world, this->_components.factories, 300));
 
     const auto [w, h] = this->_graphicLib->getWindowSize();
 

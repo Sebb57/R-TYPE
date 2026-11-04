@@ -5,6 +5,7 @@
 ** PhysicSystem.cpp
 */
 
+#include "GameEngine/ECS/Components/Controllable.hpp"
 #include "GameEngine/ECS/Components/Orbit.hpp"
 #include "GameEngine/ECS/Components/Sinus.hpp"
 #include "GameEngine/ECS/Components/Spiral.hpp"
@@ -74,6 +75,16 @@ void OrByte::PhysicSystem::_handleVelocity(Transform* transform, int entity, dou
     transform->position.y += velocity->velocity.y * deltaTime;
 }
 
+void OrByte::PhysicSystem::_handleBounds(Transform* transform, int entity)
+{
+    const Controllable* controllable = this->_world.getComponent<Controllable>(entity);
+    if (controllable == nullptr)
+        return;
+
+    transform->position.x = clampToBound(transform->position.x, controllable->size.x / 2.0F, controllable->boundX);
+    transform->position.y = clampToBound(transform->position.y, controllable->size.y / 2.0F, controllable->boundY);
+}
+
 void OrByte::PhysicSystem::update()
 {
     double deltaTime = this->_chrono.getElapsedTime();
@@ -89,6 +100,7 @@ void OrByte::PhysicSystem::update()
         this->_handleSinus(transform, entity, deltaTime);
         this->_handleOrbit(transform, entity, deltaTime);
         this->_handleSpiral(transform, entity, deltaTime);
+        this->_handleBounds(transform, entity);
     }
 }
 

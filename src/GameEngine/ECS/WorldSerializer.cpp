@@ -77,4 +77,5 @@ void OrByte::deserializeWorld(World& world, const std::filesystem::path& path, c
         if (deserializer.adapter().error() != bitsery::ReaderError::NoError)
             throw InvalidWorld(path, "is truncated or corrupted");
     }
+    world.ensureCamera();
 }

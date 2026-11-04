@@ -11,8 +11,10 @@
 #include <chrono>
 #include <utility>
 #include "GameEngine/ECS/Components/Controllable.hpp"
+#include "GameEngine/ECS/Components/Sprite.hpp"
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "GameEngine/ECS/World.hpp"
+#include "constants.hpp"
 #include "plugins/IGraphic.hpp"
 
 server::GameInstance::GameInstance(OrByte::IGraphic& graphic, unsigned tickRate, unsigned snapshotRate, const Setup& setup)
@@ -109,13 +111,17 @@ server::SnapshotDto server::GameInstance::makeSnapshot()
 {
     SnapshotDto snapshot;
     snapshot.tick = this->_tick;
+    const Vector2 origin = this->_world->getCameraOrigin(Vector2(OrByte::constants::SERVER_WINDOW_X, OrByte::constants::SERVER_WINDOW_Y));
     for (int entity : this->_world->getExistingEntities()) {
         const auto *transform = this->_world->getComponent<OrByte::Transform>(entity);
-        const auto *controllable = this->_world->getComponent<OrByte::Controllable>(entity);
-        if (transform == nullptr || controllable == nullptr)
+        if (transform == nullptr)
             continue;
-        snapshot.entities.push_back(EntityDto(static_cast<std::uint32_t>(entity + 1), transform->position,
-            transform->rotation, controllable->size, controllable->color, controllable->image));
+        const auto id = static_cast<std::uint32_t>(entity + 1);
+        const Vector2 position(transform->position.x - origin.x, transform->position.y - origin.y);
+        if (const auto *controllable = this->_world->getComponent<OrByte::Controllable>(entity))
+            snapshot.entities.push_back(EntityDto(id, position, transform->rotation, controllable->size, controllable->color, controllable->image));
+        else if (const auto *sprite = this->_world->getComponent<OrByte::Sprite>(entity))
+            snapshot.entities.push_back(EntityDto(id, position, transform->rotation, sprite->size, OrByte::RGBA(255, 255, 255), sprite->texturePath));
     }
     return snapshot;
 }
