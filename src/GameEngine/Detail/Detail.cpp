@@ -64,7 +64,7 @@ void fillRect(const IGraphic& graphic, float x, float y, float w, float h, RGBA 
 
 void drawLabel(const IGraphic& graphic, float x, float y, const std::string& text, unsigned size, RGBA color)
 {
-    graphic.drawText(Transform{ { x, y }, { 1.f, 1.f }, 0.f }, text, size, color, 0, NO_COLOR, constants::FONT_DEFAULT);
+    graphic.drawText(Transform{ { x, y }, { 1.f, 1.f }, 0.f }, text, size, 0.f, color, 0, NO_COLOR, constants::FONT_DEFAULT);
 }
 
 std::string fit(const std::string& text, float width, unsigned fontSize, bool keepEnd = false)

@@ -5,13 +5,14 @@
 ** GameEngine.cpp
 */
 
+#include "constants.hpp"
 #include "GameEngine/GameEngine.hpp"
-#include "GameEngine/Layout/Panel.hpp"
+#include "GameEngine/Layout/AssetsWidget.hpp"
 #include "GameEngine/Detail/Detail.hpp"
-#include "GameEngine/Layout/SceneView.hpp"
 #include "GameEngine/Layout/EntityWidget.hpp"
 #include "GameEngine/Layout/FilesManagementWidget.hpp"
-#include "constants.hpp"
+#include "GameEngine/Layout/Panel.hpp"
+#include "GameEngine/Layout/SceneView.hpp"
 #include <filesystem>
 #include <memory>
 #include <queue>
@@ -59,7 +60,7 @@ void OrByte::GameEngine::_initLayout()
 
     Widget& toolbar = scene->attach(Widget::Side::Top, std::make_unique<Panel>("", 40));
     toolbar.attach(Widget::Side::Left, std::make_unique<FilesManagementWidget>(this->_world, this->_components.factories));
-    scene->attach(Widget::Side::Bottom, std::make_unique<Panel>("Console", 220));
+    scene->attach(Widget::Side::Bottom, std::make_unique<AssetsWidget>(this->_world, 220));
     scene->attach(Widget::Side::Left, std::make_unique<EntityWidget>(this->_world, 250));
     scene->attach(Widget::Side::Right, std::make_unique<Detail>(this->_world, this->_components.factories, 300));
 
