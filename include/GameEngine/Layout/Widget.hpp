@@ -31,6 +31,7 @@ class Widget {
         };
 
         static constexpr std::size_t SIDE_COUNT = 4;
+        static constexpr int TITLE_HEIGHT = 24;
 
         explicit Widget(std::string title = "", int size = 0);
         virtual ~Widget() = default;
@@ -78,7 +79,7 @@ class Widget {
         virtual bool onEvent([[maybe_unused]] const Event& event, [[maybe_unused]] Vector2 localMouse) { return false; }
         [[nodiscard]] virtual bool capturesMouse() const { return false; }
 
-        [[nodiscard]] virtual int getHeaderHeight() const { return 0; }
+        [[nodiscard]] virtual int getHeaderHeight() const { return this->getTitle().empty() ? 0 : TITLE_HEIGHT; }
 
     private:
         struct Drag {
