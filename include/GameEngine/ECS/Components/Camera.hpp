@@ -19,8 +19,8 @@ struct Camera : public OrByte::AComponent<OrByte::ComponentType::Camera>
     Camera() = default;
     Camera(float boundX, float boundY) : boundX(boundX), boundY(boundY) {}
 
-    float boundX{0.0F};
-    float boundY{0.0F};
+    float boundX{1920.0F};
+    float boundY{1080.0F};
 
     [[nodiscard]] Vector2 origin(const Vector2& target, const Vector2& view) const
     {

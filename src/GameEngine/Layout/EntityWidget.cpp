@@ -152,7 +152,7 @@ void OrByte::EntityWidget::_applyKeyAction(const Event& event)
             return;
 
         const auto selected = std::find(ids.begin(), ids.end(), *selectedEntity);
-        if (selected == ids.end() || this->_world.getCameraEntity() == *selectedEntity)
+        if (selected == ids.end() /*|| this->_world.getCameraEntity() == *selectedEntity*/)
             return;
         const std::size_t index = static_cast<std::size_t>(std::distance(ids.begin(), selected));
         this->_cancelEditing();

@@ -44,17 +44,8 @@ void World::destroyEntity(int entityId)
         return;
     }
 
-    const OrByte::Camera camera = *this->componentManager.getComponent<OrByte::Camera>(entityId);
-    const auto *transform = this->componentManager.getComponent<OrByte::Transform>(entityId);
-    const Vector2 position = transform != nullptr ? transform->position
-        : Vector2(OrByte::constants::SERVER_WINDOW_X / 2.0F, OrByte::constants::SERVER_WINDOW_Y / 2.0F);
-
     this->entityManager.destroyEntity(entityId);
     this->componentManager.removeAllComponentsFromEntity(entityId);
-    const int id = this->createEntity();
-    this->componentManager.addComponentToEntity<OrByte::Name>(id, CameraEntityName);
-    this->componentManager.addComponentToEntity<OrByte::Transform>(id, position);
-    this->componentManager.addComponentToEntity<OrByte::Camera>(id, camera);
 }
 
 bool World::entityExists(int entityId) const

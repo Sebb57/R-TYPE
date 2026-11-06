@@ -7,11 +7,11 @@
 
 #include "constants.hpp"
 #include "GameEngine/GameEngine.hpp"
+#include "GameEngine/Layout/Panel.hpp"
 #include "GameEngine/Layout/AssetsWidget.hpp"
 #include "GameEngine/Detail/Detail.hpp"
 #include "GameEngine/Layout/EntityWidget.hpp"
 #include "GameEngine/Layout/FilesManagementWidget.hpp"
-#include "GameEngine/Layout/Panel.hpp"
 #include "GameEngine/Layout/SceneView.hpp"
 #include <filesystem>
 #include <memory>
@@ -42,14 +42,12 @@ std::filesystem::path getGraphicalPlugin(OrByte::GameEngine::GraphicalLibs graph
 
 OrByte::GameEngine::GameEngine(GraphicalLibs graphicalLib) : _graphicLoader(getGraphicalPlugin(graphicalLib)), _graphicLib(this->_graphicLoader.loadFunction<IGraphic* (*)()>("factory")()), _components(loadComponentPlugins(constants::COMPONENTS_DIR))
 {
-    this->_world.ensureCamera();
     this->_graphicLib->open();
     this->_initLayout();
 }
 
 OrByte::GameEngine::GameEngine(std::filesystem::path graphicPath) : _graphicLoader(graphicPath), _graphicLib(this->_graphicLoader.loadFunction<IGraphic* (*)()>("factory")()), _components(loadComponentPlugins(constants::COMPONENTS_DIR))
 {
-    this->_world.ensureCamera();
     this->_graphicLib->open();
     this->_initLayout();
 }
