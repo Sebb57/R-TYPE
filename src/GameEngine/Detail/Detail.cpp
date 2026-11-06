@@ -6,6 +6,7 @@
 */
 
 #include "GameEngine/Detail/Detail.hpp"
+#include "GameEngine/ECS/Components/Script.hpp"
 #include "GameEngine/ECS/World.hpp"
 #include "GameEngine/ECS/Components/AddHealth.hpp"
 #include "GameEngine/ECS/Components/Animator.hpp"
@@ -273,6 +274,7 @@ const char *componentName(ComponentType type)
         case ComponentType::Name: return "Name";
         case ComponentType::Camera: return "Camera";
         case ComponentType::Music: return "Music";
+        case ComponentType::Script: return "Script";
         case ComponentType::ENUM_END: break;
     }
     return "Unknown";
@@ -367,6 +369,10 @@ std::vector<Detail::Field> describe(IComponent& component)
                 number("Pitch", c.pitch),
                 toggle("Loop", c.loop) };
         }
+        case OrByte::ComponentType::Script: {
+            auto& c = dynamic_cast<Script&>(component);
+            return { text("path", c.path) };
+        }
         case ComponentType::ENUM_END:
             break;
     }
@@ -398,8 +404,6 @@ std::vector<OrByte::ComponentType> OrByte::Detail::_addableComponents(int entity
         const auto type = static_cast<ComponentType>(i);
         const auto factory = this->_factories.find(type);
 
-        if (type == ComponentType::Camera)
-            continue;
         if (factory == this->_factories.end() || factory->second == nullptr)
             continue;
         if (this->_world.getComponent(entityId, type) != nullptr)

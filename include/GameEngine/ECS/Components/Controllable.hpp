@@ -34,8 +34,8 @@ struct Controllable : public OrByte::AComponent<OrByte::ComponentType::Controlla
     RGBA color{255, 255, 255};
     std::string image;
 
-    float boundX{0.0F};
-    float boundY{0.0F};
+    float boundX{1920.0F};
+    float boundY{1080.0F};
 
     void serialize(Serializer& serializer) const final
     {

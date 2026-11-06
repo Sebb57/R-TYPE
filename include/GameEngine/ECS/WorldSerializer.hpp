@@ -23,7 +23,7 @@ namespace OrByte {
 using ComponentFactory = IComponent* (*)();
 using ComponentFactories = std::unordered_map<ComponentType, ComponentFactory>;
 
-inline constexpr std::uint32_t WORLD_MAGIC = 0x69676967;
+inline constexpr std::uint32_t WORLD_MAGIC = 0x74617973;
 inline constexpr const char *WORLD_EXTENSION = ".obe";
 
 class WorldSerializerException : public std::exception {
