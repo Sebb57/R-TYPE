@@ -167,7 +167,16 @@ target_link_libraries(rtype_sfml PRIVATE
     sfml-system
 )
 
-set(SYSTEM_PLUGINS Collider Control Display Health Physic)
+# Audio library plugin: the only audio code that knows SFML (like rtype_sfml for graphics)
+add_library(rtype_sfml_audio MODULE src/plugins/SFMLAudio.cpp)
+rtype_configure_plugin(rtype_sfml_audio "SFMLAudio" "${CMAKE_SOURCE_DIR}/plugins")
+target_include_directories(rtype_sfml_audio PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_link_libraries(rtype_sfml_audio PRIVATE
+    sfml-audio
+    sfml-system
+)
+
+set(SYSTEM_PLUGINS Collider Control Display Health Physic Audio)
 set(SYSTEM_TARGETS)
 foreach(system IN LISTS SYSTEM_PLUGINS)
     set(system_target "rtype_system_${system}")
@@ -179,7 +188,7 @@ endforeach()
 
 set(COMPONENT_PLUGINS
     AddHealth Animator Camera Collider Controllable Health Orbit Owner Poison
-    RegenHealth RemoveHealth Sinus Spiral Sprite Transform Velocity Wither Name
+    RegenHealth RemoveHealth Sinus Spiral Sprite Transform Velocity Wither Name Music
 )
 set(COMPONENT_TARGETS)
 foreach(component IN LISTS COMPONENT_PLUGINS)
@@ -201,7 +210,7 @@ file(GLOB_RECURSE CLIENT_SOURCES CONFIGURE_DEPENDS
 add_executable(r-type_client ${CLIENT_SOURCES})
 target_include_directories(r-type_client PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(r-type_client PRIVATE rtype_engine rtype-protocol sfml-audio)
-add_dependencies(r-type_client rtype_sfml ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
+add_dependencies(r-type_client rtype_sfml rtype_sfml_audio ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
 target_compile_features(r-type_client PRIVATE cxx_std_23)
 set_target_properties(r-type_client PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}>"
@@ -225,11 +234,19 @@ endif()
 # ---------------------------------------------------------------------------
 add_executable(r-type_game-engine src/GameEngine/main.cpp)
 target_link_libraries(r-type_game-engine PRIVATE rtype_engine)
-add_dependencies(r-type_game-engine rtype_sfml ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
+add_dependencies(r-type_game-engine rtype_sfml rtype_sfml_audio ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
 target_compile_features(r-type_game-engine PRIVATE cxx_std_23)
 set_target_properties(r-type_game-engine PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}>"
 )
+if(WIN32)
+    # the audio plugin needs openal32.dll next to the executable
+    add_custom_command(TARGET r-type_game-engine POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${RTYPE_OPENAL_DLL}" "$<TARGET_FILE_DIR:r-type_game-engine>"
+        VERBATIM
+    )
+endif()
 
 # ---------------------------------------------------------------------------
 # Warnings
@@ -240,6 +257,7 @@ foreach(target IN ITEMS
     r-type_client
     r-type_game-engine
     rtype_sfml
+    rtype_sfml_audio
     ${SYSTEM_TARGETS}
     ${COMPONENT_TARGETS}
 )
@@ -260,6 +278,7 @@ foreach(target IN ITEMS
     rtype-protocol
     rtype_engine
     rtype_sfml
+    rtype_sfml_audio
     r-type_server
     r-type_client
     r-type_game-engine
@@ -280,4 +299,3 @@ if(MINGW)
         target_link_options(${target} PRIVATE -static)
     endforeach()
 endif()
-

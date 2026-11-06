@@ -37,6 +37,7 @@ class DynamicLibrary {
             GRAPHICAL_LIB,
             COMPONENT,
             SYSTEMS,
+            AUDIO_LIB,
         };
 
         DynamicLibrary(const std::filesystem::path& path);

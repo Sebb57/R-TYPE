@@ -79,3 +79,6 @@ Testing/
 
 # Compiled plugins folder
 ./plugins/
+
+# Music
+*.ogg
