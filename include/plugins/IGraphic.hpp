@@ -37,6 +37,8 @@ namespace OrByte {
         Arrow,
         ResizeHorizontal,
         ResizeVertical,
+        Move,
+        Click,
         ResizeDiagonalNWSE,
         ResizeDiagonalNESW,
     };
@@ -60,9 +62,10 @@ namespace OrByte {
 
             virtual void drawRectangle(const Transform& transform, Vector2 size, RGBA fillColor = {255, 255, 255}, unsigned outlineThickness = 0, RGBA outlineColor = {0, 0, 0}) const = 0;
             virtual void drawCircle(const Transform& transform, float radius, RGBA fillColor = {255, 255, 255}, unsigned outlineThickness = 0, RGBA outlineColor = {0, 0, 0}) const = 0;
-            virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path) const = 0;
-            virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, Rect rect) const = 0;
-            virtual void drawText(const Transform& transform, std::string text, unsigned fontSize = 20, RGBA fillColor = {255, 255, 255}, unsigned outlineThickness = 0, RGBA outlineColor = {0, 0, 0}, std::filesystem::path font = constants::FONT_DEFAULT) const = 0;
+            virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, bool contain = false) const = 0;
+            virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, Rect rect, bool contain = false) const = 0;
+            virtual Vector2 drawText(const Transform& transform, std::string text, unsigned fontSize = 20, float maxWidth = 0.f, RGBA fillColor = {255, 255, 255}, unsigned outlineThickness = 0, RGBA outlineColor = {0, 0, 0}, std::filesystem::path font = constants::FONT_DEFAULT) const = 0;
+            virtual Vector2 getTextSize(std::string text, unsigned fontSize = 20, float maxWidth = 0.f, std::filesystem::path font = constants::FONT_DEFAULT) const = 0;
 
             virtual Vector2u regionSize() const = 0;
             virtual void applyRegionView() const = 0;

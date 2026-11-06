@@ -21,11 +21,7 @@ class Panel : public Widget {
         Panel(std::string title, int size) : Widget(std::move(title), size) {}
 
     protected:
-        static constexpr int TITLE_HEIGHT = 24;
-
         void draw(const IGraphic& graphicLib, Vector2u size) override;
-
-        [[nodiscard]] int getHeaderHeight() const override { return this->getTitle().empty() ? 0 : TITLE_HEIGHT; }
 };
 
 } // namespace OrByte

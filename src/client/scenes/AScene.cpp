@@ -58,7 +58,7 @@ void client::AScene::drawText(const std::string& text, Vector2 position, unsigne
 {
     if (this->_context.font.empty())
         return;
-    this->_context.graphic.drawText(OrByte::Transform(position, Vector2(1.0f, 1.0f), 0.0f), text, size, color, 0, {0, 0, 0}, this->_context.font);
+    this->_context.graphic.drawText(OrByte::Transform(position, Vector2(1.0f, 1.0f), 0.0f), text, size, 0.f, color, 0, {0, 0, 0}, this->_context.font);
 }
 
 void client::AScene::drawPanel(Vector2 position, Vector2 size, OrByte::RGBA fill, unsigned outlineThickness, OrByte::RGBA outline) const
