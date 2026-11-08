@@ -394,7 +394,7 @@ const sf::Texture *OrByte::SFML::getTexture(const std::filesystem::path& path) c
     return &texture->second;
 }
 
-void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, bool contain) const
+void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, bool contain, float opacity) const
 {
     if (!this->_isOpen || !this->_window)
         return;
@@ -412,6 +412,7 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     const float scaleX = (size.x * ratio.x) / static_cast<float>(textureSize.x);
     const float scaleY = (size.y * ratio.y) / static_cast<float>(textureSize.y);
     const float scale = contain ? std::min(scaleX, scaleY) : scaleY;
+    const float clamped = std::clamp(opacity, 0.f, 1.f);
 
     sprite.setTexture(*texture);
     sprite.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x,
@@ -419,11 +420,12 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     sprite.setScale({ scale, scale });
     sprite.setOrigin({ textureSize.x / 2.f, textureSize.y / 2.f });
     sprite.setRotation(transform.rotation);
+    sprite.setColor(sf::Color(255, 255, 255, static_cast<sf::Uint8>(clamped * 255.f)));
 
     this->_window->draw(sprite);
 }
 
-void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, Rect rect, bool contain) const
+void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, Rect rect, bool contain, float opacity) const
 {
     if (!this->_isOpen || !this->_window)
         return;
@@ -440,6 +442,7 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     const float scaleX = (size.x * ratio.x) / static_cast<float>(rect.w);
     const float scaleY = (size.y * ratio.y) / static_cast<float>(rect.h);
     const float scale = contain ? std::min(scaleX, scaleY) : scaleY;
+    const float clamped = std::clamp(opacity, 0.f, 1.f);
 
     sprite.setTexture(*texture);
     sprite.setTextureRect(sf::IntRect(rect.x, rect.y, rect.w, rect.h));
@@ -448,6 +451,7 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     sprite.setScale({ scale, scale });
     sprite.setOrigin({ rect.w / 2.f, rect.h / 2.f });
     sprite.setRotation(transform.rotation);
+    sprite.setColor(sf::Color(255, 255, 255, static_cast<sf::Uint8>(clamped * 255.f)));
 
     this->_window->draw(sprite);
 }

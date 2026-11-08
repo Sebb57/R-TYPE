@@ -33,6 +33,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <limits>
 #include <type_traits>
 #include <utility>
@@ -201,6 +202,33 @@ Detail::Field text(std::string label, std::string& value, bool allowEmpty = true
     return { std::move(label), { std::move(cell) } };
 }
 
+Detail::Field texture(std::string label, std::string& value)
+{
+    Detail::Field field = text(std::move(label), value);
+
+    field.cells.front().acceptsImage = true;
+    return field;
+}
+
+bool isImage(const std::filesystem::path& path)
+{
+    std::string extension = path.extension().string();
+
+    std::transform(extension.begin(), extension.end(), extension.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return extension == ".png" || extension == ".jpg" || extension == ".jpeg" || extension == ".webp";
+}
+
+std::string texturePathFor(const std::filesystem::path& absolute)
+{
+    std::error_code error;
+    const std::filesystem::path relative = std::filesystem::relative(absolute, std::filesystem::current_path(), error);
+
+    if (!error && !relative.empty() && *relative.begin() != "..")
+        return relative.generic_string();
+    return absolute.string();
+}
+
 Detail::Field toggle(std::string label, bool& value)
 {
     Detail::Cell cell;
@@ -295,7 +323,7 @@ std::vector<Detail::Field> describe(IComponent& component)
         }
         case ComponentType::Sprite: {
             auto& c = static_cast<Sprite&>(component);
-            return { text("Texture", c.texturePath), vector2("Size", c.size) };
+            return { texture("Texture", c.texturePath), vector2("Size", c.size) };
         }
         case ComponentType::Collider: {
             auto& c = static_cast<Collider&>(component);
@@ -352,7 +380,7 @@ std::vector<Detail::Field> describe(IComponent& component)
         case ComponentType::Controllable: {
             auto& c = static_cast<Controllable&>(component);
             return { key("Up", c.up), key("Down", c.down), key("Left", c.left), key("Right", c.right),
-                number("Speed", c.speed), vector2("Size", c.size), color("Color", c.color), text("Image", c.image),
+                number("Speed", c.speed), vector2("Size", c.size), color("Color", c.color), texture("Image", c.image),
                 number("Bound X", c.boundX), number("Bound Y", c.boundY) };
         }
         case ComponentType::Camera: {
@@ -378,8 +406,8 @@ int displayRank(ComponentType type)
     return static_cast<int>(type);
 }
 
-}
-}
+} // namespace
+} // namespace OrByte
 
 OrByte::Detail::Detail(World& world, const ComponentFactories& factories, int width)
     : Widget("Details", width), _world(world), _factories(factories)
@@ -488,6 +516,32 @@ bool OrByte::Detail::_isEditing(const Row& row, std::size_t cellIndex) const
 {
     return this->_edit.active && row.kind == RowKind::Value && this->_edit.type == row.type && this->_edit.fieldIndex == row.fieldIndex
         && this->_edit.cellIndex == static_cast<int>(cellIndex);
+}
+
+bool OrByte::Detail::_findImageCell(Vector2 localMouse, int& entityId, Row& found, std::size_t& cellIndex)
+{
+    this->_syncSelection();
+    entityId = this->_world.getSelectedEntity().value_or(-1);
+    if (entityId < 0 || !this->_world.entityExists(entityId) || localMouse.y < static_cast<float>(HEADER))
+        return false;
+
+    const int width = this->getContentRect().w;
+    const int x = static_cast<int>(localMouse.x);
+    const int y = static_cast<int>(localMouse.y);
+
+    for (const Row& row : this->_buildRows(entityId)) {
+        if (row.kind != RowKind::Value || localMouse.y < row.y || localMouse.y >= row.y + row.height)
+            continue;
+        for (std::size_t i = 0; i < row.field.cells.size(); ++i) {
+            if (row.field.cells[i].acceptsImage && this->_cellRect(row, i, width).contains(x, y)) {
+                found = row;
+                cellIndex = i;
+                return true;
+            }
+        }
+        return false;
+    }
+    return false;
 }
 
 void OrByte::Detail::_syncSelection()
@@ -809,4 +863,31 @@ void OrByte::Detail::draw(const IGraphic& graphic, Vector2u size)
         const std::string id = "id: " + std::to_string(entityId);
         drawLabel(graphic, w - static_cast<float>(id.size() * 7 + PADDING), 5.f, id, 12, MUTED_COLOR);
     }
+}
+
+bool OrByte::Detail::canAccept(const DragPayload& payload, Vector2 localMouse)
+{
+    int entityId = -1;
+    Row row;
+    std::size_t cellIndex = 0;
+
+    if (payload.kind != "asset" || !isImage(payload.path))
+        return false;
+    return this->_findImageCell(localMouse, entityId, row, cellIndex);
+}
+
+void OrByte::Detail::onDrop(const DragPayload& payload, Vector2 localMouse)
+{
+    int entityId = -1;
+    Row row;
+    std::size_t cellIndex = 0;
+
+    if (payload.kind != "asset" || !isImage(payload.path))
+        return;
+    if (!this->_findImageCell(localMouse, entityId, row, cellIndex))
+        return;
+
+    this->_commitEdit();
+    if (row.field.cells[cellIndex].set)
+        row.field.cells[cellIndex].set(texturePathFor(payload.path));
 }

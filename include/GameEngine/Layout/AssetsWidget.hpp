@@ -59,6 +59,9 @@ class AssetsWidget final : public Widget {
         Chronometer _chronoClick;
         std::vector<DirectoryButton> _dirButtons;
 
+        std::size_t _dragCandidate = static_cast<std::size_t>(-1);
+        Vector2 _pressPos = { 0.f, 0.f };
+
         void _getEntries();
         void _sortEntries(SortType type, bool ascending = true);
         void _navigateTo(const std::filesystem::path& path);

@@ -43,6 +43,9 @@ constexpr float SCROLL_SENSITIVITY = 10.f;
 
 constexpr float DOUBLE_CLICK_GAP = 0.5f;
 
+constexpr std::size_t NONE = static_cast<std::size_t>(-1);
+constexpr float DRAG_THRESHOLD = 6.f;
+
 struct AssetsLayout {
     float headerHeight;
     float rowHeight;
@@ -313,6 +316,9 @@ bool OrByte::AssetsWidget::onEvent(const Event& event, Vector2 localMouse)
                 if (localMouse.x >= center.x - ENTRY_SIZE / 2 && localMouse.x < center.x + ENTRY_SIZE / 2 &&
                     localMouse.y >= center.y - ENTRY_SIZE / 2 && localMouse.y < center.y + ENTRY_SIZE / 2) {
                     this->_selected = i;
+                    this->_dragCandidate = isFileDir(this->_dirPath / this->_entries[i]) ? NONE : i;
+                    this->_pressPos = localMouse;
+
                     if (this->_selected == i && this->_chronoClick.getElapsedTime() <= DOUBLE_CLICK_GAP) {
                         if (isFileDir(this->_dirPath / this->_entries[i])) {
                             this->_dirPath = this->_dirPath / this->_entries[i];
@@ -325,8 +331,24 @@ bool OrByte::AssetsWidget::onEvent(const Event& event, Vector2 localMouse)
                 }
             }
             this->_selected = -1;
+            this->_dragCandidate = NONE;
             return false;
         case Event::Type::MouseMoved:
+            if (this->_dragCandidate != NONE) {
+                const float dx = localMouse.x - this->_pressPos.x;
+                const float dy = localMouse.y - this->_pressPos.y;
+
+                if (!this->isLeftButtonDown() || this->_dragCandidate >= this->_entries.size()) {
+                    this->_dragCandidate = NONE;
+                } else if (dx * dx + dy * dy >= DRAG_THRESHOLD * DRAG_THRESHOLD) {
+                    const std::string& name = this->_entries[this->_dragCandidate];
+                    const std::filesystem::path path = this->_dirPath / name;
+
+                    this->beginDrag({ "asset", path, name, isFileImage(path) ? path : std::filesystem::path() });
+                    this->_dragCandidate = NONE;
+                    return true;
+                }
+            }
             for (std::size_t i = 0; i < this->_entries.size(); i++) {
                 const Vector2 center = getEntryPos(i, entriesPerRow, this->_scrollOffset);
 
