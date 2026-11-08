@@ -12,8 +12,12 @@
 #include "GameEngine/Detail/Detail.hpp"
 #include "GameEngine/Layout/EntityWidget.hpp"
 #include "GameEngine/Layout/FilesManagementWidget.hpp"
+#include "constants.hpp"
+#include <exception>
+#include "GameEngine/Layout/Panel.hpp"
 #include "GameEngine/Layout/SceneView.hpp"
 #include <filesystem>
+#include <iostream>
 #include <memory>
 #include <queue>
 #include <string_view>
@@ -21,6 +25,12 @@
 namespace {
 
 inline constexpr std::string_view PLUGINS_DIR = "./plugins";
+
+#ifdef _WIN32
+inline constexpr std::string_view PLUGIN_EXTENSION = ".dll";
+#else
+inline constexpr std::string_view PLUGIN_EXTENSION = ".so";
+#endif
 
 std::filesystem::path getGraphicalPlugin(OrByte::GameEngine::GraphicalLibs graphicalLib)
 {
@@ -43,13 +53,32 @@ std::filesystem::path getGraphicalPlugin(OrByte::GameEngine::GraphicalLibs graph
 OrByte::GameEngine::GameEngine(GraphicalLibs graphicalLib) : _graphicLoader(getGraphicalPlugin(graphicalLib)), _graphicLib(this->_graphicLoader.loadFunction<IGraphic* (*)()>("factory")()), _components(loadComponentPlugins(constants::COMPONENTS_DIR))
 {
     this->_graphicLib->open();
+    this->_loadAudio();
     this->_initLayout();
 }
 
 OrByte::GameEngine::GameEngine(std::filesystem::path graphicPath) : _graphicLoader(graphicPath), _graphicLib(this->_graphicLoader.loadFunction<IGraphic* (*)()>("factory")()), _components(loadComponentPlugins(constants::COMPONENTS_DIR))
 {
     this->_graphicLib->open();
+    this->_loadAudio();
     this->_initLayout();
+}
+
+void OrByte::GameEngine::_loadAudio()
+{
+    const std::filesystem::path audioLib = std::filesystem::path(PLUGINS_DIR) / ("SFMLAudio" + std::string(PLUGIN_EXTENSION));
+    const std::filesystem::path audioSystem = std::filesystem::path(PLUGINS_DIR) / "systems" / ("AudioSystem" + std::string(PLUGIN_EXTENSION));
+
+    try {
+        this->_audioLoader = std::make_unique<DynamicLibrary>(audioLib);
+        this->_audio.reset(this->_audioLoader->loadFunction<IAudio* (*)()>("factory")());
+        this->_audioSystemLoader = std::make_unique<DynamicLibrary>(audioSystem);
+        this->_audioSystem.reset(this->_audioSystemLoader->loadFunction<ISystem* (*)(World&, IAudio&)>("factory")(this->_world, *this->_audio));
+    } catch (const std::exception& error) {
+        std::cerr << "[GameEngine] audio disabled: " << error.what() << std::endl;
+        this->_audioSystem.reset();
+        this->_audio.reset();
+    }
 }
 
 void OrByte::GameEngine::_initLayout()
@@ -95,7 +124,8 @@ bool OrByte::GameEngine::_handleEvent(Event& event)
 
 void OrByte::GameEngine::_update()
 {
-
+    if (this->_audioSystem)
+        this->_audioSystem->update();
 }
 
 void OrByte::GameEngine::_render()

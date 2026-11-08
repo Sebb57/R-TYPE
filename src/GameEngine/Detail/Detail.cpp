@@ -26,6 +26,7 @@
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "GameEngine/ECS/Components/Velocity.hpp"
 #include "GameEngine/ECS/Components/Wither.hpp"
+#include "GameEngine/ECS/Components/Music.hpp"
 #include "constants.hpp"
 #include <algorithm>
 #include <cctype>
@@ -300,6 +301,7 @@ const char *componentName(ComponentType type)
         case ComponentType::Controllable: return "Controllable";
         case ComponentType::Name: return "Name";
         case ComponentType::Camera: return "Camera";
+        case ComponentType::Music: return "Music";
         case ComponentType::Script: return "Script";
         case ComponentType::ENUM_END: break;
     }
@@ -386,6 +388,14 @@ std::vector<Detail::Field> describe(IComponent& component)
         case ComponentType::Camera: {
             auto& c = static_cast<Camera&>(component);
             return { number("Bound X", c.boundX), number("Bound Y", c.boundY) };
+        }
+        case ComponentType::Music: {
+            auto& c = static_cast<Music&>(component);
+            return { text("File", c.path),
+                choice("State", c.state, { "Playing", "Paused", "Stopped" }),
+                number("Volume", c.volume),
+                number("Pitch", c.pitch),
+                toggle("Loop", c.loop) };
         }
         case OrByte::ComponentType::Script: {
             auto& c = dynamic_cast<Script&>(component);
