@@ -236,6 +236,8 @@ void OrByte::FilesManagementWidget::_openProjectPicker(const std::filesystem::pa
         const auto directory = std::filesystem::canonical(path);
         std::vector<std::filesystem::path> directories{directory, directory.parent_path()};
         for (const auto& entry : std::filesystem::directory_iterator(directory)) {
+            if (entry.path().filename().string().starts_with('.'))
+                continue;
             std::error_code error;
             if (entry.is_directory(error))
                 directories.push_back(entry.path());
