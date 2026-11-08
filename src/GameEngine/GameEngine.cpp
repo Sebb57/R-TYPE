@@ -86,8 +86,9 @@ void OrByte::GameEngine::_initLayout()
     auto scene = std::make_unique<SceneView>(this->_world);
 
     Widget& toolbar = scene->attach(Widget::Side::Top, std::make_unique<Panel>("", 40));
-    toolbar.attach(Widget::Side::Left, std::make_unique<FilesManagementWidget>(this->_world, this->_components.factories));
-    scene->attach(Widget::Side::Bottom, std::make_unique<AssetsWidget>(this->_world, 220));
+    auto assets = std::make_unique<AssetsWidget>(this->_world, 220);
+    toolbar.attach(Widget::Side::Left, std::make_unique<FilesManagementWidget>(this->_world, this->_components.factories, *assets));
+    scene->attach(Widget::Side::Bottom, std::move(assets));
     scene->attach(Widget::Side::Left, std::make_unique<EntityWidget>(this->_world, 250));
     scene->attach(Widget::Side::Right, std::make_unique<Detail>(this->_world, this->_components.factories, 300));
 
