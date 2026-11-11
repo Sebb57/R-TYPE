@@ -6,6 +6,7 @@
 */
 
 #include "GameEngine/Layout/FilesManagementWidget.hpp"
+#include "GameEngine/Layout/AssetsWidget.hpp"
 #include "constants.hpp"
 #include <algorithm>
 #include <array>
@@ -24,9 +25,10 @@ enum class Button : std::uint8_t {
     Compile,
     Save,
     Load,
+    Project,
 };
 
-constexpr std::array<const char *, 3> ButtonLabels{"Compile", "Save", "Load"};
+constexpr std::array<const char *, 4> ButtonLabels{"Compile", "Save", "Load", "Open Project"};
 constexpr int ButtonCount = static_cast<int>(ButtonLabels.size());
 
 constexpr int Padding = 6;
@@ -159,8 +161,8 @@ void drawButton(const OrByte::IGraphic& graphic, const Rect& rect, const std::st
 
 } // namespace
 
-OrByte::FilesManagementWidget::FilesManagementWidget(SceneCollection& scenes, const ComponentFactories& factories, int width)
-    : Widget("", width), _scenes(scenes), _factories(factories), _baseWidth(width)
+OrByte::FilesManagementWidget::FilesManagementWidget(SceneCollection& scenes, const ComponentFactories& factories, AssetsWidget* assets, std::filesystem::path& projectDirectory, int width)
+    : Widget("", width), _scenes(scenes), _factories(factories), _assets(assets), _projectDirectory(projectDirectory), _baseWidth(width)
 {
 }
 
@@ -226,6 +228,29 @@ void OrByte::FilesManagementWidget::_resize(int needed)
     this->setSize(std::max(this->_baseWidth, std::min(needed, available)));
 }
 
+void OrByte::FilesManagementWidget::_openProjectPicker(const std::filesystem::path& path)
+{
+    try {
+        const auto directory = std::filesystem::canonical(path);
+        std::vector<std::filesystem::path> directories{directory, directory.parent_path()};
+        for (const auto& entry : std::filesystem::directory_iterator(directory)) {
+            if (entry.path().filename().string().starts_with('.'))
+                continue;
+            std::error_code error;
+            if (entry.is_directory(error))
+                directories.push_back(entry.path());
+        }
+        std::sort(directories.begin() + 2, directories.end());
+        this->_files = std::move(directories);
+        this->_projectPath = directory;
+        this->_mode = Mode::PickingProject;
+        this->_scrollOffset = 0;
+        this->_resize(pickerX() + static_cast<int>(this->_files.size()) * (FileButtonWidth + Padding));
+    } catch (const std::exception& error) {
+        std::cerr << "Cannot open project directory: " << error.what() << std::endl;
+    }
+}
+
 void OrByte::FilesManagementWidget::_openPicker()
 {
     this->_mode = Mode::Picking;
@@ -280,13 +305,37 @@ void OrByte::FilesManagementWidget::_onClick(Vector2 localMouse)
             this->_openPicker();
         return;
     }
-    if (this->_mode != Mode::Picking)
+    if (buttonRect(Button::Project, height).contains(x, y)) {
+        if (this->_mode == Mode::PickingProject)
+            this->_close();
+        else
+            this->_openProjectPicker(this->_assets ? this->_assets->getDirPath()
+                : (this->_projectDirectory.empty() ? std::filesystem::current_path() : this->_projectDirectory));
+        return;
+    }
+    if (this->_mode != Mode::Picking && this->_mode != Mode::PickingProject)
         return;
 
     const std::size_t slots = visibleFiles(this->getContentRect().w);
     for (std::size_t slot = 0; slot < slots && this->_scrollOffset + slot < this->_files.size(); ++slot) {
         if (fileRect(slot, height).contains(x, y)) {
-            this->_load(this->_files[this->_scrollOffset + slot]);
+            const std::size_t index = this->_scrollOffset + slot;
+            if (this->_mode == Mode::PickingProject) {
+                if (index == 0) {
+                    try {
+                        if (this->_assets)
+                            this->_assets->setDirPath(this->_projectPath);
+                        this->_projectDirectory = this->_projectPath;
+                        this->_close();
+                    } catch (const std::exception& error) {
+                        std::cerr << "Cannot select project directory: " << error.what() << std::endl;
+                    }
+                } else {
+                    this->_openProjectPicker(this->_files[index]);
+                }
+            } else {
+                this->_load(this->_files[index]);
+            }
             return;
         }
     }
@@ -321,7 +370,16 @@ void OrByte::FilesManagementWidget::_drawPicker(const IGraphic& graphic, int wid
     const std::size_t slots = visibleFiles(width);
     for (std::size_t slot = 0; slot < slots && this->_scrollOffset + slot < this->_files.size(); ++slot) {
         const Rect rect = fileRect(slot, height);
-        const std::string name = this->_files[this->_scrollOffset + slot].filename().string();
+        const std::size_t index = this->_scrollOffset + slot;
+        std::string name = this->_files[index].filename().string();
+        if (this->_mode == Mode::PickingProject) {
+            if (index == 0)
+                name = "Open here: " + this->_projectPath.string();
+            else if (index == 1)
+                name = ".. (parent)";
+            else
+                name += "/";
+        }
         drawButton(graphic, rect, fitText(name, FileTextSize, rect.w - 8), FileTextSize, false);
     }
 }
@@ -352,8 +410,10 @@ void OrByte::FilesManagementWidget::draw(const IGraphic& graphic, Vector2u size)
     drawBox(graphic, Rect(0, 0, width, height), RGBA(40, 40, 40, 255), BorderColor);
     for (std::size_t i = 0; i < ButtonLabels.size(); ++i) {
         const auto button = static_cast<Button>(i);
-        const bool active = (button == Button::Save && this->_mode == Mode::Naming) || (button == Button::Load && this->_mode == Mode::Picking);
-        const bool enabled = button == Button::Load || !this->_scenes.empty();
+        const bool active = (button == Button::Save && this->_mode == Mode::Naming)
+            || (button == Button::Load && this->_mode == Mode::Picking)
+            || (button == Button::Project && this->_mode == Mode::PickingProject);
+        const bool enabled = button == Button::Load || button == Button::Project || !this->_scenes.empty();
         drawButton(graphic, buttonRect(button, height), ButtonLabels.at(i), ButtonTextSize, active, enabled);
     }
     if (this->_mode == Mode::Idle)
@@ -376,7 +436,7 @@ bool OrByte::FilesManagementWidget::onEvent(const Event& event, Vector2 localMou
     }
     if (this->_mode == Mode::Naming)
         return this->_onNamingEvent(event);
-    if (event.type == Event::Type::MouseWheelScrolled && this->_mode == Mode::Picking) {
+    if (event.type == Event::Type::MouseWheelScrolled && (this->_mode == Mode::Picking || this->_mode == Mode::PickingProject)) {
         const std::size_t slots = visibleFiles(this->getContentRect().w);
         const std::size_t maxScroll = this->_files.size() > slots ? this->_files.size() - slots : 0;
 
@@ -386,7 +446,8 @@ bool OrByte::FilesManagementWidget::onEvent(const Event& event, Vector2 localMou
             ++this->_scrollOffset;
         return true;
     }
-    if (event.type == Event::Type::KeyPressed && event.key == Event::Key::Escape && this->_mode == Mode::Picking) {
+    if (event.type == Event::Type::KeyPressed && event.key == Event::Key::Escape
+        && (this->_mode == Mode::Picking || this->_mode == Mode::PickingProject)) {
         this->_close();
         return true;
     }

@@ -23,6 +23,8 @@ class AssetsWidget final : public Widget {
         AssetsWidget() = delete;
         AssetsWidget(World& world, int width = 480);
         ~AssetsWidget() override = default;
+        void setDirPath(const std::filesystem::path& path);
+        [[nodiscard]] const std::filesystem::path& getDirPath() const { return this->_dirPath; }
 
     protected:
         void draw(const IGraphic& graphic, Vector2u size) override;
@@ -46,7 +48,6 @@ class AssetsWidget final : public Widget {
 
         std::filesystem::path _startPath;
         std::filesystem::path _dirPath;
-        DIR* _dir;
         std::vector<std::string> _entries;
 
         bool _showHidden = false;

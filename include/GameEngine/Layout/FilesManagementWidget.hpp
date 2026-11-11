@@ -19,9 +19,11 @@
 
 namespace OrByte {
 
+class AssetsWidget;
+
 class FilesManagementWidget final : public Widget {
     public:
-        FilesManagementWidget(SceneCollection& scenes, const ComponentFactories& factories, int width = 480);
+        FilesManagementWidget(SceneCollection& scenes, const ComponentFactories& factories, AssetsWidget* assets, std::filesystem::path& projectDirectory, int width = 480);
         ~FilesManagementWidget() override = default;
 
     protected:
@@ -32,11 +34,15 @@ class FilesManagementWidget final : public Widget {
         enum class Mode : std::uint8_t {
             Idle,
             Picking,
+            PickingProject,
             Naming,
         };
 
         SceneCollection& _scenes;
         const ComponentFactories& _factories;
+        AssetsWidget* _assets;
+        std::filesystem::path& _projectDirectory;
+        std::filesystem::path _projectPath;
         int _baseWidth;
         Mode _mode = Mode::Idle;
         std::vector<std::filesystem::path> _files;
@@ -51,6 +57,7 @@ class FilesManagementWidget final : public Widget {
         void _openNaming();
         void _close();
         void _refreshFiles();
+        void _openProjectPicker(const std::filesystem::path& path);
         void _resize(int needed);
         void _onClick(Vector2 localMouse);
         bool _onNamingEvent(const Event& event);
