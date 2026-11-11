@@ -11,6 +11,7 @@
 
     #include "GameEngine/ECS/World.hpp"
     #include "GameEngine/Layout/Panel.hpp"
+    #include <optional>
     #include <string>
     #include <vector>
 
@@ -29,6 +30,7 @@ class EntityWidget final : public Panel {
         World& _world;
         std::size_t _selectedIndex = 0;
         std::size_t _scrollOffset = 0;
+        std::optional<int> _lastSelectedEntityId;
         bool _editing = false;
         int _editingEntityId = -1;
         std::string _editingText;

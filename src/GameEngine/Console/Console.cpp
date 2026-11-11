@@ -16,7 +16,7 @@
 #include <sstream>
 #include <utility>
 
-OrByte::Console::Console(World& world) : _world(world), _root(std::filesystem::current_path()), _cwd(_root)
+OrByte::Console::Console(SceneCollection& scenes) : _scenes(scenes), _root(std::filesystem::current_path()), _cwd(_root)
 {
     this->_print("Type 'help' to list the commands", LineKind::Info);
 }
@@ -123,13 +123,19 @@ void OrByte::Console::_compile([[maybe_unused]] const std::string& argument)
         this->_print("A command is already running", LineKind::Error);
         return;
     }
+    if (this->_scenes.empty()) {
+        this->_print("No scene to compile", LineKind::Error);
+        return;
+    }
     try {
-        serializeWorld(this->_world, constants::GAME_WORLD);
+        World& world = this->_scenes.currentWorld();
+
+        world.ensureCamera();
+        serializeWorld(world, constants::GAME_WORLD);
     } catch (const std::exception& error) {
         this->_print(std::string("Cannot export world: ") + error.what(), LineKind::Error);
         return;
     }
-    this->_world.ensureCamera();
     this->_run("cmake -S cmake/GameEngine -B build-solo && cmake --build build-solo", this->_root);
     this->_compiling = this->_process != nullptr;
 }

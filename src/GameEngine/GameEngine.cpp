@@ -5,7 +5,6 @@
 ** GameEngine.cpp
 */
 
-#include "constants.hpp"
 #include "GameEngine/GameEngine.hpp"
 #include "GameEngine/Layout/Panel.hpp"
 #include "GameEngine/Layout/AssetsWidget.hpp"
@@ -14,9 +13,9 @@
 #include "GameEngine/Detail/Detail.hpp"
 #include "GameEngine/Layout/EntityWidget.hpp"
 #include "GameEngine/Layout/FilesManagementWidget.hpp"
+#include "GameEngine/Layout/SceneManagerWidget.hpp"
 #include "constants.hpp"
 #include <exception>
-#include "GameEngine/Layout/Panel.hpp"
 #include "GameEngine/Layout/SceneView.hpp"
 #include <filesystem>
 #include <iostream>
@@ -52,14 +51,16 @@ std::filesystem::path getGraphicalPlugin(OrByte::GameEngine::GraphicalLibs graph
 
 } // namespace
 
-OrByte::GameEngine::GameEngine(GraphicalLibs graphicalLib) : _graphicLoader(getGraphicalPlugin(graphicalLib)), _graphicLib(this->_graphicLoader.loadFunction<IGraphic* (*)()>("factory")()), _components(loadComponentPlugins(constants::COMPONENTS_DIR)), _console(this->_world)
+OrByte::GameEngine::GameEngine(GraphicalLibs graphicalLib)
+    : GameEngine(getGraphicalPlugin(graphicalLib))
 {
-    this->_graphicLib->open();
-    this->_loadAudio();
-    this->_initLayout();
 }
 
-OrByte::GameEngine::GameEngine(std::filesystem::path graphicPath) : _graphicLoader(graphicPath), _graphicLib(this->_graphicLoader.loadFunction<IGraphic* (*)()>("factory")()), _components(loadComponentPlugins(constants::COMPONENTS_DIR)), _console(this->_world)
+OrByte::GameEngine::GameEngine(std::filesystem::path graphicPath)
+    : _graphicLoader(graphicPath),
+      _graphicLib(this->_graphicLoader.loadFunction<IGraphic* (*)()>("factory")()),
+      _components(loadComponentPlugins(constants::COMPONENTS_DIR)),
+      _console(this->_scenes)
 {
     this->_graphicLib->open();
     this->_loadAudio();
@@ -75,7 +76,6 @@ void OrByte::GameEngine::_loadAudio()
         this->_audioLoader = std::make_unique<DynamicLibrary>(audioLib);
         this->_audio.reset(this->_audioLoader->loadFunction<IAudio* (*)()>("factory")());
         this->_audioSystemLoader = std::make_unique<DynamicLibrary>(audioSystem);
-        this->_audioSystem.reset(this->_audioSystemLoader->loadFunction<ISystem* (*)(World&, IAudio&)>("factory")(this->_world, *this->_audio));
     } catch (const std::exception& error) {
         std::cerr << "[GameEngine] audio disabled: " << error.what() << std::endl;
         this->_audioSystem.reset();
@@ -83,22 +83,46 @@ void OrByte::GameEngine::_loadAudio()
     }
 }
 
+void OrByte::GameEngine::_bindAudioToScene()
+{
+    // Release the previous scene's tracks before binding the active world.
+    this->_audioSystem.reset();
+    if (!this->_audio || !this->_audioSystemLoader || this->_scenes.empty())
+        return;
+    try {
+        this->_audioSystem.reset(this->_audioSystemLoader->loadFunction<ISystem* (*)(World&, IAudio&)>("factory")(this->_scenes.currentWorld(), *this->_audio));
+    } catch (const std::exception& error) {
+        std::cerr << "[GameEngine] audio disabled: " << error.what() << std::endl;
+    }
+}
+
 void OrByte::GameEngine::_initLayout()
 {
-    auto scene = std::make_unique<SceneView>(this->_world);
+    this->_bindAudioToScene();
+    std::unique_ptr<Widget> scene;
+    if (this->_scenes.empty())
+        scene = std::make_unique<Panel>("", 0);
+    else
+        scene = std::make_unique<SceneView>(this->_scenes.currentWorld());
 
-    Widget& toolbar = scene->attach(Widget::Side::Top, std::make_unique<Panel>("", 40));
-    toolbar.attach(Widget::Side::Left, std::make_unique<FilesManagementWidget>(this->_world, this->_components.factories, this->_console));
+    Widget& topBar = scene->attach(Widget::Side::Top, std::make_unique<Panel>("", 104));
+    Widget& toolbar = topBar.attach(Widget::Side::Top, std::make_unique<Panel>("", 40));
+    toolbar.attach(Widget::Side::Left, std::make_unique<FilesManagementWidget>(this->_scenes, this->_components.factories, this->_console));
+    topBar.attach(Widget::Side::Bottom, std::make_unique<SceneManagerWidget>(this->_scenes));
 
     auto bottom = std::make_unique<TabWidget>(220);
     TabWidget& tabs = *bottom;
 
-    tabs.addTab(std::make_unique<AssetsWidget>(this->_world));
+    if (!this->_scenes.empty())
+        tabs.addTab(std::make_unique<AssetsWidget>(this->_scenes.currentWorld()));
     const Widget& console = tabs.addTab(std::make_unique<ConsoleWidget>(this->_console));
     this->_console.setOnStart([&tabs, &console] { tabs.select(console); });
     scene->attach(Widget::Side::Bottom, std::move(bottom));
-    scene->attach(Widget::Side::Left, std::make_unique<EntityWidget>(this->_world, 250));
-    scene->attach(Widget::Side::Right, std::make_unique<Detail>(this->_world, this->_components.factories, 300));
+    if (!this->_scenes.empty()) {
+        World& world = this->_scenes.currentWorld();
+        scene->attach(Widget::Side::Left, std::make_unique<EntityWidget>(world, 250));
+        scene->attach(Widget::Side::Right, std::make_unique<Detail>(world, this->_components.factories, 300));
+    }
 
     const auto [w, h] = this->_graphicLib->getWindowSize();
 
@@ -126,9 +150,17 @@ void OrByte::GameEngine::_handleEvents()
 
 bool OrByte::GameEngine::_handleEvent(Event& event)
 {
-    if (this->_root)
-        return this->_root->handleEvent(event);
-    return false;
+    if (!this->_root)
+        return false;
+    const auto revision = this->_scenes.revision();
+    const bool handled = this->_root->handleEvent(event);
+    // Rebuild after dispatch so the widget handling the event stays alive.
+    if (revision != this->_scenes.revision()) {
+        const Rect window = this->_root->getRect();
+        this->_initLayout();
+        this->_root->setRect(window);
+    }
+    return handled;
 }
 
 void OrByte::GameEngine::_update()

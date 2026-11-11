@@ -10,7 +10,7 @@
     #define CONSOLE_HPP_
 
     #include "GameEngine/Console/Process.hpp"
-    #include "GameEngine/ECS/World.hpp"
+    #include "GameEngine/ECS/SceneCollection.hpp"
     #include <cstdint>
     #include <filesystem>
     #include <functional>
@@ -36,7 +36,7 @@ class Console {
             LineKind kind = LineKind::Output;
         };
 
-        explicit Console(World& world);
+        explicit Console(SceneCollection& scenes);
 
         void execute(const std::string& input);
         void update();
@@ -59,7 +59,7 @@ class Console {
             {"help", {&Console::_help, "list the commands"}},
         };
 
-        World& _world;
+        SceneCollection& _scenes;
         std::filesystem::path _root;
         std::filesystem::path _cwd;
         std::vector<Line> _lines;

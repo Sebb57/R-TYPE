@@ -141,12 +141,12 @@ void drawLabel(const OrByte::IGraphic& graphic, float x, float y, const std::str
     graphic.drawText({{x, y}, {1.0F, 1.0F}, 0.0F}, text, size, 0.f, color, 0, OrByte::RGBA(0, 0, 0, 0), OrByte::constants::FONT_DEFAULT);
 }
 
-void drawButton(const OrByte::IGraphic& graphic, const Rect& rect, const std::string& label, unsigned textSize, bool active)
+void drawButton(const OrByte::IGraphic& graphic, const Rect& rect, const std::string& label, unsigned textSize, bool active, bool enabled = true)
 {
     const float textX = static_cast<float>(rect.x) + std::max(4.0F, (static_cast<float>(rect.w) - textWidth(label, textSize)) * 0.5F);
 
     drawBox(graphic, rect, active ? ActiveColor : ButtonColor, active ? ActiveBorderColor : BorderColor);
-    drawLabel(graphic, textX, textTop(rect, textSize), label, textSize, TextColor);
+    drawLabel(graphic, textX, textTop(rect, textSize), label, textSize, enabled ? TextColor : OrByte::RGBA(105, 105, 105, 255));
 }
 
 [[nodiscard]] std::string timestampedWorldName()
@@ -158,8 +158,8 @@ void drawButton(const OrByte::IGraphic& graphic, const Rect& rect, const std::st
 
 } // namespace
 
-OrByte::FilesManagementWidget::FilesManagementWidget(World& world, const ComponentFactories& factories, Console& console, int width)
-    : Widget("", width), _world(world), _factories(factories), _console(console), _baseWidth(width)
+OrByte::FilesManagementWidget::FilesManagementWidget(SceneCollection& scenes, const ComponentFactories& factories, Console& console, int width)
+    : Widget("", width), _scenes(scenes), _factories(factories), _console(console), _baseWidth(width)
 {
 }
 
@@ -174,7 +174,7 @@ void OrByte::FilesManagementWidget::_save()
 
     try {
         std::filesystem::create_directories(path.parent_path());
-        serializeWorld(this->_world, path);
+        this->_scenes.save(path);
         std::cout << "World saved to " << path.string() << std::endl;
     } catch (const std::exception& error) {
         std::cerr << "Cannot save world: " << error.what() << std::endl;
@@ -186,13 +186,11 @@ void OrByte::FilesManagementWidget::_save()
 void OrByte::FilesManagementWidget::_load(const std::filesystem::path& path)
 {
     try {
-        deserializeWorld(this->_world, path, this->_factories);
+        this->_scenes.load(path, this->_factories);
         std::cout << "World loaded from " << path.string() << std::endl;
     } catch (const std::exception& error) {
         std::cerr << "Cannot load world: " << error.what() << std::endl;
     }
-    this->_world.ensureCamera();
-    this->_world.clearSelectedEntity();
     this->_close();
 }
 
@@ -233,7 +231,8 @@ void OrByte::FilesManagementWidget::_openNaming()
     this->_files.clear();
     this->_scrollOffset = 0;
     this->_fileName.clear();
-    this->_defaultName = timestampedWorldName();
+    const auto& path = this->_scenes.scenes().at(this->_scenes.selectedIndex()).path;
+    this->_defaultName = path.empty() ? timestampedWorldName() : path.stem().string();
     this->_resize(namingWidth());
 }
 
@@ -253,10 +252,13 @@ void OrByte::FilesManagementWidget::_onClick(Vector2 localMouse)
     const int height = this->getContentRect().h;
 
     if (buttonRect(Button::Compile, height).contains(x, y)) {
-        this->_compile();
+        if (!this->_scenes.empty())
+            this->_compile();
         return;
     }
     if (buttonRect(Button::Save, height).contains(x, y)) {
+        if (this->_scenes.empty())
+            return;
         if (this->_mode == Mode::Naming)
             this->_save();
         else
@@ -343,7 +345,8 @@ void OrByte::FilesManagementWidget::draw(const IGraphic& graphic, Vector2u size)
     for (std::size_t i = 0; i < ButtonLabels.size(); ++i) {
         const auto button = static_cast<Button>(i);
         const bool active = (button == Button::Save && this->_mode == Mode::Naming) || (button == Button::Load && this->_mode == Mode::Picking);
-        drawButton(graphic, buttonRect(button, height), ButtonLabels.at(i), ButtonTextSize, active);
+        const bool enabled = button == Button::Load || !this->_scenes.empty();
+        drawButton(graphic, buttonRect(button, height), ButtonLabels.at(i), ButtonTextSize, active, enabled);
     }
     if (this->_mode == Mode::Idle)
         return;
