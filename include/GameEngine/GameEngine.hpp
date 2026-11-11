@@ -41,6 +41,7 @@ class GameEngine {
         ComponentPlugins _components;
         SceneCollection _scenes;
         Console _console;
+        std::filesystem::path _projectDirectory;
         std::unique_ptr<DynamicLibrary> _audioLoader;
         std::unique_ptr<DynamicLibrary> _audioSystemLoader;
         std::unique_ptr<IAudio> _audio;

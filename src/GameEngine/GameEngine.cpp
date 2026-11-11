@@ -107,14 +107,19 @@ void OrByte::GameEngine::_initLayout()
 
     Widget& topBar = scene->attach(Widget::Side::Top, std::make_unique<Panel>("", 104));
     Widget& toolbar = topBar.attach(Widget::Side::Top, std::make_unique<Panel>("", 40));
-    toolbar.attach(Widget::Side::Left, std::make_unique<FilesManagementWidget>(this->_scenes, this->_components.factories, this->_console));
     topBar.attach(Widget::Side::Bottom, std::make_unique<SceneManagerWidget>(this->_scenes));
 
     auto bottom = std::make_unique<TabWidget>(220);
     TabWidget& tabs = *bottom;
+    AssetsWidget* assetsWidget = nullptr;
 
-    if (!this->_scenes.empty())
-        tabs.addTab(std::make_unique<AssetsWidget>(this->_scenes.currentWorld()));
+    if (!this->_scenes.empty()) {
+        auto assets = std::make_unique<AssetsWidget>(this->_scenes.currentWorld());
+        if (!this->_projectDirectory.empty())
+            assets->setDirPath(this->_projectDirectory);
+        assetsWidget = assets.get();
+        tabs.addTab(std::move(assets));
+    }
     const Widget& console = tabs.addTab(std::make_unique<ConsoleWidget>(this->_console));
     this->_console.setOnStart([&tabs, &console] { tabs.select(console); });
     scene->attach(Widget::Side::Bottom, std::move(bottom));
@@ -123,6 +128,7 @@ void OrByte::GameEngine::_initLayout()
         scene->attach(Widget::Side::Left, std::make_unique<EntityWidget>(world, 250));
         scene->attach(Widget::Side::Right, std::make_unique<Detail>(world, this->_components.factories, 300));
     }
+    toolbar.attach(Widget::Side::Left, std::make_unique<FilesManagementWidget>(this->_scenes, this->_components.factories, this->_console, assetsWidget, this->_projectDirectory));
 
     const auto [w, h] = this->_graphicLib->getWindowSize();
 

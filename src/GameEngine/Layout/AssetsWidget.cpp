@@ -144,10 +144,7 @@ Vector2 drawButton(const OrByte::IGraphic& graphic, Vector2 topLeft, const std::
 
 OrByte::AssetsWidget::AssetsWidget(World& world, int width) : Widget("Assets", width), _world(world)
 {
-    const char* pwd = std::getenv("PWD");
-    if (!pwd)
-        throw std::runtime_error("'PWD' isn't set in the environment");
-    this->_dirPath = pwd;
+    this->_dirPath = std::filesystem::current_path();
     this->_startPath = this->_dirPath;
 
     this->_chronoClick.reset();
@@ -158,19 +155,20 @@ void OrByte::AssetsWidget::_getEntries()
 {
     struct dirent* entry;
 
-    // Get Entries
-    this->_dir = opendir(this->_dirPath.c_str());
-    if (!this->_dir)
+    DIR* dir = opendir(this->_dirPath.c_str());
+    if (!dir)
         throw std::runtime_error("Couldn't open directory");
-    this->_entries.clear();
-    while ((entry = readdir(this->_dir)) != nullptr) {
+    std::vector<std::string> entries;
+    while ((entry = readdir(dir)) != nullptr) {
         std::string entryName = std::string(entry->d_name);
         if (entryName == "." || entryName == "..")
             continue;
         if (entryName[0] == '.' && !this->_showHidden)
             continue;
-        this->_entries.push_back(entryName);
+        entries.push_back(entryName);
     }
+    closedir(dir);
+    this->_entries = std::move(entries);
     this->_sortEntries(this->_sortType, this->_ascending);
 }
 
@@ -210,11 +208,27 @@ float OrByte::AssetsWidget::_headerHeight() const
 
 void OrByte::AssetsWidget::_navigateTo(const std::filesystem::path& path)
 {
+    const auto previous = this->_dirPath;
     this->_dirPath = path;
+    try {
+        this->_getEntries();
+    } catch (...) {
+        this->_dirPath = previous;
+        throw;
+    }
     this->_selected = -1;
     this->_hovered = -1;
     this->_scrollOffset = 0.f;
-    this->_getEntries();
+    this->_dragCandidate = NONE;
+    this->_dirButtons.clear();
+    this->_chronoClick.reset();
+}
+
+void OrByte::AssetsWidget::setDirPath(const std::filesystem::path& path)
+{
+    const auto directory = std::filesystem::canonical(path);
+    this->_navigateTo(directory);
+    this->_startPath = directory;
 }
 
 void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
@@ -229,11 +243,9 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
     const float centerY = static_cast<float>(height) * 0.5f;
     const float headerCenterY = static_cast<float>(metrics.headerHeight) * 0.5f;
 
-    // Background
     graphic.drawRectangle({{centerX, centerY}, {1.f, 1.f}, 0.f},
         {static_cast<float>(width), static_cast<float>(height)}, bgColor, 1, borderColor);
 
-    // Entries
     const Rect rect = this->getRect();
     const int entriesPerRow = getEntriesPerRow(rect.w);
     const int effectiveHeight = this->getRect().h - ENTRY_OFFSET_Y * 2 - header;
@@ -258,7 +270,6 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
         graphic.drawText({{center.x - ENTRY_SIZE / 2, center.y + TEXT_GAP + ENTRY_SIZE / 2}}, this->_entries[i], TEXT_SIZE, ENTRY_SIZE);
     }
 
-    // Header
     graphic.drawRectangle({{centerX, headerCenterY}, {1.f, 1.f}, 0.f},
         {static_cast<float>(width), static_cast<float>(metrics.headerHeight)}, headerColor, 0, RGBA{0, 0, 0});
     graphic.drawRectangle({{centerX, titleHeight + DIRS_HEIGHT / 2}, {1.f, 1.f}, 0.f},
@@ -267,7 +278,6 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
         graphic.drawText({{6.f, 3.f}, {1.f, 1.f}, 0.f}, this->getTitle(), 14, 0.f, textColor, 0, RGBA{0, 0, 0, 0}, constants::FONT_DEFAULT);
 
 
-    // Dirs
     std::filesystem::path relative = this->_dirPath.lexically_relative(this->_startPath);
     std::filesystem::path current = this->_startPath;
     float currX = DIRS_OFFSET_X;
