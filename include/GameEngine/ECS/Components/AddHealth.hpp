@@ -9,20 +9,22 @@
 #ifndef ADDHEALTH_HPP_
     #define ADDHEALTH_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
 
 namespace OrByte {
 
-struct AddHealth : public IComponent
+struct AddHealth : public OrByte::AComponent<OrByte::ComponentType::AddHealth>
 {
-    inline static constexpr ComponentType Type = ComponentType::AddHealth;
 
     AddHealth() = default;
     AddHealth(int regenAmount) : regenAmount(regenAmount) {}
 
     int regenAmount{100};
+
+    void serialize(Serializer& serializer) const final { serializer.value4b(this->regenAmount); }
+    void deserialize(Deserializer& deserializer) final { deserializer.value4b(this->regenAmount); }
 };
 
-}
+} // namespace OrByte
 
 #endif /* ADDHEALTH_HPP_ */

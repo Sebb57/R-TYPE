@@ -11,12 +11,12 @@
 #include <algorithm>
 #include <cmath>
 
-RType::Playeur::Playeur(World *world)
+OrByte::Playeur::Playeur(World *world)
 {
     this->ID = world->createEntity();
 }
 
-void RType::Playeur::CreateServeurComponent(World *world, Vector2 position, std::uint8_t playerSlot)
+void OrByte::Playeur::CreateServeurComponent(World *world, Vector2 position, std::uint8_t playerSlot)
 {
     const std::size_t slot = playerSlot < OrByte::constants::PLAYER_FRAME_WIDTHS.size() ? playerSlot : 0;
     const Vector2 size(OrByte::constants::playerWidthForSlot(static_cast<unsigned>(slot)), OrByte::constants::PLAYER_HEIGHT);
@@ -25,10 +25,10 @@ void RType::Playeur::CreateServeurComponent(World *world, Vector2 position, std:
     world->addComponentToEntity<OrByte::Health>(this->ID, 100, 100);
     world->addComponentToEntity<OrByte::Velocity>(this->ID, Vector2 {0.0f, 0.0f});
     world->addComponentToEntity<OrByte::Transform>(this->ID, position, Vector2 {1.0f, 1.0f}, float {0.0f});
-    world->addComponentToEntity<Owner>(this->ID, Team::Player);
+    world->addComponentToEntity<OrByte::Owner>(this->ID, OrByte::Team::Player);
 }
 
-void RType::Playeur::CreateClientComponent(World *world, std::uint8_t playerSlot)
+void OrByte::Playeur::CreateClientComponent(World *world, std::uint8_t playerSlot)
 {
     world->addComponentToEntity<OrByte::Transform>(this->ID, Vector2 {0.0f, 0.0f}, Vector2 {1.0f, 1.0f}, float {0.0f});
     constexpr const char *shipPaths[] = {
@@ -61,7 +61,7 @@ void RType::Playeur::CreateClientComponent(World *world, std::uint8_t playerSlot
     world->addComponentToEntity<OrByte::Animator>(this->ID, animator);
 }
 
-void RType::Playeur::Steer(World *world, Vector2 direction)
+void OrByte::Playeur::Steer(World *world, Vector2 direction)
 {
     auto *velocity = world->getComponent<OrByte::Velocity>(this->ID);
     if (velocity == nullptr)
@@ -71,19 +71,19 @@ void RType::Playeur::Steer(World *world, Vector2 direction)
     velocity->velocity = Vector2(direction.x * speed, direction.y * speed);
 }
 
-std::vector<int> RType::Playeur::Fire(World *world)
+std::vector<int> OrByte::Playeur::Fire(World *world)
 {
     std::vector<int> projectiles;
     for (unsigned index = 0; index < this->ProjectileCount; ++index) {
         const float offset = (static_cast<float>(index) - (this->ProjectileCount - 1) / 2.0f) * 18.0f;
-        RType::Projectiles projectile(world, this->ID, Team::Player, offset);
+        OrByte::Projectiles projectile(world, this->ID, OrByte::Team::Player, offset);
         projectile.CreateServeurComponent(world);
         projectiles.push_back(projectile.GetID());
     }
     return projectiles;
 }
 
-void RType::Playeur::ApplyBonus(World *world, bool extraShot)
+void OrByte::Playeur::ApplyBonus(World *world, bool extraShot)
 {
     if (extraShot) {
         this->ProjectileCount = std::min(this->ProjectileCount + 1, 3U);
@@ -93,7 +93,7 @@ void RType::Playeur::ApplyBonus(World *world, bool extraShot)
         health->currentHealth = std::min(health->maxHealth, health->currentHealth + 25);
 }
 
-void RType::Playeur::ReceiveEnemyHit(World *world, int damage)
+void OrByte::Playeur::ReceiveEnemyHit(World *world, int damage)
 {
     if (auto *health = world->getComponent<OrByte::Health>(this->ID))
         health->currentHealth -= damage;
@@ -101,7 +101,7 @@ void RType::Playeur::ReceiveEnemyHit(World *world, int damage)
         --this->ProjectileCount;
 }
 
-void RType::Playeur::KeepInBounds(World *world, float width, float height)
+void OrByte::Playeur::KeepInBounds(World *world, float width, float height)
 {
     auto *transform = world->getComponent<OrByte::Transform>(this->ID);
     const auto *collider = world->getComponent<Collider>(this->ID);

@@ -18,12 +18,14 @@ namespace OrByte {
             std::size_t _width = 0;
             std::size_t _height = 0;
             bool _isOpen = false;
+            mutable bool _gameMode = false;
 
         public:
             AGraphic() = default;
             ~AGraphic() override = default;
 
-            bool isOpen() const noexcept final { return this->_isOpen; }
+            virtual bool isOpen() const noexcept final { return this->_isOpen; }
+            virtual void setGameMode(bool enabled) const { this->_gameMode = enabled; }
     };
 }
 

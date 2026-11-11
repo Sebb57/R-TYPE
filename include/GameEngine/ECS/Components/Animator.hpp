@@ -9,15 +9,15 @@
 #ifndef ANIMATOR_HPP_
     #define ANIMATOR_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
     #include "Animation.hpp"
+    #include <bitsery/ext/std_map.h>
     #include <string>
     #include <unordered_map>
 
 namespace OrByte {
 
-    struct Animator : public IComponent {
-        inline static constexpr ComponentType Type = ComponentType::Animator;
+    struct Animator : public OrByte::AComponent<OrByte::ComponentType::Animator> {
 
         std::unordered_map<std::string, Animation> animations;
 
@@ -73,8 +73,34 @@ namespace OrByte {
 
             return &it->second;
         }
+
+        void serialize(Serializer& serializer) const override
+        {
+            serializer.ext(this->animations, bitsery::ext::StdMap{MaxContainerSize},
+                [](Serializer& ser, std::string& name, Animation& animation) {
+                    ser.text1b(name, MaxStringSize);
+                    ser.object(animation);
+                });
+            serializer.text1b(this->currentAnimation, MaxStringSize);
+            serializer.value8b(this->currentFrame);
+            serializer.value4b(this->elapsed);
+            serializer.boolValue(this->playing);
+        }
+
+        void deserialize(Deserializer& deserializer) override
+        {
+            deserializer.ext(this->animations, bitsery::ext::StdMap{MaxContainerSize},
+                [](Deserializer& des, std::string& name, Animation& animation) {
+                    des.text1b(name, MaxStringSize);
+                    des.object(animation);
+                });
+            deserializer.text1b(this->currentAnimation, MaxStringSize);
+            deserializer.value8b(this->currentFrame);
+            deserializer.value4b(this->elapsed);
+            deserializer.boolValue(this->playing);
+        }
     };
 
-}
+} // namespace OrByte
 
 #endif /* ANIMATOR_HPP_ */

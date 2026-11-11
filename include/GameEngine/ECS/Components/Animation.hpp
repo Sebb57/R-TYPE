@@ -9,8 +9,8 @@
 #ifndef ANIMATION_HPP_
     #define ANIMATION_HPP_
 
-    #include "IComponent.hpp"
     #include "../Utils.hpp"
+    #include "plugins/Serialization.hpp"
     #include <string>
     #include <vector>
 
@@ -31,6 +31,23 @@ namespace OrByte {
         bool loop{true};
     };
 
-}
+    template <typename S>
+    void serialize(S& s, Animation& animation)
+    {
+        s.container(animation.spritePaths, MaxContainerSize, [](S& ser, std::string& path) {
+            ser.text1b(path, MaxStringSize);
+        });
+        s.text1b(animation.spriteSheetPath, MaxStringSize);
+        s.boolValue(animation.isSpriteSheet);
+        s.value8b(animation.frameCount);
+        s.value8b(animation.firstFrame);
+        s.object(animation.frameSize);
+        s.object(animation.displaySize);
+        s.value8b(animation.columns);
+        s.value4b(animation.frameDuration);
+        s.boolValue(animation.loop);
+    }
+
+} // namespace OrByte
 
 #endif /* ANIMATION_HPP_ */

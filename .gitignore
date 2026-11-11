@@ -1,6 +1,8 @@
 # Binaries
 r-type_client
 r-type_server
+r-type_game-engine
+OrByte-gameClient
 
 # Prerequisites
 *.d
@@ -77,3 +79,6 @@ Testing/
 
 # Compiled plugins folder
 ./plugins/
+
+# Music
+*.ogg

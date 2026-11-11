@@ -10,7 +10,7 @@
 #include "constants.hpp"
 #include <random>
 
-RType::Ennemies::Ennemies(World *world) : RandomLine(0.0)
+OrByte::Ennemies::Ennemies(World *world) : RandomLine(0.0)
 {
     this->ID = world->createEntity();
     thread_local std::mt19937 engine(std::random_device{}());
@@ -21,22 +21,22 @@ RType::Ennemies::Ennemies(World *world) : RandomLine(0.0)
     this->RandomLine = line(engine);
 }
 
-bool RType::Ennemies::ShouldDropBonus()
+bool OrByte::Ennemies::ShouldDropBonus()
 {
     thread_local std::mt19937 engine(std::random_device{}());
     return std::uniform_int_distribution<unsigned>(1, 8)(engine) == 1;
 }
 
-void RType::Ennemies::CreateServeurComponent(World *world)
+void OrByte::Ennemies::CreateServeurComponent(World *world)
 {
-    world->addComponentToEntity<Collider>(this->ID, Vector2(OrByte::constants::ENEMY_COLLIDER_WIDTH, OrByte::constants::ENEMY_COLLIDER_HEIGHT));
+    world->addComponentToEntity<OrByte::Collider>(this->ID, Vector2(OrByte::constants::ENEMY_COLLIDER_WIDTH, OrByte::constants::ENEMY_COLLIDER_HEIGHT));
     world->addComponentToEntity<OrByte::Health>(this->ID, 50, 50);
     world->addComponentToEntity<OrByte::Velocity>(this->ID, Vector2 {-320.0f, 0.0f});
     world->addComponentToEntity<OrByte::Transform>(this->ID, Vector2 {2000.0f, this->RandomLine}, Vector2 {1.0f, 1.0f}, float {0.0f});
-    world->addComponentToEntity<Owner>(this->ID, Team::Enemy);
+    world->addComponentToEntity<OrByte::Owner>(this->ID, OrByte::Team::Enemy);
 }
 
-void RType::Ennemies::CreateClientComponent(World *world)
+void OrByte::Ennemies::CreateClientComponent(World *world)
 {
     world->addComponentToEntity<OrByte::Transform>(this->ID, Vector2 {2000.0f, this->RandomLine}, Vector2 {1.0f, 1.0f}, float {0.0f});
     OrByte::Animation animation;
@@ -55,7 +55,7 @@ void RType::Ennemies::CreateClientComponent(World *world)
     world->addComponentToEntity<OrByte::Animator>(this->ID, animator);
 }
 
-void RType::Ennemies::DestructEnnemies(World *world)
+void OrByte::Ennemies::DestructEnnemies(World *world)
 {
     constexpr float OFFSCREEN_X = -100.0f;
     std::vector<int> entities = world->getExistingEntities();

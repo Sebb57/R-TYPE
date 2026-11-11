@@ -1,11 +1,12 @@
 #pragma once
-#include "GameEngine/ECS/Components/IComponent.hpp"
+#include "plugins/IComponent.hpp"
 #include <map>
 #include <memory>
+#include <vector>
 
 class ComponentManager
 {
-    std::map<ComponentType, std::map<int, std::unique_ptr<IComponent>>> _globalComponents;
+    std::map<OrByte::ComponentType, std::map<int, std::unique_ptr<OrByte::IComponent>>> _globalComponents;
 
     public:
         ComponentManager() = default;
@@ -13,17 +14,16 @@ class ComponentManager
 
         template <typename T, typename ... Args>
         void addComponentToEntity(int entityId, Args&& ... args) {
-            ComponentType type = T::Type;
+            OrByte::ComponentType type = T::Type;
             auto component = std::make_unique<T>(std::forward<Args>(args)...);
 
             this->_globalComponents[type][entityId] = std::move(component);
         }
 
-        //exemple d'utilisation : addComponentToEntity<Transform>(entityId, Vector2(0, 0), Vector2(1, 1), 0.0f); car Transform a un constructeur qui prend ces paramètres : KK Alexis 
-
+        void addComponentToEntity(int entityId, std::unique_ptr<OrByte::IComponent> component);
         template <typename T>
         void removeComponentFromEntity(int entityId) {
-            ComponentType type = T::Type;
+            OrByte::ComponentType type = T::Type;
 
             auto it = this->_globalComponents.find(type);
             if (it != this->_globalComponents.end()) {
@@ -31,9 +31,11 @@ class ComponentManager
             }
         }
 
+        void removeComponentFromEntity(int entityId, OrByte::ComponentType type);
+
         template <typename T>
         T* getComponent(int entityId) {
-            ComponentType type = T::Type;
+            OrByte::ComponentType type = T::Type;
 
             auto it = this->_globalComponents.find(type);
             if (it != this->_globalComponents.end()) {
@@ -45,6 +47,29 @@ class ComponentManager
 
             return nullptr;
         }
+        
+
+        template <typename T>
+        bool setComponent(int entityId, T component) {
+            T* existing = getComponent<T>(entityId);
+            if (!existing)
+                return false;
+            *existing = std::move(component);
+            return true;
+        }
+
+        [[nodiscard]] std::vector<OrByte::ComponentType> getComponentTypesOfEntity(int entityId) const
+        {
+            std::vector<OrByte::ComponentType> types;
+            for (const auto& [type, entities] : _globalComponents)
+                if (entities.count(entityId) != 0)
+                    types.push_back(type);
+            return types;
+        }
+
+        [[nodiscard]] OrByte::IComponent* getComponent(int entityId, OrByte::ComponentType type) const;
+        [[nodiscard]] std::vector<OrByte::IComponent*> getComponents(int entityId) const;
+        [[nodiscard]] std::vector<int> getEntitiesWith(OrByte::ComponentType type) const;
 
         void removeAllComponentsFromEntity(int entityId);
 };

@@ -9,7 +9,7 @@
 #include "constants.hpp"
 #include <random>
 
-RType::Bonus::Bonus(World *world, bool extraShot) : ExtraShot(extraShot)
+OrByte::Bonus::Bonus(World *world, bool extraShot) : ExtraShot(extraShot)
 {
     this->ID = world->createEntity();
     constexpr int LINE_LENGTH = 1980;
@@ -22,16 +22,16 @@ RType::Bonus::Bonus(World *world, bool extraShot) : ExtraShot(extraShot)
     this->RandomLine = slot(engine) * SLOT_SIZE;
 }
 
-void RType::Bonus::CreateServeurBonus(World *world, Vector2 position)
+void OrByte::Bonus::CreateServeurBonus(World *world, Vector2 position)
 {
     if (position.x == 0.0f && position.y == 0.0f)
         position = Vector2 {2000.0f, this->RandomLine};
-    world->addComponentToEntity<Collider>(this->ID, Vector2 {OrByte::constants::BONUS_COLLIDER_WIDTH, OrByte::constants::BONUS_COLLIDER_HEIGHT});
+    world->addComponentToEntity<OrByte::Collider>(this->ID, Vector2 {OrByte::constants::BONUS_COLLIDER_WIDTH, OrByte::constants::BONUS_COLLIDER_HEIGHT});
     world->addComponentToEntity<OrByte::Velocity>(this->ID, Vector2 {-150.0f, 0.0f});
     world->addComponentToEntity<OrByte::Transform>(this->ID, position, Vector2 {1.0f, 1.0f}, float {0.0f});
 }
 
-void RType::Bonus::CreateClientBonus(World *world, bool extraShot)
+void OrByte::Bonus::CreateClientBonus(World *world, bool extraShot)
 {
     world->addComponentToEntity<OrByte::Transform>(this->ID, Vector2 {2000.0f, this->RandomLine}, Vector2 {1.0f, 1.0f}, float {0.0f});
     OrByte::Animation animation;
@@ -50,7 +50,7 @@ void RType::Bonus::CreateClientBonus(World *world, bool extraShot)
     world->addComponentToEntity<OrByte::Animator>(this->ID, animator);
 }
 
-void RType::Bonus::ApplyTo(World *world, Playeur& player) const
+void OrByte::Bonus::ApplyTo(World *world, Playeur& player) const
 {
     player.ApplyBonus(world, this->ExtraShot);
 }

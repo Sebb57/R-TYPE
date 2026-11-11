@@ -9,8 +9,10 @@
 #ifndef COLLIDER_HPP_
     #define COLLIDER_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
     #include "../Utils.hpp"
+
+namespace OrByte {
 
     enum class ColliderShape
     {
@@ -19,15 +21,27 @@
     };
     
     
-    struct Collider : public IComponent
+    struct Collider : public OrByte::AComponent<OrByte::ComponentType::Collider>
     {
-        inline static constexpr ComponentType Type = ComponentType::Collider;
-    
         Collider() = default;
         Collider(const Vector2& size, ColliderShape shape = ColliderShape::Box) : size(size), colliderShape(shape) {}
     
         Vector2 size{0.0f, 0.0f};
         ColliderShape colliderShape{ColliderShape::Box};
+
+        void serialize(OrByte::Serializer& serializer) const final
+        {
+            serializer.object(this->size);
+            serializer.value4b(this->colliderShape);
+        }
+
+        void deserialize(OrByte::Deserializer& deserializer) final
+        {
+            deserializer.object(this->size);
+            deserializer.value4b(this->colliderShape);
+        }
     };
+
+} // namespace OrByte
 
 #endif /* COLLIDER_HPP_ */

@@ -9,20 +9,22 @@
 #ifndef REMOVEHEALTH_HPP_
     #define REMOVEHEALTH_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
 
 namespace OrByte {
 
-struct RemoveHealth : public IComponent
+struct RemoveHealth : public OrByte::AComponent<OrByte::ComponentType::RemoveHealth>
 {
-    inline static constexpr ComponentType Type = ComponentType::RemoveHealth;
 
     RemoveHealth() = default;
     RemoveHealth(int hitDamage) : hitDamage(hitDamage) {}
 
     int hitDamage{100};
+
+    void serialize(Serializer& serializer) const final { serializer.value4b(this->hitDamage); }
+    void deserialize(Deserializer& deserializer) final { deserializer.value4b(this->hitDamage); }
 };
 
-}
+} // namespace OrByte
 
 #endif /* REMOVEHEALTH_HPP_ */

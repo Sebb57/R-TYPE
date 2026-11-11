@@ -3,7 +3,7 @@
 
 #include "GameEngine/ECS/World.hpp"
 
-namespace RType {
+namespace OrByte {
     class Ennemies {
         public:
             Ennemies(World *world);

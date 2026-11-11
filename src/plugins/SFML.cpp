@@ -8,6 +8,7 @@
 
 #include "constants.hpp"
 #include "GameEngine/ECS/Utils.hpp"
+#include "plugins/DynamicLibrary.hpp"
 #include "plugins/SFML.hpp"
 #include <algorithm>
 #include <cmath>
@@ -34,25 +35,12 @@ namespace {
                 (static_cast<float>(windowSize.y) - static_cast<float>(OrByte::constants::SERVER_WINDOW_Y) * windowRatio.y) / 2 };
     }
 
-    sf::Vector2f getPositionFromRatio(const Vector2 position, const sf::Vector2u windowSize)
-    {
-        const Vector2 windowRatio = getWindowRatio(windowSize);
-        const Vector2 offset = getWindowOffset(windowSize);
-
-        return { offset.x + position.x * windowRatio.x, offset.y + position.y * windowRatio.y };
-    }
-
     Vector2 getPositionFromWindow(const sf::Vector2i position, const sf::Vector2u windowSize)
     {
         const Vector2 windowRatio = getWindowRatio(windowSize);
         const Vector2 offset = getWindowOffset(windowSize);
 
         return { (static_cast<float>(position.x) - offset.x) / windowRatio.x, (static_cast<float>(position.y) - offset.y) / windowRatio.y };
-    }
-
-    sf::Vector2f getSizeFromRatio(const Vector2 size, const Vector2 windowRatio)
-    {
-        return { size.x * windowRatio.y, size.y * windowRatio.y };
     }
 
     sf::Color colorNormalize(const OrByte::RGBA color)
@@ -64,6 +52,7 @@ namespace {
             color.a
         );
     }
+
 }
 
 void OrByte::SFML::open(const std::size_t width, const std::size_t height, std::string title)
@@ -76,6 +65,15 @@ void OrByte::SFML::open(const std::size_t width, const std::size_t height, std::
     this->_width = width;
     this->_height = height;
     this->_nextFrameTime = std::chrono::steady_clock::now();
+
+    this->_cursorArrow.loadFromSystem(sf::Cursor::Arrow);
+    this->_cursorHorizontal.loadFromSystem(sf::Cursor::SizeHorizontal);
+    this->_cursorVertical.loadFromSystem(sf::Cursor::SizeVertical);
+    this->_cursorMove.loadFromSystem(sf::Cursor::SizeAll);
+    this->_cursorClick.loadFromSystem(sf::Cursor::Hand);
+    this->_cursorDiagonalNWSE.loadFromSystem(sf::Cursor::SizeTopLeft);
+    this->_cursorDiagonalNESW.loadFromSystem(sf::Cursor::SizeTopRight);
+    this->_currentCursor = CursorType::Arrow;
 
     this->_isOpen = true;
 }
@@ -106,6 +104,10 @@ std::queue<OrByte::Event> OrByte::SFML::listen() const
         }
         if (sfmlEvent.type == sf::Event::Resized) {
             this->_window->setView(sf::View(sf::FloatRect(0, 0, sfmlEvent.size.width, sfmlEvent.size.height)));
+            event.type = Event::Type::Resized;
+            event.width = sfmlEvent.size.width;
+            event.height = sfmlEvent.size.height;
+            events.push(event);
             continue;
         }
         if (sfmlEvent.type == sf::Event::KeyPressed || sfmlEvent.type == sf::Event::KeyReleased || sfmlEvent.type == sf::Event::TextEntered) {
@@ -239,7 +241,9 @@ std::queue<OrByte::Event> OrByte::SFML::listen() const
         }
         if (sfmlEvent.type == sf::Event::MouseButtonPressed) {
             event.type = Event::Type::MouseButtonPressed;
-            Vector2 mousePos = getPositionFromWindow(sf::Mouse::getPosition(*this->_window), this->_window->getSize());
+            event.windowX = sfmlEvent.mouseButton.x;
+            event.windowY = sfmlEvent.mouseButton.y;
+            Vector2 mousePos = getPositionFromWindow({ event.windowX, event.windowY }, this->_window->getSize());
             event.mouseX = static_cast<int>(mousePos.x);
             event.mouseY = static_cast<int>(mousePos.y);
             switch (sfmlEvent.mouseButton.button) {
@@ -259,7 +263,9 @@ std::queue<OrByte::Event> OrByte::SFML::listen() const
         }
         if (sfmlEvent.type == sf::Event::MouseButtonReleased) {
             event.type = Event::Type::MouseButtonReleased;
-            Vector2 mousePos = getPositionFromWindow(sf::Mouse::getPosition(*this->_window), this->_window->getSize());
+            event.windowX = sfmlEvent.mouseButton.x;
+            event.windowY = sfmlEvent.mouseButton.y;
+            Vector2 mousePos = getPositionFromWindow({ event.windowX, event.windowY }, this->_window->getSize());
             event.mouseX = static_cast<int>(mousePos.x);
             event.mouseY = static_cast<int>(mousePos.y);
             switch (sfmlEvent.mouseButton.button) {
@@ -279,7 +285,19 @@ std::queue<OrByte::Event> OrByte::SFML::listen() const
         }
         if (sfmlEvent.type == sf::Event::MouseMoved) {
             event.type = Event::Type::MouseMoved;
-            Vector2 mousePos = getPositionFromWindow(sf::Mouse::getPosition(*this->_window), this->_window->getSize());
+            event.windowX = sfmlEvent.mouseMove.x;
+            event.windowY = sfmlEvent.mouseMove.y;
+            Vector2 mousePos = getPositionFromWindow({ event.windowX, event.windowY }, this->_window->getSize());
+            event.mouseX = static_cast<int>(mousePos.x);
+            event.mouseY = static_cast<int>(mousePos.y);
+            events.push(event);
+        }
+        if (sfmlEvent.type == sf::Event::MouseWheelScrolled) {
+            event.type = Event::Type::MouseWheelScrolled;
+            event.windowX = sfmlEvent.mouseWheelScroll.x;
+            event.windowY = sfmlEvent.mouseWheelScroll.y;
+            event.wheelDelta = sfmlEvent.mouseWheelScroll.delta;
+            Vector2 mousePos = getPositionFromWindow({ event.windowX, event.windowY }, this->_window->getSize());
             event.mouseX = static_cast<int>(mousePos.x);
             event.mouseY = static_cast<int>(mousePos.y);
             events.push(event);
@@ -314,10 +332,11 @@ void OrByte::SFML::drawRectangle(const Transform& transform, Vector2 size, RGBA 
 
     if (!this->_isOpen || !this->_window)
         return;
-    Vector2 windowRatio = getWindowRatio(this->_window->getSize());
-    sf::Vector2f sizeRatio = getSizeFromRatio(size, windowRatio);
+    const Vector2 ratio = this->currentRatio();
+    const Vector2 offset = this->currentOffset();
+    const sf::Vector2f sizeRatio(size.x * ratio.x, size.y * ratio.y);
 
-    rectangle.setPosition(getPositionFromRatio(transform.position, this->_window->getSize()));
+    rectangle.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x, offset.y + transform.position.y * ratio.y));
     rectangle.setSize(sizeRatio);
     rectangle.setOrigin({ sizeRatio.x / 2, sizeRatio.y / 2 });
     rectangle.setRotation(transform.rotation);
@@ -328,16 +347,17 @@ void OrByte::SFML::drawRectangle(const Transform& transform, Vector2 size, RGBA 
     this->_window->draw(rectangle);
 }
 
-void OrByte::SFML::drawCircle(const Transform& transform, unsigned radius, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor) const
+void OrByte::SFML::drawCircle(const Transform& transform, float radius, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor) const
 {
     sf::CircleShape circle;
 
     if (!this->_isOpen || !this->_window)
         return;
-    Vector2 windowRatio = getWindowRatio(this->_window->getSize());
-    float radiusRatio = radius * windowRatio.y;
+    const Vector2 ratio = this->currentRatio();
+    const Vector2 offset = this->currentOffset();
+    const float radiusRatio = radius * ratio.y;
 
-    circle.setPosition(getPositionFromRatio(transform.position, this->_window->getSize()));
+    circle.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x, offset.y + transform.position.y * ratio.y));
     circle.setRadius(radiusRatio);
     circle.setOrigin({radiusRatio, radiusRatio});
     circle.setRotation(transform.rotation);
@@ -374,7 +394,7 @@ const sf::Texture *OrByte::SFML::getTexture(const std::filesystem::path& path) c
     return &texture->second;
 }
 
-void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::filesystem::path path) const
+void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, bool contain, float opacity) const
 {
     if (!this->_isOpen || !this->_window)
         return;
@@ -382,21 +402,30 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     if (texture == nullptr)
         return;
 
-    sf::Sprite sprite;
-    Vector2 windowRatio = getWindowRatio(this->_window->getSize());
-    sf::Vector2u textureSize = texture->getSize();
-    float scale = getSizeFromRatio(size, windowRatio).y / textureSize.y;
+    const sf::Vector2u textureSize = texture->getSize();
+    if (textureSize.x == 0 || textureSize.y == 0)
+        return;
 
-    sprite.setPosition(getPositionFromRatio(transform.position, this->_window->getSize()));
-    sprite.setScale({scale, scale});
+    sf::Sprite sprite;
+    const Vector2 ratio = this->currentRatio();
+    const Vector2 offset = this->currentOffset();
+    const float scaleX = (size.x * ratio.x) / static_cast<float>(textureSize.x);
+    const float scaleY = (size.y * ratio.y) / static_cast<float>(textureSize.y);
+    const float scale = contain ? std::min(scaleX, scaleY) : scaleY;
+    const float clamped = std::clamp(opacity, 0.f, 1.f);
+
     sprite.setTexture(*texture);
-    sprite.setOrigin({textureSize.x / 2.0f, textureSize.y / 2.0f});
+    sprite.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x,
+                                    offset.y + transform.position.y * ratio.y));
+    sprite.setScale({ scale, scale });
+    sprite.setOrigin({ textureSize.x / 2.f, textureSize.y / 2.f });
     sprite.setRotation(transform.rotation);
+    sprite.setColor(sf::Color(255, 255, 255, static_cast<sf::Uint8>(clamped * 255.f)));
 
     this->_window->draw(sprite);
 }
 
-void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, Rect rect) const
+void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, Rect rect, bool contain, float opacity) const
 {
     if (!this->_isOpen || !this->_window)
         return;
@@ -404,42 +433,130 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     if (texture == nullptr)
         return;
 
-    sf::Sprite sprite;
-    sf::IntRect sfmlRect(rect.x, rect.y, rect.width, rect.height);
-    Vector2 windowRatio = getWindowRatio(this->_window->getSize());
-    sf::Vector2u textureSize = texture->getSize();
-    float scale = getSizeFromRatio(size, windowRatio).y / rect.height;
+    if (rect.w <= 0 || rect.h <= 0)
+        return;
 
-    sprite.setPosition(getPositionFromRatio(transform.position, this->_window->getSize()));
-    sprite.setScale({scale, scale});
+    sf::Sprite sprite;
+    const Vector2 ratio = this->currentRatio();
+    const Vector2 offset = this->currentOffset();
+    const float scaleX = (size.x * ratio.x) / static_cast<float>(rect.w);
+    const float scaleY = (size.y * ratio.y) / static_cast<float>(rect.h);
+    const float scale = contain ? std::min(scaleX, scaleY) : scaleY;
+    const float clamped = std::clamp(opacity, 0.f, 1.f);
+
     sprite.setTexture(*texture);
-    sprite.setTextureRect(sfmlRect);
-    sprite.setOrigin({rect.width / 2.0f, rect.height / 2.0f});
+    sprite.setTextureRect(sf::IntRect(rect.x, rect.y, rect.w, rect.h));
+    sprite.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x,
+                                    offset.y + transform.position.y * ratio.y));
+    sprite.setScale({ scale, scale });
+    sprite.setOrigin({ rect.w / 2.f, rect.h / 2.f });
     sprite.setRotation(transform.rotation);
+    sprite.setColor(sf::Color(255, 255, 255, static_cast<sf::Uint8>(clamped * 255.f)));
 
     this->_window->draw(sprite);
 }
 
-void OrByte::SFML::drawText(const Transform& transform, std::string text, unsigned fontSize, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor, std::filesystem::path font) const
+Vector2 OrByte::SFML::drawText(const Transform& transform, std::string text, unsigned fontSize, float maxWidth, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor, std::filesystem::path font) const
 {
     if (!this->_isOpen || !this->_window)
-        return;
+        return {0.f, 0.f};
     const sf::Font *sfmlFont = this->getFont(font);
     if (sfmlFont == nullptr)
-        return;
+        return {0.f, 0.f};
 
     sf::Text sfmlText;
-    Vector2 windowRatio = getWindowRatio(this->_window->getSize());
+    const Vector2 ratio = this->currentRatio();
+    const Vector2 offset = this->currentOffset();
 
     sfmlText.setFont(*sfmlFont);
-    sfmlText.setCharacterSize(fontSize * windowRatio.y);
+    sfmlText.setCharacterSize(static_cast<unsigned>(static_cast<float>(fontSize) * ratio.y));
     sfmlText.setFillColor(colorNormalize(fillColor));
     sfmlText.setOutlineThickness(outlineThickness);
     sfmlText.setOutlineColor(colorNormalize(outlineColor));
     sfmlText.setString(text);
 
-    sfmlText.setPosition(getPositionFromRatio(transform.position, this->_window->getSize()));
+    if (maxWidth > 0.f) {
+        const float limit = maxWidth * ratio.x;
+
+        if (sfmlText.getLocalBounds().width > limit) {
+            const std::string ellipsis = "...";
+            while (!text.empty()) {
+                text.pop_back();
+                sfmlText.setString(text + ellipsis);
+                if (sfmlText.getLocalBounds().width <= limit)
+                    break;
+            }
+            if (text.empty())
+                sfmlText.setString(ellipsis);
+        }
+    }
+
+    sfmlText.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x, offset.y + transform.position.y * ratio.y));
     this->_window->draw(sfmlText);
+
+    const auto localBounds = sfmlText.getLocalBounds();
+    return {localBounds.width, localBounds.height};
+}
+
+Vector2 OrByte::SFML::getTextSize(std::string text, unsigned fontSize, float maxWidth, std::filesystem::path font) const
+{
+    if (!this->_isOpen || !this->_window)
+        return {0.f, 0.f};
+    const sf::Font *sfmlFont = this->getFont(font);
+    if (sfmlFont == nullptr)
+        return {0.f, 0.f};
+
+    sf::Text sfmlText;
+    const Vector2 ratio = this->currentRatio();
+
+    sfmlText.setFont(*sfmlFont);
+    sfmlText.setCharacterSize(static_cast<unsigned>(static_cast<float>(fontSize) * ratio.y));
+    sfmlText.setString(text);
+
+    if (maxWidth > 0.f) {
+        const float limit = maxWidth * ratio.x;
+
+        if (sfmlText.getLocalBounds().width > limit) {
+            const std::string ellipsis = "...";
+            while (!text.empty()) {
+                text.pop_back();
+                sfmlText.setString(text + ellipsis);
+                if (sfmlText.getLocalBounds().width <= limit)
+                    break;
+            }
+            if (text.empty())
+                sfmlText.setString(ellipsis);
+        }
+    }
+
+    const auto localBounds = sfmlText.getLocalBounds();
+    return {localBounds.width, localBounds.height};
+}
+
+Vector2u OrByte::SFML::regionSize() const
+{
+    if (this->_regions.empty()) {
+        sf::Vector2u windowSize = this->_window->getSize();
+        return Vector2u(windowSize.x, windowSize.y);
+    }
+    return { static_cast<unsigned>(this->_regions.back().w),
+        static_cast<unsigned>(this->_regions.back().h) };
+}
+
+void OrByte::SFML::applyRegionView() const
+{
+    const sf::Vector2f windowSize(this->_window->getSize());
+
+    if (this->_regions.empty()) {
+        this->_window->setView(sf::View(sf::FloatRect(0, 0, windowSize.x, windowSize.y)));
+        return;
+    }
+
+    const Rect& rect = this->_regions.back();
+    sf::View view(sf::FloatRect(0, 0, rect.w, rect.h));
+
+    view.setViewport(sf::FloatRect(rect.x / windowSize.x, rect.y / windowSize.y, rect.w / windowSize.x, rect.h / windowSize.y));
+    this->_window->setView(view);
 }
 
 std::pair<unsigned, unsigned> OrByte::SFML::getWindowSize() const noexcept
@@ -449,7 +566,76 @@ std::pair<unsigned, unsigned> OrByte::SFML::getWindowSize() const noexcept
     return { windowSize.x, windowSize.y };
 }
 
+void OrByte::SFML::pushRegion(const Rect& pixelRect) const
+{
+    this->_regions.push_back(pixelRect); this->applyRegionView();
+}
+
+void OrByte::SFML::popRegion() const
+{
+    if (!this->_regions.empty())
+        this->_regions.pop_back();
+    this->applyRegionView();
+}
+
+Vector2u OrByte::SFML::referenceSize() const
+{
+    return this->regionSize();
+}
+
+Vector2 OrByte::SFML::currentRatio() const
+{
+    if (!this->_regions.empty() && !this->_gameMode)
+        return { 1.f, 1.f };
+    const Vector2u size = this->referenceSize();
+    return getWindowRatio(sf::Vector2u(size.x, size.y));
+}
+
+Vector2 OrByte::SFML::currentOffset() const
+{
+    if (!this->_regions.empty() && !this->_gameMode)
+        return { 0.f, 0.f };
+    const Vector2u size = this->referenceSize();
+    return getWindowOffset(sf::Vector2u(size.x, size.y));
+}
+
+void OrByte::SFML::setCursor(CursorType type)
+{
+    if (!this->_isOpen || !this->_window || type == this->_currentCursor)
+        return;
+
+    switch (type) {
+        case CursorType::ResizeHorizontal:
+            this->_window->setMouseCursor(this->_cursorHorizontal);
+            break;
+        case CursorType::ResizeVertical:
+            this->_window->setMouseCursor(this->_cursorVertical);
+            break;
+        case CursorType::Move:
+            this->_window->setMouseCursor(this->_cursorMove);
+            break;
+        case CursorType::Click:
+            this->_window->setMouseCursor(this->_cursorClick);
+            break;
+        case CursorType::ResizeDiagonalNWSE:
+            this->_window->setMouseCursor(this->_cursorDiagonalNWSE);
+            break;
+        case CursorType::ResizeDiagonalNESW:
+            this->_window->setMouseCursor(this->_cursorDiagonalNESW);
+            break;
+        default:
+            this->_window->setMouseCursor(this->_cursorArrow);
+            break;
+    }
+    this->_currentCursor = type;
+}
+
 extern "C" {
+    OrByte::DynamicLibrary::PluginType type()
+    {
+        return OrByte::DynamicLibrary::PluginType::GRAPHICAL_LIB;
+    }
+
     OrByte::IGraphic *factory()
     {
         return new OrByte::SFML();

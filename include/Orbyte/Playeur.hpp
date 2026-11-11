@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace RType {
+namespace OrByte {
     class Playeur {
         public:
             Playeur(World *world);

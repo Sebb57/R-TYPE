@@ -9,21 +9,23 @@
 #ifndef VELOCITY_HPP_
     #define VELOCITY_HPP_
 
-    #include "IComponent.hpp"
+    #include "plugins/AComponent.hpp"
     #include "../Utils.hpp"
 
 namespace OrByte {
 
-struct Velocity : public IComponent
+struct Velocity : public OrByte::AComponent<OrByte::ComponentType::Velocity>
 {
-    inline static constexpr ComponentType Type = ComponentType::Velocity;
 
     Velocity() = default;
     Velocity(const Vector2& v) : velocity(v) {}
 
     Vector2 velocity{0.0f, 0.0f};
+
+    void serialize(Serializer& serializer) const final { serializer.object(this->velocity); }
+    void deserialize(Deserializer& deserializer) final { deserializer.object(this->velocity); }
 };
 
-}
+} // namespace OrByte
 
 #endif /* VELOCITY_HPP_ */

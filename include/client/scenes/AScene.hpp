@@ -10,12 +10,13 @@
 #define CLIENT_SCENES_ASCENE_HPP
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include "GameEngine/ECS/World.hpp"
-#include "GameEngine/Systems/DisplaySystem.hpp"
-#include "GameEngine/Systems/PhysicSystem.hpp"
+#include "plugins/DynamicLibrary.hpp"
+#include "plugins/ISystem.hpp"
 #include "client/Controls.hpp"
 #include "client/scenes/IScene.hpp"
 #include "client/scenes/SceneContext.hpp"
@@ -41,8 +42,10 @@ class AScene : public IScene {
         World _world;
 
     private:
-        OrByte::PhysicSystem _physics;
-        OrByte::DisplaySystem _display;
+        OrByte::DynamicLibrary _physicsLoader;
+        OrByte::DynamicLibrary _displayLoader;
+        std::unique_ptr<OrByte::ISystem> _physics;
+        std::unique_ptr<OrByte::ISystem> _display;
         std::unordered_map<Action, ActionHandler> _actions;
         std::unordered_set<OrByte::Event::Key> _heldKeys;
 };

@@ -13,8 +13,10 @@
 
 client::AScene::AScene(SceneContext& context)
     : _context(context)
-    , _physics(this->_world)
-    , _display(this->_world, context.graphic)
+    , _physicsLoader("./plugins/systems/PhysicSystem.so")
+    , _displayLoader("./plugins/systems/DisplaySystem.so")
+    , _physics(this->_physicsLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(this->_world))
+    , _display(this->_displayLoader.loadFunction<OrByte::ISystem* (*)(World&, OrByte::IGraphic&)>("factory")(this->_world, context.graphic))
 {}
 
 void client::AScene::onEvent(const OrByte::Event& event)
@@ -38,13 +40,13 @@ void client::AScene::onEvent(const OrByte::Event& event)
 
 void client::AScene::update(double)
 {
-    this->_physics.update();
+    this->_physics->update();
 }
 
 void client::AScene::render()
 {
     this->drawPanel(Vector2(0.0f, 0.0f), Vector2(theme::Width, theme::Height), theme::Background);
-    this->_display.update();
+    this->_display->update();
 }
 
 void client::AScene::bindAction(Action action, ActionHandler handler)
@@ -56,7 +58,7 @@ void client::AScene::drawText(const std::string& text, Vector2 position, unsigne
 {
     if (this->_context.font.empty())
         return;
-    this->_context.graphic.drawText(OrByte::Transform(position, Vector2(1.0f, 1.0f), 0.0f), text, size, color, 0, {0, 0, 0}, this->_context.font);
+    this->_context.graphic.drawText(OrByte::Transform(position, Vector2(1.0f, 1.0f), 0.0f), text, size, 0.f, color, 0, {0, 0, 0}, this->_context.font);
 }
 
 void client::AScene::drawPanel(Vector2 position, Vector2 size, OrByte::RGBA fill, unsigned outlineThickness, OrByte::RGBA outline) const

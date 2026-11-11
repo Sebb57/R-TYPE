@@ -21,15 +21,16 @@
 #include "Chronometer.hpp"
 #include "GameEngine/Systems/ColliderSystem.hpp"
 #include "GameEngine/ECS/Utils.hpp"
+#include "plugins/DynamicLibrary.hpp"
+#include "plugins/ISystem.hpp"
 #include "protocol/UdpProtocol.hpp"
 #include "server/common/ServerMessages.hpp"
 
 class World;
+
 namespace OrByte {
 class HealthSystem;
 class PhysicSystem;
-}
-namespace RType {
 class Playeur;
 class Bonus;
 }
@@ -74,9 +75,12 @@ class GameInstance {
         unsigned _tickRate;
         unsigned _snapshotRate;
         std::unique_ptr<World> _world;
-        std::unique_ptr<OrByte::HealthSystem> _healthSystem;
-        std::unique_ptr<OrByte::PhysicSystem> _physicSystem;
-        std::unique_ptr<OrByte::ColliderSystem> _colliderSystem;
+        OrByte::DynamicLibrary _healthLoader;
+        OrByte::DynamicLibrary _physicLoader;
+        OrByte::DynamicLibrary _colliderLoader;
+        std::unique_ptr<OrByte::ISystem> _healthSystem;
+        std::unique_ptr<OrByte::ISystem> _physicSystem;
+        std::unique_ptr<OrByte::ISystem> _colliderSystem;
         BoundedQueue<InboundEvent> _inbox{256};
         OutgoingSink _sink;
         std::map<InputKey, InputHandler> _inputHandlers;
@@ -85,8 +89,8 @@ class GameInstance {
         std::unordered_map<PlayerSlot, int> _playerEntities;
         std::unordered_map<PlayerSlot, OrByte::Chronometer> _fireClocks;
         std::unordered_map<int, EntityType> _types;
-        std::unordered_map<int, std::unique_ptr<RType::Playeur>> _playeurs;
-        std::unordered_map<int, std::unique_ptr<RType::Bonus>> _bonuses;
+        std::unordered_map<int, std::unique_ptr<OrByte::Playeur>> _playeurs;
+        std::unordered_map<int, std::unique_ptr<OrByte::Bonus>> _bonuses;
         std::unordered_map<int, PlayerSlot> _projectileOwners;
         std::array<std::uint32_t, 4> _scores{};
         std::uint32_t _nextEventId = 1;

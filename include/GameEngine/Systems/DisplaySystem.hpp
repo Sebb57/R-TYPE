@@ -12,25 +12,32 @@
     #include "GameEngine/ECS/Components/Transform.hpp"
     #include "GameEngine/ECS/Components/Animator.hpp"
     #include "GameEngine/ECS/World.hpp"
+    #include "plugins/ASystem.hpp"
     #include "plugins/IGraphic.hpp"
+    #include <string>
+    #include <unordered_map>
 
 namespace OrByte {
 
-class DisplaySystem {
+class DisplaySystem : public ASystem {
     World& _world;
     IGraphic& _graphic;
+    std::unordered_map<std::string, bool> _images;
 
     void _handleSprite(Transform* transform, int entity);
     void _handleAnimator(int entity, Transform* transform);
     void _updateAnimator(Animator* animator, float deltaTime);
+    void _handleControllable(Transform* transform, int entity);
+    bool _hasImage(const std::string& path);
+    [[nodiscard]] static Transform _toView(const Transform& transform, const Vector2& origin);
 
     public:
         DisplaySystem(World& world, IGraphic& graphic) : _world(world), _graphic(graphic) {}
-        ~DisplaySystem() = default;
+        ~DisplaySystem() override = default;
 
-        void update();
+        void update() override;
 };
 
-}
+} // namespace OrByte
 
 #endif /* DISPLAYSYSTEM_HPP_ */
