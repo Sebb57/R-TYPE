@@ -10,7 +10,7 @@
 #include "GameEngine/Layout/AssetsWidget.hpp"
 #include "GameEngine/Layout/ConsoleWidget.hpp"
 #include "GameEngine/Layout/TabWidget.hpp"
-#include "GameEngine/Detail/Detail.hpp"
+#include "GameEngine/Layout/Detail.hpp"
 #include "GameEngine/Layout/EntityWidget.hpp"
 #include "GameEngine/Layout/FilesManagementWidget.hpp"
 #include "GameEngine/Layout/SceneManagerWidget.hpp"

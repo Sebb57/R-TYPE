@@ -5,7 +5,7 @@
 ** Detail.cpp
 */
 
-#include "GameEngine/Detail/Detail.hpp"
+#include "GameEngine/Layout/Detail.hpp"
 #include "GameEngine/ECS/Components/Script.hpp"
 #include "GameEngine/ECS/World.hpp"
 #include "GameEngine/ECS/Components/AddHealth.hpp"
@@ -280,6 +280,130 @@ Detail::Field info(std::string label, std::string value)
     return { std::move(label), { std::move(cell) } };
 }
 
+// ---------------------------------------------------------------------------
+// Animator: the animations list is edited directly in the panel
+// ---------------------------------------------------------------------------
+
+// Clickable button (no value to type)
+Detail::Field button(std::string label, std::string text, std::function<void()> onClick)
+{
+    Detail::Cell cell;
+    cell.get = [text = std::move(text)]() { return text; };
+    cell.click = std::move(onClick);
+    return { std::move(label), { std::move(cell) } };
+}
+
+// List of texts typed with commas: "a.png, b.png, c.png"
+Detail::Field textList(std::string label, std::vector<std::string>& values, std::size_t& count)
+{
+    Detail::Cell cell;
+    cell.get = [&values]() {
+        std::string joined;
+        for (const std::string& value : values)
+            joined += (joined.empty() ? "" : ", ") + value;
+        return joined;
+    };
+    cell.set = [&values, &count](const std::string& input) {
+        std::vector<std::string> parsed;
+        std::size_t start = 0;
+        while (start <= input.size()) {
+            const std::size_t comma = std::min(input.find(',', start), input.size());
+            const std::string item = trim(input.substr(start, comma - start));
+            if (!item.empty())
+                parsed.push_back(item);
+            start = comma + 1;
+        }
+        values = std::move(parsed);
+        count = std::max<std::size_t>(1, values.size()); // one frame per image
+        return true;
+    };
+    return { std::move(label), { std::move(cell) } };
+}
+
+std::vector<std::string> animationNames(const Animator& animator)
+{
+    std::vector<std::string> names;
+    for (const auto& [name, animation] : animator.animations)
+        names.push_back(name);
+    std::sort(names.begin(), names.end()); // stable order on screen (unordered_map has none)
+    return names;
+}
+
+// "Current" animation: a click switches to the next one
+Detail::Field currentAnimation(Animator& animator)
+{
+    Detail::Cell cell;
+    cell.get = [&animator]() {
+        return animator.getCurrentAnimation() != nullptr ? animator.currentAnimation : std::string("(none)");
+    };
+    cell.click = [&animator]() {
+        const std::vector<std::string> names = animationNames(animator);
+        if (names.empty())
+            return;
+        auto it = std::upper_bound(names.begin(), names.end(), animator.currentAnimation);
+        const bool wasPlaying = animator.playing;
+        animator.play(it == names.end() ? names.front() : *it, true);
+        animator.playing = wasPlaying;
+    };
+    return { "Current", { std::move(cell) } };
+}
+
+// "New animation": type a name and press Enter
+Detail::Field newAnimation(Animator& animator)
+{
+    static const std::string PLACEHOLDER = "type a name + Enter";
+    Detail::Cell cell;
+    cell.get = []() { return PLACEHOLDER; };
+    cell.set = [&animator](const std::string& input) {
+        const std::string name = trim(input);
+        if (name.empty() || name == PLACEHOLDER || animator.animations.count(name) != 0)
+            return false;
+        animator.addAnimation(name, Animation{});
+        if (animator.getCurrentAnimation() == nullptr)
+            animator.play(name, true); // the first animation becomes the current one
+        return true;
+    };
+    return { "New anim", { std::move(cell) } };
+}
+
+void describeAnimation(std::vector<Detail::Field>& fields, Animator& animator, const std::string& name)
+{
+    Animation& a = animator.animations.at(name);
+
+    fields.push_back(button("[" + name + "]", "Remove", [&animator, name]() {
+        if (animator.currentAnimation == name)
+            animator.stop();
+        animator.animations.erase(name);
+    }));
+    fields.push_back(toggle(" Use sheet", a.isSpriteSheet));
+    if (a.isSpriteSheet) {
+        fields.push_back(texture(" Sheet", a.spriteSheetPath)); // accepts an image dropped from the assets
+        fields.push_back(vector2(" Frame size", a.frameSize));
+        fields.push_back(number(" Columns", a.columns));
+        fields.push_back(number(" 1st frame", a.firstFrame));
+        fields.push_back(number(" Frames", a.frameCount));
+        fields.push_back(vector2(" Draw size", a.displaySize));
+    } else {
+        fields.push_back(textList(" Images", a.spritePaths, a.frameCount));
+        fields.push_back(vector2(" Size", a.frameSize));
+    }
+    fields.push_back(number(" Frame time", a.frameDuration));
+    fields.push_back(toggle(" Loop", a.loop));
+}
+
+std::vector<Detail::Field> describeAnimator(Animator& animator)
+{
+    std::vector<Detail::Field> fields = {
+        currentAnimation(animator),
+        toggle("Playing", animator.playing),
+        info("Frame", std::to_string(animator.currentFrame)),
+    };
+    for (const std::string& name : animationNames(animator))
+        describeAnimation(fields, animator, name);
+    fields.push_back(newAnimation(animator));
+    return fields;
+}
+
 const char *componentName(ComponentType type)
 {
     switch (type) {
@@ -370,11 +494,8 @@ std::vector<Detail::Field> describe(IComponent& component)
             return { vector2("Center", c.center), number("Target", c.targetEntity), number("Radius", c.radius),
                 number("Expand Speed", c.expandSpeed), number("Angle", c.angle), number("Angle Speed", c.angleSpeed) };
         }
-        case ComponentType::Animator: {
-            auto& c = static_cast<Animator&>(component);
-            return { text("Animation", c.currentAnimation), number("Frame", c.currentFrame), number("Elapsed", c.elapsed),
-                toggle("Playing", c.playing), info("Animations", std::to_string(c.animations.size())) };
-        }
+        case ComponentType::Animator:
+            return describeAnimator(static_cast<Animator&>(component));
         case ComponentType::Owner: {
             auto& c = static_cast<Owner&>(component);
             return { choice("Team", c.team, { "Player", "Enemy" }) };
@@ -397,9 +518,9 @@ std::vector<Detail::Field> describe(IComponent& component)
                 number("Pitch", c.pitch),
                 toggle("Loop", c.loop) };
         }
-        case OrByte::ComponentType::Script: {
-            auto& c = dynamic_cast<Script&>(component);
-            return { text("path", c.path) };
+        case ComponentType::Script: {
+            auto& c = static_cast<Script&>(component);
+            return { text("Path", c.path) };
         }
         case ComponentType::ENUM_END:
             break;
