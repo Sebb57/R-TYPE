@@ -136,7 +136,8 @@ void OrByte::Console::_compile([[maybe_unused]] const std::string& argument)
         this->_print(std::string("Cannot export world: ") + error.what(), LineKind::Error);
         return;
     }
-    this->_run("cmake -S cmake/GameEngine -B build-solo && cmake --build build-solo", this->_root);
+    this->_run(std::format("cmake -S cmake/GameEngine -B build-solo \"-DORBYTE_GAME_WORLD={}\" && cmake --build build-solo",
+        constants::GAME_WORLD), this->_root);
     this->_compiling = this->_process != nullptr;
 }
 

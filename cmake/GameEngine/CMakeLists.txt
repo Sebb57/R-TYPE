@@ -131,7 +131,20 @@ file(GLOB_RECURSE SOLO_SOURCES CONFIGURE_DEPENDS
     "${RTYPE_ROOT}/src/GameEngine/client/*.cpp"
     "${RTYPE_ROOT}/src/GameEngine/server/*.cpp"
 )
-add_executable(OrByte-gameClient ${SOLO_SOURCES})
+
+# The game carries the world it was compiled with, so it doesn't need the exported world to run
+# and two games never share one. GameWorld.cpp is only rewritten when the world changed.
+set(ORBYTE_GAME_WORLD "/tmp/game.obe" CACHE FILEPATH "World embedded in the game, where the engine exports it")
+set(GAME_WORLD_SOURCE "${CMAKE_BINARY_DIR}/generated/GameWorld.cpp")
+add_custom_target(rtype_game_world
+    COMMAND ${CMAKE_COMMAND} "-DINPUT=${ORBYTE_GAME_WORLD}" "-DOUTPUT=${GAME_WORLD_SOURCE}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/EmbedWorld.cmake"
+    BYPRODUCTS "${GAME_WORLD_SOURCE}"
+    VERBATIM
+)
+
+add_executable(OrByte-gameClient ${SOLO_SOURCES} "${GAME_WORLD_SOURCE}")
+add_dependencies(OrByte-gameClient rtype_game_world)
 target_include_directories(OrByte-gameClient PRIVATE "${RTYPE_ROOT}/include")
 target_link_libraries(OrByte-gameClient PRIVATE rtype_engine rtype_asio bitsery)
 add_dependencies(OrByte-gameClient rtype_sfml ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})

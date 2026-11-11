@@ -14,6 +14,7 @@
     #include <cstdint>
     #include <exception>
     #include <filesystem>
+    #include <istream>
     #include <string>
     #include <unordered_map>
     #include <utility>
@@ -61,6 +62,8 @@ class MissingComponent : public WorldSerializerException {
 
 void serializeWorld(const World& world, const std::filesystem::path& path);
 void deserializeWorld(World& world, const std::filesystem::path& path, const ComponentFactories& factories);
+/// @param source names the world in error messages
+void deserializeWorld(World& world, std::istream& stream, const ComponentFactories& factories, const std::filesystem::path& source);
 
 } // namespace OrByte
 
