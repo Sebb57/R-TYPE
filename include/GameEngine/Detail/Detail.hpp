@@ -28,6 +28,7 @@ class Detail final : public Widget {
             std::function<std::string()> get;
             std::function<bool(const std::string&)> set;
             std::function<void()> click;
+            bool acceptsImage = false;
         };
 
         struct Field {
@@ -42,6 +43,9 @@ class Detail final : public Widget {
         void draw(const IGraphic& graphic, Vector2u size) override;
         bool onEvent(const Event& event, Vector2 localMouse) override;
         [[nodiscard]] int getHeaderHeight() const override { return HEADER; }
+
+        bool canAccept(const DragPayload& payload, Vector2 localMouse) override;
+        void onDrop(const DragPayload& payload, Vector2 localMouse) override;
 
     private:
         static constexpr int HEADER = 24;
@@ -90,6 +94,7 @@ class Detail final : public Widget {
         [[nodiscard]] Rect _removeRect(const Row& row, int width) const;
         [[nodiscard]] std::vector<ComponentType> _addableComponents(int entityId) const;
         [[nodiscard]] bool _isEditing(const Row& row, std::size_t cellIndex) const;
+        [[nodiscard]] bool _findImageCell(Vector2 localMouse, int& entityId, Row& found, std::size_t& cellIndex);
 
         void _syncSelection();
         void _clampScroll();

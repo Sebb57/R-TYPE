@@ -15,6 +15,7 @@
     #include <array>
     #include <cstddef>
     #include <cstdint>
+    #include <filesystem>
     #include <memory>
     #include <string>
     #include <utility>
@@ -30,7 +31,15 @@ class Widget {
             Left,
         };
 
+        struct DragPayload {
+            std::string kind;
+            std::filesystem::path path;
+            std::string label;
+            std::filesystem::path preview;
+        };
+
         static constexpr std::size_t SIDE_COUNT = 4;
+        static constexpr int TITLE_HEIGHT = 24;
 
         explicit Widget(std::string title = "", int size = 0);
         virtual ~Widget() = default;
@@ -78,7 +87,14 @@ class Widget {
         virtual bool onEvent([[maybe_unused]] const Event& event, [[maybe_unused]] Vector2 localMouse) { return false; }
         [[nodiscard]] virtual bool capturesMouse() const { return false; }
 
-        [[nodiscard]] virtual int getHeaderHeight() const { return 0; }
+        // Drag
+        void beginDrag(DragPayload payload);
+        [[nodiscard]] bool isLeftButtonDown() const noexcept;
+        [[nodiscard]] virtual bool canAccept([[maybe_unused]] const DragPayload& payload, [[maybe_unused]] Vector2 localMouse) { return false; }
+        virtual void onDrop([[maybe_unused]] const DragPayload& payload, [[maybe_unused]] Vector2 localMouse) {}
+
+        // Getters
+        [[nodiscard]] virtual int getHeaderHeight() const { return this->getTitle().empty() ? 0 : TITLE_HEIGHT; }
 
     private:
         struct Drag {
@@ -94,6 +110,12 @@ class Widget {
             int startX = 0;
             int startY = 0;
             bool pressed = false;
+            bool active = false;
+        };
+
+        struct Payload {
+            DragPayload data;
+            Widget *hovered = nullptr;
             bool active = false;
         };
 
@@ -118,6 +140,11 @@ class Widget {
         bool _movable = true;
         Move _move;
 
+        Payload _payload;
+        bool _leftDown = false;
+        int _mouseX = 0;
+        int _mouseY = 0;
+
         void _layout();
         void _layoutParent();
         bool _dispatchMouse(const Event& event);
@@ -139,6 +166,13 @@ class Widget {
         bool _handleMove(const Event& event);
         void _updateDropTarget(int x, int y);
         void _renderDropPreview(const IGraphic& graphic) const;
+
+
+        [[nodiscard]] Widget *_rootWidget() noexcept;
+        [[nodiscard]] const Widget *_rootWidget() const noexcept;
+        [[nodiscard]] Widget *_findAcceptor(int x, int y, const DragPayload& payload);
+        bool _handlePayload(const Event& event);
+        void _renderPayload(const IGraphic& graphic) const;
 };
 
 } // namespace OrByte

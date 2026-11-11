@@ -35,6 +35,8 @@ namespace OrByte {
         sf::Cursor _cursorArrow;
         sf::Cursor _cursorHorizontal;
         sf::Cursor _cursorVertical;
+        sf::Cursor _cursorMove;
+        sf::Cursor _cursorClick;
         sf::Cursor _cursorDiagonalNWSE;
         sf::Cursor _cursorDiagonalNESW;
         CursorType _currentCursor = CursorType::Arrow;
@@ -58,9 +60,10 @@ namespace OrByte {
 
             virtual void drawRectangle(const Transform& transform, Vector2 size, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor) const final;
             virtual void drawCircle(const Transform& transform, float radius, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor) const final;
-            virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path) const final;
-            virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, Rect rect) const final;
-            virtual void drawText(const Transform& transform, std::string text, unsigned fontSize, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor, std::filesystem::path font) const final;
+            virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, bool contain, float opacity) const final;
+            virtual void drawImage(const Transform& transform, Vector2 size, std::filesystem::path path, Rect rect, bool contain, float opacity) const final;
+            virtual Vector2 drawText(const Transform& transform, std::string text, unsigned fontSize, float maxWidth, RGBA fillColor, unsigned outlineThickness, RGBA outlineColor, std::filesystem::path font) const final;
+            virtual Vector2 getTextSize(std::string text, unsigned fontSize = 20, float maxWidth = 0.f, std::filesystem::path font = constants::FONT_DEFAULT) const;
 
             // Layout
             virtual Vector2u regionSize() const override;

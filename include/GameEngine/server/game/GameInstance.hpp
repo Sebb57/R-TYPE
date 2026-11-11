@@ -53,10 +53,12 @@ class GameInstance {
         OrByte::DynamicLibrary _controlLoader;
         OrByte::DynamicLibrary _physicLoader;
         OrByte::DynamicLibrary _displayLoader;
+        OrByte::DynamicLibrary _scriptLoader;
         std::unique_ptr<World> _world;
         std::unique_ptr<OrByte::ISystem> _controlSystem;
         std::unique_ptr<OrByte::ISystem> _physicSystem;
         std::unique_ptr<OrByte::ISystem> _displaySystem;
+        std::unique_ptr<OrByte::ISystem> _scriptSystem;
         BoundedQueue<OrByte::Event> _inbox{256};
         std::mutex _mutex;
         SnapshotSink _sink;

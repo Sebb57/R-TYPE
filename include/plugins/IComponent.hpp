@@ -34,6 +34,8 @@ namespace OrByte {
         Controllable,
         Name,
         Camera,
+        Music,
+        Script,
 
         ENUM_END // no type bellow this one
     };

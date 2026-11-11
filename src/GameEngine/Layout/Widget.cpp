@@ -11,6 +11,10 @@
 
 namespace {
 
+constexpr float PREVIEW_SIZE = 64.f;
+constexpr float PREVIEW_OPACITY = 0.55f;
+constexpr float FONT_SIZE = 12.f;
+
 std::size_t sideIndex(OrByte::Widget::Side side)
 {
     return static_cast<std::size_t>(side);
@@ -160,6 +164,10 @@ void OrByte::Widget::render(const IGraphic& graphic)
         if (child)
             child->render(graphic);
 
+    if (this->_parent == nullptr) {
+        this->_renderDropPreview(graphic);
+        this->_renderPayload(graphic);
+    }
     if (this->_parent == nullptr)
         this->_renderDropPreview(graphic);
 }
@@ -170,19 +178,36 @@ bool OrByte::Widget::handleEvent(const Event& event)
         this->setRect(Rect(0, 0, event.width, event.height));
         return false;
     }
+    if (this->_parent == nullptr && this->_payload.active && !isMouseEvent(event)) {
+        if (event.type == Event::Type::KeyPressed && event.key == Event::Key::Escape)
+            this->_payload = Payload{};
+        return true;
+    }
     if (isMouseEvent(event)) {
         if (this->_parent == nullptr) {
-            if (this->capturesMouse()) {
-                return this->onEvent(event, Vector2(
-                    static_cast<float>(event.windowX - this->_content.x),
-                    static_cast<float>(event.windowY - this->_content.y)));
+            this->_mouseX = event.windowX;
+            this->_mouseY = event.windowY;
+            if (event.type == Event::Type::MouseButtonPressed && event.mouseButton == Event::MouseButton::Left)
+                this->_leftDown = true;
+
+            if (this->_payload.active) {
+                const bool consumed = this->_handlePayload(event);
+
+                if (event.type == Event::Type::MouseButtonReleased && event.mouseButton == Event::MouseButton::Left)
+                    this->_leftDown = false;
+                return consumed;
             }
             if (this->_move.active)
                 return this->_handleMove(event);
             if (this->_handleResize(event) || this->_handleMove(event))
                 return true;
         }
-        return this->_dispatchMouse(event);
+        const bool consumed = this->_dispatchMouse(event);
+
+        if (this->_parent == nullptr && event.type == Event::Type::MouseButtonReleased
+            && event.mouseButton == Event::MouseButton::Left)
+            this->_leftDown = false;
+        return consumed;
     }
     return this->_dispatch(event);
 }
@@ -309,10 +334,9 @@ OrByte::Widget *OrByte::Widget::_findHeader(int x, int y)
         return nullptr;
 
     for (const std::unique_ptr<Widget>& child : this->_children)
-        if (child) {
+        if (child)
             if (Widget *found = child->_findHeader(x, y))
                 return found;
-        }
 
     const int header = this->getHeaderHeight();
 
@@ -384,7 +408,7 @@ bool OrByte::Widget::_pickDropSide(const Widget& source, int x, int y, Side& sid
             return true;
         }
 
-        return false;
+    return false;
 }
 
 void OrByte::Widget::_dock(Widget& source, Widget& target, Side side)
@@ -455,6 +479,7 @@ bool OrByte::Widget::_handleMove(const Event& event)
                 return false;
             move.active = true;
         }
+        this->_cursor = CursorType::Move;
         this->_updateDropTarget(event.windowX, event.windowY);
         return true;
     }
@@ -464,6 +489,8 @@ bool OrByte::Widget::_handleMove(const Event& event)
         if (wasActive && move.dropTarget != nullptr)
             _dock(*move.source, *move.dropTarget, move.dropSide);
         move = Move{};
+        if (wasActive)
+            this->_cursor = CursorType::Arrow;
         return wasActive;
     }
     return false;
@@ -496,4 +523,107 @@ int OrByte::Widget::_effectiveMinSize() const
     if (second != nullptr && second->_visible)
         used += second->_size;
     return used + this->_minSize;
+}
+
+OrByte::Widget *OrByte::Widget::_rootWidget() noexcept
+{
+    Widget *widget = this;
+
+    while (widget->_parent != nullptr)
+        widget = widget->_parent;
+    return widget;
+}
+
+const OrByte::Widget *OrByte::Widget::_rootWidget() const noexcept
+{
+    const Widget *widget = this;
+
+    while (widget->_parent != nullptr)
+        widget = widget->_parent;
+    return widget;
+}
+
+bool OrByte::Widget::isLeftButtonDown() const noexcept
+{
+    return this->_rootWidget()->_leftDown;
+}
+
+void OrByte::Widget::beginDrag(DragPayload payload)
+{
+    Widget *root = this->_rootWidget();
+
+    root->_drag = Drag{};
+    root->_move = Move{};
+    root->_payload = Payload{ std::move(payload), nullptr, true };
+}
+
+OrByte::Widget *OrByte::Widget::_findAcceptor(int x, int y, const DragPayload& payload)
+{
+    if (!this->_visible || !this->_rect.contains(x, y))
+        return nullptr;
+
+    for (const std::unique_ptr<Widget>& child : this->_children) {
+        if (child) {
+            if (Widget *found = child->_findAcceptor(x, y, payload))
+                return found;
+        }
+    }
+    if (!this->_content.contains(x, y))
+        return nullptr;
+    return this->canAccept(payload, Vector2(static_cast<float>(x - this->_content.x),
+                                            static_cast<float>(y - this->_content.y))) ? this : nullptr;
+}
+
+bool OrByte::Widget::_handlePayload(const Event& event)
+{
+    Payload& payload = this->_payload;
+
+    if (event.type == Event::Type::MouseMoved) {
+        payload.hovered = this->_findAcceptor(event.windowX, event.windowY, payload.data);
+    } else if (event.type == Event::Type::MouseButtonReleased && event.mouseButton == Event::MouseButton::Left) {
+        Widget *target = this->_findAcceptor(event.windowX, event.windowY, payload.data);
+        const DragPayload data = payload.data;
+
+        payload = Payload{};
+        if (target != nullptr)
+            target->onDrop(data, Vector2(static_cast<float>(event.windowX - target->_content.x), static_cast<float>(event.windowY - target->_content.y)));
+    }
+    return true;
+}
+
+void OrByte::Widget::_renderPayload(const IGraphic& graphic) const
+{
+    if (!this->_payload.active)
+        return;
+
+    const DragPayload& data = this->_payload.data;
+    const bool valid = this->_payload.hovered != nullptr;
+    const float x = static_cast<float>(this->_mouseX) + 14.f;
+    float y = static_cast<float>(this->_mouseY) + 14.f;
+
+    graphic.pushRegion(this->_rect);
+
+    if (valid) {
+        const Rect& area = this->_payload.hovered->_content;
+
+        graphic.drawRectangle(Transform{ { area.x + area.w / 2.f, area.y + area.h / 2.f }, 0.f },
+            { static_cast<float>(area.w), static_cast<float>(area.h) },
+            RGBA{ 90, 150, 255, 40 }, 2, RGBA{ 90, 150, 255, 220 });
+    }
+
+    if (!data.preview.empty()) {
+        graphic.drawImage(Transform{ { x + PREVIEW_SIZE / 2.f, y + PREVIEW_SIZE / 2.f } },
+            { PREVIEW_SIZE, PREVIEW_SIZE }, data.preview, true, PREVIEW_OPACITY);
+        y += PREVIEW_SIZE + 4.f;
+    }
+
+    const Vector2 text = graphic.getTextSize(data.label, FONT_SIZE);
+    const float w = text.x + 16.f;
+    const float h = text.y + 10.f;
+
+    graphic.drawRectangle(Transform{ { x + w / 2.f, y + h / 2.f }, 0.f }, { w, h },
+        RGBA{ 60, 60, 60, 200 }, 1, valid ? RGBA{ 90, 150, 255, 255 } : RGBA{ 120, 120, 120, 255 });
+    graphic.drawText(Transform{ { x + 8.f, y + 5.f } }, data.label, FONT_SIZE, 0.f, RGBA{ 255, 255, 255 });
+
+    graphic.popRegion();
 }

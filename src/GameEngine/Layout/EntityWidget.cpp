@@ -152,7 +152,7 @@ void OrByte::EntityWidget::_applyKeyAction(const Event& event)
             return;
 
         const auto selected = std::find(ids.begin(), ids.end(), *selectedEntity);
-        if (selected == ids.end() || this->_world.getCameraEntity() == *selectedEntity)
+        if (selected == ids.end() /*|| this->_world.getCameraEntity() == *selectedEntity*/)
             return;
         const std::size_t index = static_cast<std::size_t>(std::distance(ids.begin(), selected));
         this->_cancelEditing();
@@ -277,7 +277,7 @@ void OrByte::EntityWidget::draw(const IGraphic& graphic, Vector2u size)
         {static_cast<float>(width), static_cast<float>(height)}, bgColor, 1, borderColor);
     graphic.drawRectangle({{centerX, headerCenterY}, {1.0f, 1.0f}, 0.0f},
         {static_cast<float>(width), static_cast<float>(metrics.headerHeight)}, headerColor, 0, RGBA{0, 0, 0});
-    graphic.drawText({{6.0f, 3.0f}, {1.0f, 1.0f}, 0.0f}, this->getTitle(), 14, textColor, 0, RGBA{0, 0, 0, 0}, constants::FONT_DEFAULT);
+    graphic.drawText({{6.0f, 3.0f}, {1.0f, 1.0f}, 0.0f}, this->getTitle(), 14, 0.f, textColor, 0, RGBA{0, 0, 0, 0}, constants::FONT_DEFAULT);
 
     const float addButtonWidth = std::min(22.0f, static_cast<float>(width));
     const float addButtonX = static_cast<float>(width) - addButtonWidth - 2.0f;
@@ -286,7 +286,7 @@ void OrByte::EntityWidget::draw(const IGraphic& graphic, Vector2u size)
     graphic.drawRectangle({{addButtonX + addButtonWidth * 0.5f, addButtonY + addButtonHeight * 0.5f},
         {1.0f, 1.0f}, 0.0f}, {addButtonWidth, addButtonHeight}, RGBA{76, 92, 108}, 1, borderColor);
     graphic.drawText({{addButtonX + addButtonWidth * 0.5f - 4.0f, addButtonY}, {1.0f, 1.0f}, 0.0f},
-        "+", 16, textColor, 0, RGBA{0, 0, 0, 0}, constants::FONT_DEFAULT);
+        "+", 16, 0.f, textColor, 0, RGBA{0, 0, 0, 0}, constants::FONT_DEFAULT);
 
     const std::size_t rowsToDraw = std::min<std::size_t>(ids.size(), metrics.visibleRows);
     for (std::size_t index = 0; index < rowsToDraw; ++index) {
@@ -313,8 +313,8 @@ void OrByte::EntityWidget::draw(const IGraphic& graphic, Vector2u size)
 
         graphic.drawRectangle({{centerX, rowCenterY}, {1.0f, 1.0f}, 0.0f},
             {static_cast<float>(width), metrics.rowHeight}, rowFill, 1, outline);
-        graphic.drawText({{labelX, textY}, {1.0f, 1.0f}, 0.0f}, label, static_cast<unsigned>(metrics.rowTextSize), textColor, 0, RGBA{0, 0, 0}, constants::FONT_DEFAULT);
-        graphic.drawText({{idX, textY + 1.0f}, {1.0f, 1.0f}, 0.0f}, "id: " + std::to_string(entityId), static_cast<unsigned>(std::max(10.0f, metrics.rowTextSize * 0.85f)), mutedText, 0, RGBA{0, 0, 0}, constants::FONT_DEFAULT);
+        graphic.drawText({{labelX, textY}, {1.0f, 1.0f}, 0.0f}, label, static_cast<unsigned>(metrics.rowTextSize), 0.f, textColor, 0, RGBA{0, 0, 0}, constants::FONT_DEFAULT);
+        graphic.drawText({{idX, textY + 1.0f}, {1.0f, 1.0f}, 0.0f}, "id: " + std::to_string(entityId), static_cast<unsigned>(std::max(10.0f, metrics.rowTextSize * 0.85f)), 0.f, mutedText, 0, RGBA{0, 0, 0}, constants::FONT_DEFAULT);
     }
 
     if (ids.size() > metrics.visibleRows) {

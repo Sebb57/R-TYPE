@@ -139,7 +139,7 @@ void drawBox(const OrByte::IGraphic& graphic, const Rect& rect, const OrByte::RG
 
 void drawLabel(const OrByte::IGraphic& graphic, float x, float y, const std::string& text, unsigned size, const OrByte::RGBA& color)
 {
-    graphic.drawText({{x, y}, {1.0F, 1.0F}, 0.0F}, text, size, color, 0, OrByte::RGBA(0, 0, 0, 0), OrByte::constants::FONT_DEFAULT);
+    graphic.drawText({{x, y}, {1.0F, 1.0F}, 0.0F}, text, size, 0.f, color, 0, OrByte::RGBA(0, 0, 0, 0), OrByte::constants::FONT_DEFAULT);
 }
 
 void drawButton(const OrByte::IGraphic& graphic, const Rect& rect, const std::string& label, unsigned textSize, bool active, bool enabled = true)
@@ -167,6 +167,7 @@ OrByte::FilesManagementWidget::FilesManagementWidget(SceneCollection& scenes, co
 void OrByte::FilesManagementWidget::_compile()
 {
     try {
+        this->_scenes.currentWorld().ensureCamera();
         serializeWorld(this->_scenes.currentWorld(), constants::GAME_WORLD);
     } catch (const std::exception& error) {
         std::cerr << "Cannot export world: " << error.what() << std::endl;

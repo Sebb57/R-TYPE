@@ -11,7 +11,9 @@
 
 #include "GameEngine/Layout/Widget.hpp"
 #include "plugins/DynamicLibrary.hpp"
+#include "plugins/IAudio.hpp"
 #include "plugins/IGraphic.hpp"
+#include "plugins/ISystem.hpp"
 #include <filesystem>
 #include <memory>
 #include "GameEngine/ECS/SceneCollection.hpp"
@@ -37,9 +39,15 @@ class GameEngine {
         std::unique_ptr<Widget> _root;
         ComponentPlugins _components;
         SceneCollection _scenes;
+        std::unique_ptr<DynamicLibrary> _audioLoader;
+        std::unique_ptr<DynamicLibrary> _audioSystemLoader;
+        std::unique_ptr<IAudio> _audio;
+        std::unique_ptr<ISystem> _audioSystem;
         // std::vector<Event> _events;
 
         void _initLayout();
+        void _loadAudio();
+        void _bindAudioToScene();
 
         void _handleEvents();
         bool _handleEvent(Event& event);

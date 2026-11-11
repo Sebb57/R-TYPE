@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.23)
 
-project(RType VERSION 1.0 DESCRIPTION "R-Type multiplayer game" LANGUAGES CXX)
+project(RType VERSION 1.0 DESCRIPTION "R-Type multiplayer game" LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -47,6 +47,41 @@ if(WIN32)
     target_link_libraries(rtype_asio INTERFACE ws2_32 mswsock)
 endif()
 
+# ---------------------------------------------------------------------------
+# Lua (interpreter, built from source) + sol2 (header-only C++ binding)
+# ---------------------------------------------------------------------------
+FetchContent_Declare(lua
+    URL https://www.lua.org/ftp/lua-5.4.7.tar.gz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(lua)
+
+file(GLOB LUA_SOURCES "${lua_SOURCE_DIR}/src/*.c")
+list(REMOVE_ITEM LUA_SOURCES
+    "${lua_SOURCE_DIR}/src/lua.c"
+    "${lua_SOURCE_DIR}/src/luac.c"
+)
+add_library(lua_static STATIC ${LUA_SOURCES})
+set_target_properties(lua_static PROPERTIES LINKER_LANGUAGE C)
+target_include_directories(lua_static SYSTEM PUBLIC "${lua_SOURCE_DIR}/src")
+if(UNIX)
+    target_compile_definitions(lua_static PRIVATE LUA_USE_POSIX)
+    target_link_libraries(lua_static PUBLIC m)
+endif()
+
+FetchContent_Declare(sol2
+    GIT_REPOSITORY https://github.com/ThePhD/sol2.git
+    GIT_TAG v3.5.0
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(sol2)
+
+add_library(rtype_lua INTERFACE)
+target_link_libraries(rtype_lua INTERFACE lua_static sol2::sol2)
+target_compile_definitions(rtype_lua INTERFACE
+    $<$<CONFIG:Debug>:SOL_ALL_SAFETIES_ON=1>
+)
+
 add_library(rtype-protocol STATIC
     src/server/net/TcpProtocol.cpp
     src/server/net/UdpProtocol.cpp
@@ -70,8 +105,13 @@ target_include_directories(rtype_engine PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/GameEngine/ECS/Managers"
 )
-target_link_libraries(rtype_engine PUBLIC ${CMAKE_DL_LIBS} bitsery)
+target_link_libraries(rtype_engine PUBLIC ${CMAKE_DL_LIBS} bitsery rtype_lua)
 target_compile_features(rtype_engine PUBLIC cxx_std_23)
+# Dev setup: scripts are read straight from the source tree, so saving a .lua
+# file is picked up by hot reload without copying anything into build/
+target_compile_definitions(rtype_engine PUBLIC
+    RTYPE_SCRIPTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/scripts"
+)
 
 # ---------------------------------------------------------------------------
 # Server
@@ -167,7 +207,16 @@ target_link_libraries(rtype_sfml PRIVATE
     sfml-system
 )
 
-set(SYSTEM_PLUGINS Collider Control Display Health Physic)
+# Audio library plugin: the only audio code that knows SFML (like rtype_sfml for graphics)
+add_library(rtype_sfml_audio MODULE src/plugins/SFMLAudio.cpp)
+rtype_configure_plugin(rtype_sfml_audio "SFMLAudio" "${CMAKE_SOURCE_DIR}/plugins")
+target_include_directories(rtype_sfml_audio PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_link_libraries(rtype_sfml_audio PRIVATE
+    sfml-audio
+    sfml-system
+)
+
+set(SYSTEM_PLUGINS Collider Control Display Health Physic Audio Script)
 set(SYSTEM_TARGETS)
 foreach(system IN LISTS SYSTEM_PLUGINS)
     set(system_target "rtype_system_${system}")
@@ -179,7 +228,7 @@ endforeach()
 
 set(COMPONENT_PLUGINS
     AddHealth Animator Camera Collider Controllable Health Orbit Owner Poison
-    RegenHealth RemoveHealth Sinus Spiral Sprite Transform Velocity Wither Name
+    RegenHealth RemoveHealth Sinus Spiral Sprite Transform Velocity Wither Name Music Script
 )
 set(COMPONENT_TARGETS)
 foreach(component IN LISTS COMPONENT_PLUGINS)
@@ -201,7 +250,7 @@ file(GLOB_RECURSE CLIENT_SOURCES CONFIGURE_DEPENDS
 add_executable(r-type_client ${CLIENT_SOURCES})
 target_include_directories(r-type_client PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(r-type_client PRIVATE rtype_engine rtype-protocol sfml-audio)
-add_dependencies(r-type_client rtype_sfml ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
+add_dependencies(r-type_client rtype_sfml rtype_sfml_audio ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
 target_compile_features(r-type_client PRIVATE cxx_std_23)
 set_target_properties(r-type_client PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}>"
@@ -225,11 +274,19 @@ endif()
 # ---------------------------------------------------------------------------
 add_executable(r-type_game-engine src/GameEngine/main.cpp)
 target_link_libraries(r-type_game-engine PRIVATE rtype_engine)
-add_dependencies(r-type_game-engine rtype_sfml ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
+add_dependencies(r-type_game-engine rtype_sfml rtype_sfml_audio ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
 target_compile_features(r-type_game-engine PRIVATE cxx_std_23)
 set_target_properties(r-type_game-engine PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}>"
 )
+if(WIN32)
+    # the audio plugin needs openal32.dll next to the executable
+    add_custom_command(TARGET r-type_game-engine POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${RTYPE_OPENAL_DLL}" "$<TARGET_FILE_DIR:r-type_game-engine>"
+        VERBATIM
+    )
+endif()
 
 # ---------------------------------------------------------------------------
 # Warnings
@@ -240,6 +297,7 @@ foreach(target IN ITEMS
     r-type_client
     r-type_game-engine
     rtype_sfml
+    rtype_sfml_audio
     ${SYSTEM_TARGETS}
     ${COMPONENT_TARGETS}
 )
@@ -260,6 +318,7 @@ foreach(target IN ITEMS
     rtype-protocol
     rtype_engine
     rtype_sfml
+    rtype_sfml_audio
     r-type_server
     r-type_client
     r-type_game-engine
@@ -280,4 +339,3 @@ if(MINGW)
         target_link_options(${target} PRIVATE -static)
     endforeach()
 endif()
-

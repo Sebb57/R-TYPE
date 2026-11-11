@@ -23,10 +23,12 @@ server::GameInstance::GameInstance(OrByte::IGraphic& graphic, unsigned tickRate,
     , _controlLoader("./plugins/systems/ControlSystem.so")
     , _physicLoader("./plugins/systems/PhysicSystem.so")
     , _displayLoader("./plugins/systems/DisplaySystem.so")
+    , _scriptLoader("./plugins/systems/ScriptSystem.so")
     , _world(std::make_unique<World>())
     , _controlSystem(this->_controlLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world))
     , _physicSystem(this->_physicLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world))
     , _displaySystem(this->_displayLoader.loadFunction<OrByte::ISystem* (*)(World&, OrByte::IGraphic&)>("factory")(*this->_world, graphic))
+    , _scriptSystem(this->_scriptLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world))
 {
     if (setup)
         setup(*this->_world);
@@ -104,6 +106,7 @@ void server::GameInstance::applyInbound()
 void server::GameInstance::update()
 {
     this->_controlSystem->update();
+    this->_scriptSystem->update();
     this->_physicSystem->update();
 }
 

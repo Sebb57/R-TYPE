@@ -47,7 +47,7 @@ void drawBox(const OrByte::IGraphic& graphic, const Rect& rect, bool selected)
 
 void drawLabel(const OrByte::IGraphic& graphic, float x, float y, const std::string& text, unsigned size = 14)
 {
-    graphic.drawText({{x, y}, 0.f}, text, size, OrByte::RGBA(220, 220, 220, 255), 0,
+    graphic.drawText({{x, y}, 0.f}, text, size, 0.f, OrByte::RGBA(220, 220, 220, 255), 0,
         OrByte::RGBA(0, 0, 0, 0), OrByte::constants::FONT_DEFAULT);
 }
 
