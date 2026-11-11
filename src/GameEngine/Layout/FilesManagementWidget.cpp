@@ -11,7 +11,6 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
-#include <cstdlib>
 #include <exception>
 #include <filesystem>
 #include <format>
@@ -161,21 +160,14 @@ void drawButton(const OrByte::IGraphic& graphic, const Rect& rect, const std::st
 
 } // namespace
 
-OrByte::FilesManagementWidget::FilesManagementWidget(SceneCollection& scenes, const ComponentFactories& factories, AssetsWidget* assets, std::filesystem::path& projectDirectory, int width)
-    : Widget("", width), _scenes(scenes), _factories(factories), _assets(assets), _projectDirectory(projectDirectory), _baseWidth(width)
+OrByte::FilesManagementWidget::FilesManagementWidget(SceneCollection& scenes, const ComponentFactories& factories, Console& console, AssetsWidget* assets, std::filesystem::path& projectDirectory, int width)
+    : Widget("", width), _scenes(scenes), _factories(factories), _console(console), _assets(assets), _projectDirectory(projectDirectory), _baseWidth(width)
 {
 }
 
 void OrByte::FilesManagementWidget::_compile()
 {
-    try {
-        this->_scenes.currentWorld().ensureCamera();
-        serializeWorld(this->_scenes.currentWorld(), constants::GAME_WORLD);
-    } catch (const std::exception& error) {
-        std::cerr << "Cannot export world: " << error.what() << std::endl;
-        return;
-    }
-    system("cmake -S cmake/GameEngine -B build-solo && cmake --build build-solo");
+    this->_console.execute("compile");
 }
 
 void OrByte::FilesManagementWidget::_save()

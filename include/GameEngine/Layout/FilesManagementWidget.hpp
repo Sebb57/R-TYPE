@@ -9,6 +9,9 @@
 #ifndef FILESMANAGEMENTWIDGET_HPP_
 #define FILESMANAGEMENTWIDGET_HPP_
 
+#include "GameEngine/Console/Console.hpp"
+#include "GameEngine/ECS/World.hpp"
+#include "GameEngine/ECS/WorldSerializer.hpp"
 #include "GameEngine/ECS/SceneCollection.hpp"
 #include "Widget.hpp"
 #include <cstddef>
@@ -23,7 +26,7 @@ class AssetsWidget;
 
 class FilesManagementWidget final : public Widget {
     public:
-        FilesManagementWidget(SceneCollection& scenes, const ComponentFactories& factories, AssetsWidget* assets, std::filesystem::path& projectDirectory, int width = 480);
+        FilesManagementWidget(SceneCollection& scenes, const ComponentFactories& factories, Console& console, AssetsWidget* assets, std::filesystem::path& projectDirectory, int width = 480);
         ~FilesManagementWidget() override = default;
 
     protected:
@@ -40,6 +43,7 @@ class FilesManagementWidget final : public Widget {
 
         SceneCollection& _scenes;
         const ComponentFactories& _factories;
+        Console& _console;
         AssetsWidget* _assets;
         std::filesystem::path& _projectDirectory;
         std::filesystem::path _projectPath;

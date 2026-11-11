@@ -27,7 +27,6 @@ constexpr OrByte::RGBA dirsColor {80, 80, 80, 255};
 
 constexpr float TITLE_HEIGHT = 24.f;
 constexpr float DIRS_HEIGHT = 24.f;
-constexpr float HEADER_HEIGHT = TITLE_HEIGHT + DIRS_HEIGHT;
 constexpr float MINIMUM_ROW_HEIGHT = 32.f;
 constexpr float TEXT_GAP = 4.f;
 constexpr float TEXT_SIZE = 12.f;
@@ -55,11 +54,11 @@ struct AssetsLayout {
     std::size_t visibleRows;
 };
 
-[[nodiscard]] AssetsLayout makeLayout(const Rect& bounds)
+[[nodiscard]] AssetsLayout makeLayout(const Rect& bounds, float header)
 {
     const float width = std::max(1.f, static_cast<float>(bounds.w));
     const float height = std::max(1.f, static_cast<float>(bounds.h));
-    const float headerHeight = std::min(height, HEADER_HEIGHT);
+    const float headerHeight = std::min(height, header);
     const float rowsHeight = height - headerHeight;
     const auto visibleRows = std::max<std::size_t>(1, static_cast<std::size_t>(std::floor(rowsHeight / MINIMUM_ROW_HEIGHT)));
     const float rowHeight = std::max(1.f, rowsHeight / static_cast<float>(visibleRows));
@@ -120,12 +119,12 @@ int getEntriesPerRow(const int width)
     return std::max(1, 1 + static_cast<int>((effectiveWidth - ENTRY_SIZE) / (ENTRY_SIZE + ENTRY_GAP_X)));
 }
 
-Vector2 getEntryPos(const int i, const int entriesPerRow, const float scrollOffset)
+Vector2 getEntryPos(const int i, const int entriesPerRow, const float scrollOffset, const float header)
 {
     const int row = i / entriesPerRow;
     const int col = i % entriesPerRow;
     const float centerX = ENTRY_OFFSET_X + (col + 0.5) * ENTRY_SIZE + col * ENTRY_GAP_X;
-    const float centerY = ENTRY_OFFSET_Y + (row + 0.5) * ENTRY_SIZE + row * ENTRY_GAP_Y + HEADER_HEIGHT + scrollOffset;
+    const float centerY = ENTRY_OFFSET_Y + (row + 0.5) * ENTRY_SIZE + row * ENTRY_GAP_Y + header + scrollOffset;
 
     return {centerX, centerY};
 }
@@ -197,6 +196,16 @@ void OrByte::AssetsWidget::_sortEntries(SortType type, bool ascending)
     }
 }
 
+float OrByte::AssetsWidget::_titleHeight() const
+{
+    return this->getTitle().empty() ? 0.f : TITLE_HEIGHT;
+}
+
+float OrByte::AssetsWidget::_headerHeight() const
+{
+    return this->_titleHeight() + DIRS_HEIGHT;
+}
+
 void OrByte::AssetsWidget::_navigateTo(const std::filesystem::path& path)
 {
     const auto previous = this->_dirPath;
@@ -226,7 +235,9 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
 {
     const int width = static_cast<int>(size.x);
     const int height = static_cast<int>(size.y);
-    const auto metrics = makeLayout(Rect(0, 0, width, height));
+    const float titleHeight = this->_titleHeight();
+    const float header = this->_headerHeight();
+    const auto metrics = makeLayout(Rect(0, 0, width, height), header);
 
     const float centerX = static_cast<float>(width) * 0.5f;
     const float centerY = static_cast<float>(height) * 0.5f;
@@ -237,13 +248,13 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
 
     const Rect rect = this->getRect();
     const int entriesPerRow = getEntriesPerRow(rect.w);
-    const int effectiveHeight = this->getRect().h - ENTRY_OFFSET_Y * 2 - HEADER_HEIGHT;
+    const int effectiveHeight = this->getRect().h - ENTRY_OFFSET_Y * 2 - header;
     const int nRow = this->_entries.size() / entriesPerRow;
     const float minOffset = (ENTRY_SIZE * (nRow + 1) + ENTRY_GAP_Y * (nRow + 0.5) - effectiveHeight) * -1;
 
     this->_scrollOffset = std::min(0.f, std::max(minOffset, this->_scrollOffset));
     for (std::size_t i = 0; i < this->_entries.size(); i++) {
-        const Vector2 center = getEntryPos(i, entriesPerRow, this->_scrollOffset);
+        const Vector2 center = getEntryPos(i, entriesPerRow, this->_scrollOffset, header);
 
         if (this->_selected == i)
             graphic.drawRectangle({{center.x, center.y}}, {ENTRY_SIZE, ENTRY_SIZE}, selectedColor);
@@ -261,15 +272,16 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
 
     graphic.drawRectangle({{centerX, headerCenterY}, {1.f, 1.f}, 0.f},
         {static_cast<float>(width), static_cast<float>(metrics.headerHeight)}, headerColor, 0, RGBA{0, 0, 0});
-    graphic.drawRectangle({{centerX, TITLE_HEIGHT * 1.5}, {1.f, 1.f}, 0.f},
-        {static_cast<float>(width), TITLE_HEIGHT}, headerColor, 2, borderColor);
-    graphic.drawText({{6.f, 3.f}, {1.f, 1.f}, 0.f}, this->getTitle(), 14, 0.f, textColor, 0, RGBA{0, 0, 0, 0}, constants::FONT_DEFAULT);
+    graphic.drawRectangle({{centerX, titleHeight + DIRS_HEIGHT / 2}, {1.f, 1.f}, 0.f},
+        {static_cast<float>(width), DIRS_HEIGHT}, headerColor, 2, borderColor);
+    if (titleHeight > 0.f)
+        graphic.drawText({{6.f, 3.f}, {1.f, 1.f}, 0.f}, this->getTitle(), 14, 0.f, textColor, 0, RGBA{0, 0, 0, 0}, constants::FONT_DEFAULT);
 
 
     std::filesystem::path relative = this->_dirPath.lexically_relative(this->_startPath);
     std::filesystem::path current = this->_startPath;
     float currX = DIRS_OFFSET_X;
-    constexpr float crumbY = TITLE_HEIGHT + 2.f;
+    const float crumbY = titleHeight + 2.f;
 
     this->_dirButtons.clear();
 
@@ -295,16 +307,17 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
 bool OrByte::AssetsWidget::onEvent(const Event& event, Vector2 localMouse)
 {
     const int entriesPerRow = getEntriesPerRow(this->getRect().w);
+    const float header = this->_headerHeight();
 
     switch (event.type) {
         case Event::Type::MouseWheelScrolled:
-            if (localMouse.y > HEADER_HEIGHT) {
+            if (localMouse.y > header) {
                 this->_scrollOffset += event.wheelDelta * SCROLL_SENSITIVITY;
                 return true;
             }
             return false;
         case Event::Type::MouseButtonPressed:
-            if (localMouse.y < HEADER_HEIGHT) {
+            if (localMouse.y < header) {
                 if (event.mouseButton == Event::MouseButton::Left) {
                     for (const DirectoryButton& dirButton : this->_dirButtons) {
                         if (localMouse.x < dirButton.x || localMouse.x >= dirButton.x + dirButton.w ||
@@ -321,7 +334,7 @@ bool OrByte::AssetsWidget::onEvent(const Event& event, Vector2 localMouse)
                 return false;
             }
             for (std::size_t i = 0; i < this->_entries.size(); i++) {
-                const Vector2 center = getEntryPos(i, entriesPerRow, this->_scrollOffset);
+                const Vector2 center = getEntryPos(i, entriesPerRow, this->_scrollOffset, header);
 
                 if (localMouse.x >= center.x - ENTRY_SIZE / 2 && localMouse.x < center.x + ENTRY_SIZE / 2 &&
                     localMouse.y >= center.y - ENTRY_SIZE / 2 && localMouse.y < center.y + ENTRY_SIZE / 2) {
@@ -360,7 +373,7 @@ bool OrByte::AssetsWidget::onEvent(const Event& event, Vector2 localMouse)
                 }
             }
             for (std::size_t i = 0; i < this->_entries.size(); i++) {
-                const Vector2 center = getEntryPos(i, entriesPerRow, this->_scrollOffset);
+                const Vector2 center = getEntryPos(i, entriesPerRow, this->_scrollOffset, header);
 
                 if (localMouse.x >= center.x - ENTRY_SIZE / 2 && localMouse.x < center.x + ENTRY_SIZE / 2 &&
                     localMouse.y >= center.y - ENTRY_SIZE / 2 && localMouse.y < center.y + ENTRY_SIZE / 2) {
