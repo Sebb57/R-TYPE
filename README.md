@@ -62,6 +62,22 @@ The server listens on TCP port `6969` and UDP port `6767`. Start another client 
 
 Use the arrow keys to move, Space to fire, Enter to activate a menu item, and Escape to go back or leave. In a room, every player must mark ready and complete UDP linking before the host can start. A game lasts up to three minutes; the end screen shows each player's score.
 
+## Lint
+
+The checks live in `.clang-tidy`. They read the compile database that CMake writes to `build/compile_commands.json`, so configure the project first:
+
+```sh
+cmake -S . -B build
+```
+
+```sh
+run-clang-tidy -p build -quiet "$PWD/src/"              # whole project
+clang-tidy -p build src/client/scenes/RoomScene.cpp     # a single file
+run-clang-tidy -p build -quiet -fix "$PWD/src/"         # apply automatic fixes
+```
+
+The `"$PWD/src/"` filter keeps the run to project sources and skips the FetchContent dependencies.
+
 ## Documentation
 
 - [Protocol reference](docs/protocol.md): TCP lobby messages and UDP gameplay packets.
