@@ -144,12 +144,12 @@ void drawLabel(const OrByte::IGraphic& graphic, float x, float y, const std::str
     graphic.drawText({{x, y}, {1.0F, 1.0F}, 0.0F}, text, size, 0.f, color, 0, OrByte::RGBA(0, 0, 0, 0), OrByte::constants::FONT_DEFAULT);
 }
 
-void drawButton(const OrByte::IGraphic& graphic, const Rect& rect, const std::string& label, unsigned textSize, bool active)
+void drawButton(const OrByte::IGraphic& graphic, const Rect& rect, const std::string& label, unsigned textSize, bool active, bool enabled = true)
 {
     const float textX = static_cast<float>(rect.x) + std::max(4.0F, (static_cast<float>(rect.w) - textWidth(label, textSize)) * 0.5F);
 
     drawBox(graphic, rect, active ? ActiveColor : ButtonColor, active ? ActiveBorderColor : BorderColor);
-    drawLabel(graphic, textX, textTop(rect, textSize), label, textSize, TextColor);
+    drawLabel(graphic, textX, textTop(rect, textSize), label, textSize, enabled ? TextColor : OrByte::RGBA(105, 105, 105, 255));
 }
 
 [[nodiscard]] std::string timestampedWorldName()
@@ -161,20 +161,20 @@ void drawButton(const OrByte::IGraphic& graphic, const Rect& rect, const std::st
 
 } // namespace
 
-OrByte::FilesManagementWidget::FilesManagementWidget(World& world, const ComponentFactories& factories, AssetsWidget& assets, int width)
-    : Widget("", width), _world(world), _factories(factories), _assets(assets), _baseWidth(width)
+OrByte::FilesManagementWidget::FilesManagementWidget(SceneCollection& scenes, const ComponentFactories& factories, AssetsWidget* assets, std::filesystem::path& projectDirectory, int width)
+    : Widget("", width), _scenes(scenes), _factories(factories), _assets(assets), _projectDirectory(projectDirectory), _baseWidth(width)
 {
 }
 
 void OrByte::FilesManagementWidget::_compile()
 {
     try {
-        serializeWorld(this->_world, constants::GAME_WORLD);
+        this->_scenes.currentWorld().ensureCamera();
+        serializeWorld(this->_scenes.currentWorld(), constants::GAME_WORLD);
     } catch (const std::exception& error) {
         std::cerr << "Cannot export world: " << error.what() << std::endl;
         return;
     }
-    this->_world.ensureCamera();
     system("cmake -S cmake/GameEngine -B build-solo && cmake --build build-solo");
 }
 
@@ -184,7 +184,7 @@ void OrByte::FilesManagementWidget::_save()
 
     try {
         std::filesystem::create_directories(path.parent_path());
-        serializeWorld(this->_world, path);
+        this->_scenes.save(path);
         std::cout << "World saved to " << path.string() << std::endl;
     } catch (const std::exception& error) {
         std::cerr << "Cannot save world: " << error.what() << std::endl;
@@ -196,13 +196,11 @@ void OrByte::FilesManagementWidget::_save()
 void OrByte::FilesManagementWidget::_load(const std::filesystem::path& path)
 {
     try {
-        deserializeWorld(this->_world, path, this->_factories);
+        this->_scenes.load(path, this->_factories);
         std::cout << "World loaded from " << path.string() << std::endl;
     } catch (const std::exception& error) {
         std::cerr << "Cannot load world: " << error.what() << std::endl;
     }
-    this->_world.ensureCamera();
-    this->_world.clearSelectedEntity();
     this->_close();
 }
 
@@ -266,7 +264,8 @@ void OrByte::FilesManagementWidget::_openNaming()
     this->_files.clear();
     this->_scrollOffset = 0;
     this->_fileName.clear();
-    this->_defaultName = timestampedWorldName();
+    const auto& path = this->_scenes.scenes().at(this->_scenes.selectedIndex()).path;
+    this->_defaultName = path.empty() ? timestampedWorldName() : path.stem().string();
     this->_resize(namingWidth());
 }
 
@@ -286,10 +285,13 @@ void OrByte::FilesManagementWidget::_onClick(Vector2 localMouse)
     const int height = this->getContentRect().h;
 
     if (buttonRect(Button::Compile, height).contains(x, y)) {
-        this->_compile();
+        if (!this->_scenes.empty())
+            this->_compile();
         return;
     }
     if (buttonRect(Button::Save, height).contains(x, y)) {
+        if (this->_scenes.empty())
+            return;
         if (this->_mode == Mode::Naming)
             this->_save();
         else
@@ -307,7 +309,8 @@ void OrByte::FilesManagementWidget::_onClick(Vector2 localMouse)
         if (this->_mode == Mode::PickingProject)
             this->_close();
         else
-            this->_openProjectPicker(this->_assets.getDirPath());
+            this->_openProjectPicker(this->_assets ? this->_assets->getDirPath()
+                : (this->_projectDirectory.empty() ? std::filesystem::current_path() : this->_projectDirectory));
         return;
     }
     if (this->_mode != Mode::Picking && this->_mode != Mode::PickingProject)
@@ -320,7 +323,9 @@ void OrByte::FilesManagementWidget::_onClick(Vector2 localMouse)
             if (this->_mode == Mode::PickingProject) {
                 if (index == 0) {
                     try {
-                        this->_assets.setDirPath(this->_projectPath);
+                        if (this->_assets)
+                            this->_assets->setDirPath(this->_projectPath);
+                        this->_projectDirectory = this->_projectPath;
                         this->_close();
                     } catch (const std::exception& error) {
                         std::cerr << "Cannot select project directory: " << error.what() << std::endl;
@@ -408,7 +413,8 @@ void OrByte::FilesManagementWidget::draw(const IGraphic& graphic, Vector2u size)
         const bool active = (button == Button::Save && this->_mode == Mode::Naming)
             || (button == Button::Load && this->_mode == Mode::Picking)
             || (button == Button::Project && this->_mode == Mode::PickingProject);
-        drawButton(graphic, buttonRect(button, height), ButtonLabels.at(i), ButtonTextSize, active);
+        const bool enabled = button == Button::Load || button == Button::Project || !this->_scenes.empty();
+        drawButton(graphic, buttonRect(button, height), ButtonLabels.at(i), ButtonTextSize, active, enabled);
     }
     if (this->_mode == Mode::Idle)
         return;
