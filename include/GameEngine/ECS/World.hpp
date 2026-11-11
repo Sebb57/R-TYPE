@@ -60,8 +60,7 @@ public:
         return componentManager.getComponents(entityId);
     }
     [[nodiscard]] static bool isComponentRemovable(OrByte::ComponentType type) {
-        return type != OrByte::ComponentType::Camera
-            && type != OrByte::ComponentType::Name
+        return type != OrByte::ComponentType::Name
             && type != OrByte::ComponentType::Transform;
     }
     template <typename T>
