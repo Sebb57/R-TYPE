@@ -10,7 +10,6 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
-#include <cstdlib>
 #include <exception>
 #include <filesystem>
 #include <format>
@@ -159,21 +158,14 @@ void drawButton(const OrByte::IGraphic& graphic, const Rect& rect, const std::st
 
 } // namespace
 
-OrByte::FilesManagementWidget::FilesManagementWidget(World& world, const ComponentFactories& factories, int width)
-    : Widget("", width), _world(world), _factories(factories), _baseWidth(width)
+OrByte::FilesManagementWidget::FilesManagementWidget(World& world, const ComponentFactories& factories, Console& console, int width)
+    : Widget("", width), _world(world), _factories(factories), _console(console), _baseWidth(width)
 {
 }
 
 void OrByte::FilesManagementWidget::_compile()
 {
-    try {
-        serializeWorld(this->_world, constants::GAME_WORLD);
-    } catch (const std::exception& error) {
-        std::cerr << "Cannot export world: " << error.what() << std::endl;
-        return;
-    }
-    this->_world.ensureCamera();
-    system("cmake -S cmake/GameEngine -B build-solo && cmake --build build-solo");
+    this->_console.execute("compile");
 }
 
 void OrByte::FilesManagementWidget::_save()

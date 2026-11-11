@@ -54,6 +54,9 @@ class Widget {
         std::unique_ptr<Widget> detach(Side side);
         [[nodiscard]] Widget *getChild(Side side) const noexcept;
         [[nodiscard]] Widget *getParent() const noexcept { return this->_parent; }
+        Widget& setBody(std::unique_ptr<Widget> body);
+        std::unique_ptr<Widget> takeBody();
+        [[nodiscard]] Widget *getBody() const noexcept;
 
         // Rect
         void setRect(const Rect& rect);
@@ -90,6 +93,7 @@ class Widget {
         // Drag
         void beginDrag(DragPayload payload);
         [[nodiscard]] bool isLeftButtonDown() const noexcept;
+        [[nodiscard]] bool hasFocus() const noexcept;
         [[nodiscard]] virtual bool canAccept([[maybe_unused]] const DragPayload& payload, [[maybe_unused]] Vector2 localMouse) { return false; }
         virtual void onDrop([[maybe_unused]] const DragPayload& payload, [[maybe_unused]] Vector2 localMouse) {}
 
@@ -119,6 +123,7 @@ class Widget {
             bool active = false;
         };
 
+        static constexpr std::size_t BODY_SLOT = SIDE_COUNT;
         static constexpr int GRIP = 4;
         static constexpr int MIN_CONTENT = 50;
         static constexpr int MOVE_THRESHOLD = 6;
@@ -129,7 +134,7 @@ class Widget {
         Rect _rect;
         Rect _content;
         Widget *_parent = nullptr;
-        std::array<std::unique_ptr<Widget>, SIDE_COUNT> _children;
+        std::array<std::unique_ptr<Widget>, SIDE_COUNT + 1> _children;
 
         Side _side = Side::Top;
         bool _resizable = true;
@@ -142,6 +147,7 @@ class Widget {
 
         Payload _payload;
         bool _leftDown = false;
+        Widget *_focus = nullptr;
         int _mouseX = 0;
         int _mouseY = 0;
 
@@ -168,6 +174,7 @@ class Widget {
         void _renderDropPreview(const IGraphic& graphic) const;
 
 
+        [[nodiscard]] Widget *_findFocus(int x, int y);
         [[nodiscard]] Widget *_rootWidget() noexcept;
         [[nodiscard]] const Widget *_rootWidget() const noexcept;
         [[nodiscard]] Widget *_findAcceptor(int x, int y, const DragPayload& payload);

@@ -107,6 +107,36 @@ OrByte::Widget *OrByte::Widget::getChild(Side side) const noexcept
     return this->_children.at(sideIndex(side)).get();
 }
 
+OrByte::Widget& OrByte::Widget::setBody(std::unique_ptr<Widget> body)
+{
+    if (!body)
+        throw std::invalid_argument("Widget::setBody: null body");
+
+    std::unique_ptr<Widget>& slot = this->_children.at(BODY_SLOT);
+
+    slot = std::move(body);
+    slot->_parent = this;
+    slot->_resizable = false;
+    slot->_movable = false;
+    this->_layout();
+    return *slot;
+}
+
+std::unique_ptr<OrByte::Widget> OrByte::Widget::takeBody()
+{
+    std::unique_ptr<Widget> body = std::move(this->_children.at(BODY_SLOT));
+
+    if (body)
+        body->_parent = nullptr;
+    this->_layout();
+    return body;
+}
+
+OrByte::Widget *OrByte::Widget::getBody() const noexcept
+{
+    return this->_children.at(BODY_SLOT).get();
+}
+
 void OrByte::Widget::setRect(const Rect& rect)
 {
     this->_rect = Rect(rect.x, rect.y, std::max(rect.w, 0), std::max(rect.h, 0));
@@ -142,6 +172,14 @@ void OrByte::Widget::_layout()
         child->setRect(cutSide(area, static_cast<Side>(i), child->_size));
     }
     this->_content = area;
+
+    Widget *body = this->getBody();
+
+    if (body != nullptr && body->_visible) {
+        const int header = std::clamp(this->getHeaderHeight(), 0, area.h);
+
+        body->setRect(Rect(area.x, area.y + header, area.w, area.h - header));
+    }
 }
 
 void OrByte::Widget::_layoutParent()
@@ -189,6 +227,8 @@ bool OrByte::Widget::handleEvent(const Event& event)
             this->_mouseY = event.windowY;
             if (event.type == Event::Type::MouseButtonPressed && event.mouseButton == Event::MouseButton::Left)
                 this->_leftDown = true;
+            if (event.type == Event::Type::MouseButtonPressed)
+                this->_focus = this->_findFocus(event.windowX, event.windowY);
 
             if (this->_payload.active) {
                 const bool consumed = this->_handlePayload(event);
@@ -546,6 +586,24 @@ const OrByte::Widget *OrByte::Widget::_rootWidget() const noexcept
 bool OrByte::Widget::isLeftButtonDown() const noexcept
 {
     return this->_rootWidget()->_leftDown;
+}
+
+bool OrByte::Widget::hasFocus() const noexcept
+{
+    return this->_rootWidget()->_focus == this;
+}
+
+OrByte::Widget *OrByte::Widget::_findFocus(int x, int y)
+{
+    if (!this->_visible || !this->_rect.contains(x, y))
+        return nullptr;
+
+    for (const std::unique_ptr<Widget>& child : this->_children)
+        if (child)
+            if (Widget *found = child->_findFocus(x, y))
+                return found;
+
+    return this->_content.contains(x, y) ? this : nullptr;
 }
 
 void OrByte::Widget::beginDrag(DragPayload payload)

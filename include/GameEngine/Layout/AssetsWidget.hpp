@@ -65,6 +65,8 @@ class AssetsWidget final : public Widget {
         void _getEntries();
         void _sortEntries(SortType type, bool ascending = true);
         void _navigateTo(const std::filesystem::path& path);
+        [[nodiscard]] float _titleHeight() const;
+        [[nodiscard]] float _headerHeight() const;
 };
 
 } // namespace OrByte

@@ -9,6 +9,7 @@
 #ifndef FILESMANAGEMENTWIDGET_HPP_
 #define FILESMANAGEMENTWIDGET_HPP_
 
+#include "GameEngine/Console/Console.hpp"
 #include "GameEngine/ECS/World.hpp"
 #include "GameEngine/ECS/WorldSerializer.hpp"
 #include "Widget.hpp"
@@ -22,7 +23,7 @@ namespace OrByte {
 
 class FilesManagementWidget final : public Widget {
     public:
-        FilesManagementWidget(World& world, const ComponentFactories& factories, int width = 480);
+        FilesManagementWidget(World& world, const ComponentFactories& factories, Console& console, int width = 480);
         ~FilesManagementWidget() override = default;
 
     protected:
@@ -38,6 +39,7 @@ class FilesManagementWidget final : public Widget {
 
         World& _world;
         const ComponentFactories& _factories;
+        Console& _console;
         int _baseWidth;
         Mode _mode = Mode::Idle;
         std::vector<std::filesystem::path> _files;

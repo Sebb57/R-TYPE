@@ -9,6 +9,7 @@
 #ifndef GAMEENGINE_HPP_
     #define GAMEENGINE_HPP_
 
+#include "GameEngine/Console/Console.hpp"
 #include "GameEngine/Layout/Widget.hpp"
 #include "plugins/DynamicLibrary.hpp"
 #include "plugins/IAudio.hpp"
@@ -39,6 +40,7 @@ class GameEngine {
         std::unique_ptr<Widget> _root;
         ComponentPlugins _components;
         World _world;
+        Console _console;
         std::unique_ptr<DynamicLibrary> _audioLoader;
         std::unique_ptr<DynamicLibrary> _audioSystemLoader;
         std::unique_ptr<IAudio> _audio;
