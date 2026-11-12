@@ -23,10 +23,12 @@ namespace {
 
 #ifdef _WIN32
 constexpr std::string_view SHELL_HELP = "anything else runs in cmd, like dir";
+constexpr std::string_view GAME_BUILD_DIR = "build-solo-windows";
 constexpr std::string_view CONFIGURE_FLAGS = " -DCMAKE_BUILD_TYPE=Release";
 constexpr std::string_view BUILD_FLAGS = " --config Release --parallel";
 #else
 constexpr std::string_view SHELL_HELP = "anything else runs in sh, like ls";
+constexpr std::string_view GAME_BUILD_DIR = "build-solo";
 constexpr std::string_view CONFIGURE_FLAGS;
 constexpr std::string_view BUILD_FLAGS;
 #endif
@@ -183,8 +185,9 @@ void OrByte::Console::_compile([[maybe_unused]] const std::string& argument)
         components.size(), options.getPlugins(CompileOptions::Kind::Component).size()), LineKind::Info);
     if (!options.getPlugins(CompileOptions::Kind::System).empty() && !std::ranges::contains(systems, "Display"))
         this->_print("Display is not compiled: the game won't draw anything", LineKind::Info);
-    this->_run(std::format("cmake -S cmake/GameEngine -B build-solo \"-DORBYTE_GAME_WORLD={}\" {}{} && cmake --build build-solo{}",
-        worldPath.generic_string(), options.cmakeArguments(), CONFIGURE_FLAGS, BUILD_FLAGS), this->_root);
+    this->_run(std::format("cmake -S cmake/GameEngine -B {} \"-DORBYTE_GAME_WORLD={}\" {}{} && cmake --build {}{}",
+        GAME_BUILD_DIR, worldPath.generic_string(), options.cmakeArguments(), CONFIGURE_FLAGS, GAME_BUILD_DIR, BUILD_FLAGS),
+        this->_root);
     this->_compiling = this->_process != nullptr;
 }
 

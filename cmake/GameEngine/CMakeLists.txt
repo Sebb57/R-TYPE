@@ -1,5 +1,6 @@
 # Standalone build of the game produced by the engine:
 #   cmake -S cmake/GameEngine -B build-solo && cmake --build build-solo
+# (the engine builds in build-solo on Linux and build-solo-windows on Windows)
 #
 # The engine's "compile" command (Compile Options tab) sets:
 #   ORBYTE_GAME_NAME    name of the game binary, written to the repository root
@@ -116,22 +117,26 @@ if(WIN32)
     target_link_libraries(rtype_asio INTERFACE ws2_32 mswsock)
 endif()
 
-# Lua is only needed by the Script system
+# Lua is only needed by the Script system. It comes from the GitHub mirror: on Windows, CMake's
+# downloader (schannel) fails the TLS handshake with www.lua.org.
 if("Script" IN_LIST SYSTEM_PLUGINS)
     FetchContent_Declare(lua
-        URL https://www.lua.org/ftp/lua-5.4.7.tar.gz
+        URL https://github.com/lua/lua/archive/refs/tags/v5.4.7.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
     FetchContent_MakeAvailable(lua)
 
-    file(GLOB LUA_SOURCES "${lua_SOURCE_DIR}/src/*.c")
+    # The repository keeps the sources at its root, next to the interpreter and test builds
+    file(GLOB LUA_SOURCES "${lua_SOURCE_DIR}/*.c")
     list(REMOVE_ITEM LUA_SOURCES
-        "${lua_SOURCE_DIR}/src/lua.c"
-        "${lua_SOURCE_DIR}/src/luac.c"
+        "${lua_SOURCE_DIR}/lua.c"
+        "${lua_SOURCE_DIR}/luac.c"
+        "${lua_SOURCE_DIR}/onelua.c"
+        "${lua_SOURCE_DIR}/ltests.c"
     )
     add_library(lua_static STATIC ${LUA_SOURCES})
     set_target_properties(lua_static PROPERTIES LINKER_LANGUAGE C)
-    target_include_directories(lua_static SYSTEM PUBLIC "${lua_SOURCE_DIR}/src")
+    target_include_directories(lua_static SYSTEM PUBLIC "${lua_SOURCE_DIR}")
     if(UNIX)
         target_compile_definitions(lua_static PRIVATE LUA_USE_POSIX)
         target_link_libraries(lua_static PUBLIC m)
@@ -146,7 +151,10 @@ if("Script" IN_LIST SYSTEM_PLUGINS)
 
     add_library(rtype_lua INTERFACE)
     target_link_libraries(rtype_lua INTERFACE lua_static sol2::sol2)
+    # The repository has no lua.hpp: without this sol2 would pick the system one, and the
+    # system's Lua (5.5 on recent distributions) instead of this 5.4
     target_compile_definitions(rtype_lua INTERFACE
+        SOL_NO_LUA_HPP=1
         $<$<CONFIG:Debug>:SOL_ALL_SAFETIES_ON=1>
     )
 endif()
@@ -230,6 +238,14 @@ if(RTYPE_GAME_AUDIO)
     rtype_configure_plugin(rtype_sfml_audio "SFMLAudio" "${RTYPE_ROOT}/${GAME_PLUGINS_DIR}")
     target_include_directories(rtype_sfml_audio PRIVATE "${RTYPE_ROOT}/include")
     target_link_libraries(rtype_sfml_audio PRIVATE sfml-audio sfml-system)
+    # SFML's prebuilt libFLAC needs msvcrt's __iob_func, gone from the Universal CRT
+    if(MINGW)
+        include(CheckSymbolExists)
+        check_symbol_exists(_UCRT "stdio.h" RTYPE_MINGW_UCRT)
+        if(RTYPE_MINGW_UCRT)
+            target_sources(rtype_sfml_audio PRIVATE "${RTYPE_ROOT}/src/plugins/UcrtIobFunc.c")
+        endif()
+    endif()
     list(APPEND LIBRARY_TARGETS rtype_sfml_audio)
 endif()
 
