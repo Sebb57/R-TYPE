@@ -7,14 +7,16 @@
 **/
 
 #include "client/scenes/AScene.hpp"
+#include "constants.hpp"
+#include <filesystem>
 #include <utility>
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "client/scenes/Theme.hpp"
 
 client::AScene::AScene(SceneContext& context)
     : _context(context)
-    , _physicsLoader("./plugins/systems/PhysicSystem.so")
-    , _displayLoader("./plugins/systems/DisplaySystem.so")
+    , _physicsLoader(std::filesystem::path(OrByte::constants::SYSTEMS_DIR) / OrByte::constants::pluginFile("PhysicSystem"))
+    , _displayLoader(std::filesystem::path(OrByte::constants::SYSTEMS_DIR) / OrByte::constants::pluginFile("DisplaySystem"))
     , _physics(this->_physicsLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(this->_world))
     , _display(this->_displayLoader.loadFunction<OrByte::ISystem* (*)(World&, OrByte::IGraphic&)>("factory")(this->_world, context.graphic))
 {}

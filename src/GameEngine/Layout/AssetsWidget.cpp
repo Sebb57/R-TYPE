@@ -106,7 +106,7 @@ bool isFileDir(const std::filesystem::path path)
 {
     struct stat s;
 
-    if (stat(path.c_str(), &s) == 0)
+    if (stat(path.string().c_str(), &s) == 0)
         if (s.st_mode & S_IFDIR)
             return true;
     return false;
@@ -155,7 +155,7 @@ void OrByte::AssetsWidget::_getEntries()
 {
     struct dirent* entry;
 
-    DIR* dir = opendir(this->_dirPath.c_str());
+    DIR* dir = opendir(this->_dirPath.string().c_str());
     if (!dir)
         throw std::runtime_error("Couldn't open directory");
     std::vector<std::string> entries;
@@ -286,7 +286,7 @@ void OrByte::AssetsWidget::draw(const IGraphic& graphic, Vector2u size)
     this->_dirButtons.clear();
 
     const auto addDirButton = [&](const std::filesystem::path& path) {
-        const Vector2 size = drawButton(graphic, {currX, crumbY}, path.filename());
+        const Vector2 size = drawButton(graphic, {currX, crumbY}, path.filename().string());
 
         this->_dirButtons.push_back({currX, crumbY, size.x, size.y, path});
         currX += size.x + DIRS_GAP;

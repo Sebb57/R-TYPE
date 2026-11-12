@@ -13,6 +13,8 @@
     #include "plugins/DynamicLibrary.hpp"
     #include <filesystem>
     #include <memory>
+    #include <string>
+    #include <unordered_map>
     #include <vector>
 
 namespace OrByte {
@@ -20,9 +22,11 @@ namespace OrByte {
 struct ComponentPlugins {
     std::vector<std::unique_ptr<DynamicLibrary>> loaders;
     ComponentFactories factories;
+    std::unordered_map<ComponentType, std::string> names;
 };
 
 [[nodiscard]] ComponentPlugins loadComponentPlugins(const std::filesystem::path& directory);
+[[nodiscard]] ComponentPlugins loadComponentPlugins(const std::filesystem::path& directory, const std::vector<std::string>& enabled);
 
 } // namespace OrByte
 

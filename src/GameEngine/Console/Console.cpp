@@ -12,11 +12,40 @@
 #include <exception>
 #include <format>
 #include <functional>
+#include <optional>
 #include <ranges>
+#include <set>
 #include <sstream>
+#include <string_view>
 #include <utility>
 
-OrByte::Console::Console(SceneCollection& scenes) : _scenes(scenes), _root(std::filesystem::current_path()), _cwd(_root)
+namespace {
+
+#ifdef _WIN32
+constexpr std::string_view SHELL_HELP = "anything else runs in cmd, like dir";
+constexpr std::string_view GAME_BUILD_DIR = "build-solo-windows";
+constexpr std::string_view CONFIGURE_FLAGS = " -DCMAKE_BUILD_TYPE=Release";
+constexpr std::string_view BUILD_FLAGS = " --config Release --parallel";
+#else
+constexpr std::string_view SHELL_HELP = "anything else runs in sh, like ls";
+constexpr std::string_view GAME_BUILD_DIR = "build-solo";
+constexpr std::string_view CONFIGURE_FLAGS;
+constexpr std::string_view BUILD_FLAGS;
+#endif
+
+[[nodiscard]] std::filesystem::path gameWorldPath()
+{
+#ifdef _WIN32
+    return std::filesystem::temp_directory_path() / std::filesystem::path(OrByte::constants::GAME_WORLD).filename();
+#else
+    return OrByte::constants::GAME_WORLD;
+#endif
+}
+
+} // namespace
+
+OrByte::Console::Console(SceneCollection& scenes, const ComponentPlugins& components)
+    : _scenes(scenes), _components(components), _root(std::filesystem::current_path()), _cwd(_root)
 {
     this->_print("Type 'help' to list the commands", LineKind::Info);
 }
@@ -97,7 +126,7 @@ void OrByte::Console::_help([[maybe_unused]] const std::string& argument)
 
     for (const auto& [name, command] : this->_commands)
         this->_print(std::format("{:<{}}{}", name, width, command.help), LineKind::Info);
-    this->_print("anything else runs in sh, like ls", LineKind::Info);
+    this->_print(std::string(SHELL_HELP), LineKind::Info);
 }
 
 void OrByte::Console::_clear([[maybe_unused]] const std::string& argument)
@@ -127,16 +156,38 @@ void OrByte::Console::_compile([[maybe_unused]] const std::string& argument)
         this->_print("No scene to compile", LineKind::Error);
         return;
     }
+
+    CompileOptions options = CompileOptions::load(this->_root / constants::COMPILE_OPTIONS);
+
+    options.scan(this->_root / constants::PLUGINS_DIR);
+    if (const std::optional<std::string> error = options.checkBinaryName(this->_root)) {
+        this->_print(*error + ", change it in Compile Options", LineKind::Error);
+        return;
+    }
+    std::filesystem::path worldPath;
+
     try {
         World& world = this->_scenes.currentWorld();
 
+        worldPath = gameWorldPath();
         world.ensureCamera();
-        serializeWorld(world, constants::GAME_WORLD);
+        serializeWorld(world, worldPath);
     } catch (const std::exception& error) {
         this->_print(std::string("Cannot export world: ") + error.what(), LineKind::Error);
         return;
     }
-    this->_run("cmake -S cmake/GameEngine -B build-solo && cmake --build build-solo", this->_root);
+
+    const std::vector<std::string> systems = options.getEnabled(CompileOptions::Kind::System);
+    const std::vector<std::string> components = options.getEnabled(CompileOptions::Kind::Component);
+
+    this->_print(std::format("Compiling {} with {}/{} systems and {}/{} components", options.getBinaryName(),
+        systems.size(), options.getPlugins(CompileOptions::Kind::System).size(),
+        components.size(), options.getPlugins(CompileOptions::Kind::Component).size()), LineKind::Info);
+    if (!options.getPlugins(CompileOptions::Kind::System).empty() && !std::ranges::contains(systems, "Display"))
+        this->_print("Display is not compiled: the game won't draw anything", LineKind::Info);
+    this->_run(std::format("cmake -S cmake/GameEngine -B {} \"-DORBYTE_GAME_WORLD={}\" {}{} && cmake --build {}{}",
+        GAME_BUILD_DIR, worldPath.generic_string(), options.cmakeArguments(), CONFIGURE_FLAGS, GAME_BUILD_DIR, BUILD_FLAGS),
+        this->_root);
     this->_compiling = this->_process != nullptr;
 }
 

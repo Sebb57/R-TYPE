@@ -22,16 +22,16 @@ namespace {
 
 enum class Button : std::uint8_t {
     Compile,
+    CompileOptions,
     Save,
     Load,
     Project,
 };
 
-constexpr std::array<const char *, 4> ButtonLabels{"Compile", "Save", "Load", "Open Project"};
-constexpr int ButtonCount = static_cast<int>(ButtonLabels.size());
+constexpr std::array<const char *, 5> ButtonLabels{"Compile", "Compile Options", "Save", "Load", "Open Project"};
+constexpr std::array<int, ButtonLabels.size()> ButtonWidths{90, 130, 90, 90, 100};
 
 constexpr int Padding = 6;
-constexpr int ButtonWidth = 90;
 constexpr int FileButtonWidth = 210;
 constexpr int NameFieldWidth = 260;
 constexpr std::size_t NameMaxLength = 64;
@@ -51,16 +51,25 @@ const OrByte::RGBA TextColor(220, 220, 220, 255);
 const OrByte::RGBA MutedText(170, 180, 196, 255);
 const OrByte::RGBA WarningText(220, 170, 90, 255);
 
+[[nodiscard]] constexpr int buttonX(std::size_t index)
+{
+    int x = Padding;
+
+    for (std::size_t i = 0; i < index; ++i)
+        x += ButtonWidths.at(i) + Padding;
+    return x;
+}
+
 [[nodiscard]] Rect buttonRect(Button button, int height)
 {
-    const int index = static_cast<int>(button);
+    const auto index = static_cast<std::size_t>(button);
 
-    return {Padding + (index * (ButtonWidth + Padding)), Padding, ButtonWidth, std::max(0, height - (2 * Padding))};
+    return {buttonX(index), Padding, ButtonWidths.at(index), std::max(0, height - (2 * Padding))};
 }
 
 [[nodiscard]] constexpr int pickerX()
 {
-    return Padding + (ButtonCount * (ButtonWidth + Padding)) + Padding;
+    return buttonX(ButtonLabels.size()) + Padding;
 }
 
 [[nodiscard]] Rect fileRect(std::size_t slot, int height)
@@ -281,6 +290,11 @@ void OrByte::FilesManagementWidget::_onClick(Vector2 localMouse)
             this->_compile();
         return;
     }
+    if (buttonRect(Button::CompileOptions, height).contains(x, y)) {
+        if (this->_onCompileOptions)
+            this->_onCompileOptions();
+        return;
+    }
     if (buttonRect(Button::Save, height).contains(x, y)) {
         if (this->_scenes.empty())
             return;
@@ -405,7 +419,7 @@ void OrByte::FilesManagementWidget::draw(const IGraphic& graphic, Vector2u size)
         const bool active = (button == Button::Save && this->_mode == Mode::Naming)
             || (button == Button::Load && this->_mode == Mode::Picking)
             || (button == Button::Project && this->_mode == Mode::PickingProject);
-        const bool enabled = button == Button::Load || button == Button::Project || !this->_scenes.empty();
+        const bool enabled = button == Button::Load || button == Button::Project || button == Button::CompileOptions || !this->_scenes.empty();
         drawButton(graphic, buttonRect(button, height), ButtonLabels.at(i), ButtonTextSize, active, enabled);
     }
     if (this->_mode == Mode::Idle)
