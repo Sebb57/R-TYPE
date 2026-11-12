@@ -123,6 +123,10 @@ bool server::GameInstance::loadAudio()
 server::GameInstance::~GameInstance()
 {
     this->stop();
+    this->_display.system.reset();
+    for (LoadedSystem& loaded : this->_systems)
+        loaded.system.reset();
+    this->_world.reset();
 }
 
 void server::GameInstance::start()
