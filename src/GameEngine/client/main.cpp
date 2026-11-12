@@ -16,6 +16,7 @@
 #include "GameEngine/ECS/World.hpp"
 #include "GameEngine/ECS/WorldSerializer.hpp"
 #include "GameEngine/client/Client.hpp"
+#include "GameEngine/client/GamePlugins.hpp"
 #include "GameEngine/client/GameWorld.hpp"
 #include "constants.hpp"
 
@@ -37,7 +38,10 @@ int main()
     try {
         if (client::gameWorld().empty())
             throw OrByte::WorldSerializerException("This game has no world, compile it from the engine");
-        const OrByte::ComponentPlugins components = OrByte::loadComponentPlugins(OrByte::constants::COMPONENTS_DIR);
+        const auto& compiled = client::compiledComponents();
+        const OrByte::ComponentPlugins components = compiled
+            ? OrByte::loadComponentPlugins(OrByte::constants::COMPONENTS_DIR, *compiled)
+            : OrByte::loadComponentPlugins(OrByte::constants::COMPONENTS_DIR);
         client::ClientConfig config;
         client::Client client(std::move(config), engineGame(client::gameWorld(), components.factories));
         client.run();

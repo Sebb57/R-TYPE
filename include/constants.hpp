@@ -23,7 +23,10 @@ inline constexpr int SERVER_WINDOW_Y = 1080;
 
 inline constexpr const char *CONFIGS_DIR = "./configs";
 inline constexpr const char *GAME_WORLD = "/tmp/game.obe";
+inline constexpr const char *PLUGINS_DIR = "./plugins";
+inline constexpr const char *SYSTEMS_DIR = "./plugins/systems";
 inline constexpr const char *COMPONENTS_DIR = "./plugins/components";
+inline constexpr const char *COMPILE_OPTIONS = "./configs/compile.options";
 inline constexpr const char *FONT_DEFAULT = "assets/fonts/NotoSans-Regular.ttf";
 inline constexpr const char *SPRITE_PLAYER = "./assets/sprites/thanks.png";
 inline constexpr const char *SPRITE_PROJECTILE = "./assets/sprites/thanks.png";

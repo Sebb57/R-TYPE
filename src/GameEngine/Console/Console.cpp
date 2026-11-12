@@ -12,11 +12,14 @@
 #include <exception>
 #include <format>
 #include <functional>
+#include <optional>
 #include <ranges>
+#include <set>
 #include <sstream>
 #include <utility>
 
-OrByte::Console::Console(SceneCollection& scenes) : _scenes(scenes), _root(std::filesystem::current_path()), _cwd(_root)
+OrByte::Console::Console(SceneCollection& scenes, const ComponentPlugins& components)
+    : _scenes(scenes), _components(components), _root(std::filesystem::current_path()), _cwd(_root)
 {
     this->_print("Type 'help' to list the commands", LineKind::Info);
 }
@@ -127,6 +130,14 @@ void OrByte::Console::_compile([[maybe_unused]] const std::string& argument)
         this->_print("No scene to compile", LineKind::Error);
         return;
     }
+
+    CompileOptions options = CompileOptions::load(this->_root / constants::COMPILE_OPTIONS);
+
+    options.scan(this->_root / constants::PLUGINS_DIR);
+    if (const std::optional<std::string> error = options.checkBinaryName(this->_root)) {
+        this->_print(*error + ", change it in Compile Options", LineKind::Error);
+        return;
+    }
     try {
         World& world = this->_scenes.currentWorld();
 
@@ -136,8 +147,17 @@ void OrByte::Console::_compile([[maybe_unused]] const std::string& argument)
         this->_print(std::string("Cannot export world: ") + error.what(), LineKind::Error);
         return;
     }
-    this->_run(std::format("cmake -S cmake/GameEngine -B build-solo \"-DORBYTE_GAME_WORLD={}\" && cmake --build build-solo",
-        constants::GAME_WORLD), this->_root);
+
+    const std::vector<std::string> systems = options.getEnabled(CompileOptions::Kind::System);
+    const std::vector<std::string> components = options.getEnabled(CompileOptions::Kind::Component);
+
+    this->_print(std::format("Compiling {} with {}/{} systems and {}/{} components", options.getBinaryName(),
+        systems.size(), options.getPlugins(CompileOptions::Kind::System).size(),
+        components.size(), options.getPlugins(CompileOptions::Kind::Component).size()), LineKind::Info);
+    if (!options.getPlugins(CompileOptions::Kind::System).empty() && !std::ranges::contains(systems, "Display"))
+        this->_print("Display is not compiled: the game won't draw anything", LineKind::Info);
+    this->_run(std::format("cmake -S cmake/GameEngine -B build-solo \"-DORBYTE_GAME_WORLD={}\" {} && cmake --build build-solo",
+        constants::GAME_WORLD, options.cmakeArguments()), this->_root);
     this->_compiling = this->_process != nullptr;
 }
 

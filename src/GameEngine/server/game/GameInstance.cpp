@@ -8,30 +8,116 @@
 
 #include "GameEngine/server/game/GameInstance.hpp"
 #include <algorithm>
+#include <array>
 #include <chrono>
+#include <exception>
+#include <filesystem>
+#include <iostream>
+#include <string_view>
 #include <utility>
 #include "GameEngine/ECS/Components/Controllable.hpp"
 #include "GameEngine/ECS/Components/Sprite.hpp"
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "GameEngine/ECS/World.hpp"
+#include "GameEngine/client/GamePlugins.hpp"
 #include "constants.hpp"
+#include "plugins/IAudio.hpp"
 #include "plugins/IGraphic.hpp"
+
+namespace {
+
+#ifdef _WIN32
+constexpr std::string_view PLUGIN_EXTENSION = ".dll";
+#else
+constexpr std::string_view PLUGIN_EXTENSION = ".so";
+#endif
+constexpr std::string_view SYSTEM_SUFFIX = "System";
+
+constexpr std::array<std::string_view, 6> TICK_ORDER{"Control", "Script", "Physic", "Collider", "Health", "Audio"};
+
+[[nodiscard]] std::filesystem::path systemPath(const std::string& name)
+{
+    return std::filesystem::path(OrByte::constants::SYSTEMS_DIR) / (name + std::string(SYSTEM_SUFFIX) + std::string(PLUGIN_EXTENSION));
+}
+
+[[nodiscard]] std::vector<std::string> systemsOnDisk()
+{
+    std::vector<std::string> names;
+    std::error_code error;
+
+    for (const auto& entry : std::filesystem::directory_iterator(OrByte::constants::SYSTEMS_DIR, error)) {
+        const std::string stem = entry.path().stem().string();
+
+        if (entry.path().extension() == PLUGIN_EXTENSION && stem.ends_with(SYSTEM_SUFFIX) && stem.size() > SYSTEM_SUFFIX.size())
+            names.push_back(stem.substr(0, stem.size() - SYSTEM_SUFFIX.size()));
+    }
+    return names;
+}
+
+[[nodiscard]] std::size_t tickRank(const std::string& name)
+{
+    return static_cast<std::size_t>(std::ranges::distance(TICK_ORDER.begin(), std::ranges::find(TICK_ORDER, name)));
+}
+
+} // namespace
 
 server::GameInstance::GameInstance(OrByte::IGraphic& graphic, unsigned tickRate, unsigned snapshotRate, const Setup& setup)
     : _tickRate(std::max(tickRate, 1U))
     , _snapshotRate(std::max(snapshotRate, 1U))
-    , _controlLoader("./plugins/systems/ControlSystem.so")
-    , _physicLoader("./plugins/systems/PhysicSystem.so")
-    , _displayLoader("./plugins/systems/DisplaySystem.so")
-    , _scriptLoader("./plugins/systems/ScriptSystem.so")
     , _world(std::make_unique<World>())
-    , _controlSystem(this->_controlLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world))
-    , _physicSystem(this->_physicLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world))
-    , _displaySystem(this->_displayLoader.loadFunction<OrByte::ISystem* (*)(World&, OrByte::IGraphic&)>("factory")(*this->_world, graphic))
-    , _scriptSystem(this->_scriptLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world))
 {
+    this->loadSystems(graphic);
     if (setup)
         setup(*this->_world);
+}
+
+void server::GameInstance::loadSystems(OrByte::IGraphic& graphic)
+{
+    const auto& compiled = client::compiledSystems();
+    std::vector<std::string> names = compiled ? *compiled : systemsOnDisk();
+
+    std::ranges::stable_sort(names, {}, tickRank);
+    for (const std::string& name : names) {
+        try {
+            auto loader = std::make_unique<OrByte::DynamicLibrary>(systemPath(name));
+            OrByte::ISystem *system = this->createSystem(name, *loader, graphic);
+
+            if (system == nullptr)
+                continue;
+            LoadedSystem loaded{name, std::move(loader), std::unique_ptr<OrByte::ISystem>(system)};
+            if (name == "Display")
+                this->_display = std::move(loaded);
+            else
+                this->_systems.push_back(std::move(loaded));
+        } catch (const std::exception& error) {
+            std::cerr << "[Game] " << name << " system disabled: " << error.what() << std::endl;
+        }
+    }
+}
+
+OrByte::ISystem *server::GameInstance::createSystem(const std::string& name, OrByte::DynamicLibrary& loader, OrByte::IGraphic& graphic)
+{
+    if (name == "Display")
+        return loader.loadFunction<OrByte::ISystem* (*)(World&, OrByte::IGraphic&)>("factory")(*this->_world, graphic);
+    if (name == "Audio")
+        return this->loadAudio() ? loader.loadFunction<OrByte::ISystem* (*)(World&, OrByte::IAudio&)>("factory")(*this->_world, *this->_audio) : nullptr;
+    return loader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world);
+}
+
+bool server::GameInstance::loadAudio()
+{
+    if (this->_audio)
+        return true;
+    try {
+        this->_audioLoader = std::make_unique<OrByte::DynamicLibrary>(
+            std::filesystem::path(OrByte::constants::PLUGINS_DIR) / ("SFMLAudio" + std::string(PLUGIN_EXTENSION)));
+        this->_audio.reset(this->_audioLoader->loadFunction<OrByte::IAudio* (*)()>("factory")());
+    } catch (const std::exception& error) {
+        std::cerr << "[Game] audio disabled: " << error.what() << std::endl;
+        this->_audio.reset();
+        this->_audioLoader.reset();
+    }
+    return this->_audio != nullptr;
 }
 
 server::GameInstance::~GameInstance()
@@ -62,7 +148,8 @@ bool server::GameInstance::push(const OrByte::Event& event)
 void server::GameInstance::render()
 {
     std::scoped_lock lock(this->_mutex);
-    this->_displaySystem->update();
+    if (this->_display.system)
+        this->_display.system->update();
 }
 
 void server::GameInstance::setSink(SnapshotSink sink)
@@ -100,14 +187,14 @@ void server::GameInstance::run(std::stop_token token)
 void server::GameInstance::applyInbound()
 {
     for (const OrByte::Event& event : this->_inbox.drain())
-        this->_controlSystem->onEvent(event);
+        for (const LoadedSystem& loaded : this->_systems)
+            loaded.system->onEvent(event);
 }
 
 void server::GameInstance::update()
 {
-    this->_controlSystem->update();
-    this->_scriptSystem->update();
-    this->_physicSystem->update();
+    for (const LoadedSystem& loaded : this->_systems)
+        loaded.system->update();
 }
 
 server::SnapshotDto server::GameInstance::makeSnapshot()

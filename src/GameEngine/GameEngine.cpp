@@ -8,6 +8,7 @@
 #include "GameEngine/GameEngine.hpp"
 #include "GameEngine/Layout/Panel.hpp"
 #include "GameEngine/Layout/AssetsWidget.hpp"
+#include "GameEngine/Layout/CompileOptionsWidget.hpp"
 #include "GameEngine/Layout/ConsoleWidget.hpp"
 #include "GameEngine/Layout/TabWidget.hpp"
 #include "GameEngine/Detail/Detail.hpp"
@@ -60,7 +61,7 @@ OrByte::GameEngine::GameEngine(std::filesystem::path graphicPath)
     : _graphicLoader(graphicPath),
       _graphicLib(this->_graphicLoader.loadFunction<IGraphic* (*)()>("factory")()),
       _components(loadComponentPlugins(constants::COMPONENTS_DIR)),
-      _console(this->_scenes)
+      _console(this->_scenes, this->_components)
 {
     this->_graphicLib->open();
     this->_loadAudio();
@@ -122,13 +123,19 @@ void OrByte::GameEngine::_initLayout()
     }
     const Widget& console = tabs.addTab(std::make_unique<ConsoleWidget>(this->_console));
     this->_console.setOnStart([&tabs, &console] { tabs.select(console); });
+    auto& compileOptions = static_cast<CompileOptionsWidget&>(tabs.addTab(std::make_unique<CompileOptionsWidget>()));
     scene->attach(Widget::Side::Bottom, std::move(bottom));
     if (!this->_scenes.empty()) {
         World& world = this->_scenes.currentWorld();
         scene->attach(Widget::Side::Left, std::make_unique<EntityWidget>(world, 250));
         scene->attach(Widget::Side::Right, std::make_unique<Detail>(world, this->_components.factories, 300));
     }
-    toolbar.attach(Widget::Side::Left, std::make_unique<FilesManagementWidget>(this->_scenes, this->_components.factories, this->_console, assetsWidget, this->_projectDirectory));
+    auto files = std::make_unique<FilesManagementWidget>(this->_scenes, this->_components.factories, this->_console, assetsWidget, this->_projectDirectory);
+    files->setOnCompileOptions([&tabs, &compileOptions] {
+        compileOptions.rescan();
+        tabs.select(compileOptions);
+    });
+    toolbar.attach(Widget::Side::Left, std::move(files));
 
     const auto [w, h] = this->_graphicLib->getWindowSize();
 

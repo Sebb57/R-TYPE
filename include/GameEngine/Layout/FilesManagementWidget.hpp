@@ -1,6 +1,6 @@
 /**
  * @file FilesManagementWidget.hpp
- * @brief toolbar buttons to compile, save and load the world
+ * @brief toolbar buttons to compile, set the compile options, save and load the world
  *
  * @author Seb
  * @date 2026-10-29
@@ -17,6 +17,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -26,8 +27,9 @@ class AssetsWidget;
 
 class FilesManagementWidget final : public Widget {
     public:
-        FilesManagementWidget(SceneCollection& scenes, const ComponentFactories& factories, Console& console, AssetsWidget* assets, std::filesystem::path& projectDirectory, int width = 480);
+        FilesManagementWidget(SceneCollection& scenes, const ComponentFactories& factories, Console& console, AssetsWidget* assets, std::filesystem::path& projectDirectory, int width = 560);
         ~FilesManagementWidget() override = default;
+        void setOnCompileOptions(std::function<void()> callback) { this->_onCompileOptions = std::move(callback); }
 
     protected:
         void draw(const IGraphic& graphic, Vector2u size) override;
@@ -53,6 +55,7 @@ class FilesManagementWidget final : public Widget {
         std::size_t _scrollOffset = 0;
         std::string _fileName;
         std::string _defaultName;
+        std::function<void()> _onCompileOptions;
 
         void _compile();
         void _save();

@@ -13,7 +13,6 @@
 
 namespace client {
 
-/// bytes of the .obe world the engine exported when compiling this game, empty if there was none
 [[nodiscard]] std::string_view gameWorld();
 
 } // namespace client
