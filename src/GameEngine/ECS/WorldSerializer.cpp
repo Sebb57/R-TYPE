@@ -75,7 +75,8 @@ void OrByte::deserializeWorld(World& world, std::istream& stream, const Componen
 
             auto factory = factories.find(type);
             if (factory == factories.end())
-                throw MissingComponent(source, type);
+                continue;
+                // throw MissingComponent(source, type);
             std::unique_ptr<IComponent> component{factory->second()};
             component->deserialize(deserializer);
             world.addComponentToEntity(id, std::move(component));
