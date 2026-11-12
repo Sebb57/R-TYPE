@@ -33,7 +33,9 @@ set(ORBYTE_COMPONENTS "ALL" CACHE STRING "Components compiled into the game, ALL
 if(NOT ORBYTE_GAME_NAME MATCHES "^[A-Za-z0-9_][A-Za-z0-9_.-]*$")
     message(FATAL_ERROR "Invalid ORBYTE_GAME_NAME '${ORBYTE_GAME_NAME}': use letters, digits, '_', '-' and '.'")
 endif()
-if(ORBYTE_GAME_NAME MATCHES "^(r-type_server|r-type_client|r-type_game-engine)$")
+# Windows file names ignore case, R-TYPE_SERVER.exe would overwrite r-type_server.exe
+string(TOLOWER "${ORBYTE_GAME_NAME}" ORBYTE_GAME_NAME_LOWER)
+if(ORBYTE_GAME_NAME_LOWER MATCHES "^(r-type_server|r-type_client|r-type_game-engine)$")
     message(FATAL_ERROR "ORBYTE_GAME_NAME '${ORBYTE_GAME_NAME}' would overwrite a binary of the project")
 endif()
 
@@ -64,7 +66,16 @@ list(TRANSFORM AVAILABLE_COMPONENTS REPLACE "\\.cpp$" "")
 
 rtype_select_plugins(SYSTEM_PLUGINS "${ORBYTE_SYSTEMS}" "${AVAILABLE_SYSTEMS}" "system")
 rtype_select_plugins(COMPONENT_PLUGINS "${ORBYTE_COMPONENTS}" "${AVAILABLE_COMPONENTS}" "component")
+# The engine keeps its plugin DLLs loaded while it compiles the game, and Windows can't rewrite
+# a loaded DLL: there the game gets its own plugins, in <game>_plugins/ next to it
+if(WIN32)
+    set(GAME_PLUGINS_DIR "${ORBYTE_GAME_NAME}_plugins")
+else()
+    set(GAME_PLUGINS_DIR "plugins")
+endif()
+
 message(STATUS "Game binary: ${ORBYTE_GAME_NAME}")
+message(STATUS "Game plugins: ${RTYPE_ROOT}/${GAME_PLUGINS_DIR}")
 message(STATUS "Game systems: ${SYSTEM_PLUGINS}")
 message(STATUS "Game components: ${COMPONENT_PLUGINS}")
 
@@ -186,6 +197,7 @@ target_include_directories(rtype_engine PUBLIC
     "${RTYPE_ROOT}/include/GameEngine/ECS/Managers"
 )
 target_link_libraries(rtype_engine PUBLIC ${CMAKE_DL_LIBS} bitsery)
+target_compile_definitions(rtype_engine PUBLIC "ORBYTE_PLUGINS_DIR=\"./${GAME_PLUGINS_DIR}\"")
 
 # ---------------------------------------------------------------------------
 # Plugins
@@ -208,14 +220,14 @@ function(rtype_configure_plugin target output_name output_dir)
 endfunction()
 
 add_library(rtype_sfml MODULE "${RTYPE_ROOT}/src/plugins/SFML.cpp")
-rtype_configure_plugin(rtype_sfml "SFML" "${RTYPE_ROOT}/plugins")
+rtype_configure_plugin(rtype_sfml "SFML" "${RTYPE_ROOT}/${GAME_PLUGINS_DIR}")
 target_include_directories(rtype_sfml PRIVATE "${RTYPE_ROOT}/include")
 target_link_libraries(rtype_sfml PRIVATE bitsery sfml-graphics sfml-window sfml-system)
 set(LIBRARY_TARGETS rtype_sfml)
 
 if(RTYPE_GAME_AUDIO)
     add_library(rtype_sfml_audio MODULE "${RTYPE_ROOT}/src/plugins/SFMLAudio.cpp")
-    rtype_configure_plugin(rtype_sfml_audio "SFMLAudio" "${RTYPE_ROOT}/plugins")
+    rtype_configure_plugin(rtype_sfml_audio "SFMLAudio" "${RTYPE_ROOT}/${GAME_PLUGINS_DIR}")
     target_include_directories(rtype_sfml_audio PRIVATE "${RTYPE_ROOT}/include")
     target_link_libraries(rtype_sfml_audio PRIVATE sfml-audio sfml-system)
     list(APPEND LIBRARY_TARGETS rtype_sfml_audio)
@@ -225,7 +237,7 @@ set(SYSTEM_TARGETS)
 foreach(system IN LISTS SYSTEM_PLUGINS)
     set(system_target "rtype_system_${system}")
     add_library(${system_target} MODULE "${RTYPE_ROOT}/src/GameEngine/Systems/${system}System.cpp")
-    rtype_configure_plugin(${system_target} "${system}System" "${RTYPE_ROOT}/plugins/systems")
+    rtype_configure_plugin(${system_target} "${system}System" "${RTYPE_ROOT}/${GAME_PLUGINS_DIR}/systems")
     target_link_libraries(${system_target} PRIVATE rtype_engine)
     if(system STREQUAL "Script")
         target_link_libraries(${system_target} PRIVATE rtype_lua)
@@ -237,7 +249,7 @@ set(COMPONENT_TARGETS)
 foreach(component IN LISTS COMPONENT_PLUGINS)
     set(component_target "rtype_component_${component}")
     add_library(${component_target} MODULE "${RTYPE_ROOT}/src/GameEngine/Components/${component}.cpp")
-    rtype_configure_plugin(${component_target} "${component}" "${RTYPE_ROOT}/plugins/components")
+    rtype_configure_plugin(${component_target} "${component}" "${RTYPE_ROOT}/${GAME_PLUGINS_DIR}/components")
     target_link_libraries(${component_target} PRIVATE rtype_engine)
     list(APPEND COMPONENT_TARGETS ${component_target})
 endforeach()
@@ -295,8 +307,11 @@ foreach(target IN ITEMS
     endif()
 endforeach()
 
+# MinGW: embed the C++ runtime so the game and its plugins run without the toolchain's DLLs
 if(MINGW)
-    target_link_options(OrByte-gameClient PRIVATE -static)
+    foreach(target IN ITEMS OrByte-gameClient ${LIBRARY_TARGETS} ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
+        target_link_options(${target} PRIVATE -static)
+    endforeach()
 endif()
 
 if(WIN32 AND RTYPE_GAME_AUDIO)

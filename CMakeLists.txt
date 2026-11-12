@@ -333,9 +333,18 @@ foreach(target IN ITEMS
     endif()
 endforeach()
 
-# MinGW: embed the C++ runtime so the .exe files run without the toolchain's DLLs.
+# MinGW: embed the C++ runtime so the .exe and plugin .dll files run without the
+# toolchain's DLLs (libstdc++-6, libgcc_s_seh-1, libwinpthread-1).
 if(MINGW)
-    foreach(target IN ITEMS r-type_server r-type_client r-type_game-engine)
+    foreach(target IN ITEMS
+        r-type_server
+        r-type_client
+        r-type_game-engine
+        rtype_sfml
+        rtype_sfml_audio
+        ${SYSTEM_TARGETS}
+        ${COMPONENT_TARGETS}
+    )
         target_link_options(${target} PRIVATE -static)
     endforeach()
 endif()
