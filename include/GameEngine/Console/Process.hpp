@@ -26,11 +26,6 @@ class ProcessException : public std::exception {
         std::string _msg;
 };
 
-class ProcessUnsupported : public ProcessException {
-    public:
-        ProcessUnsupported() : ProcessException("the console can't run programs on Windows") {}
-};
-
 class ProcessSpawnFailed : public ProcessException {
     public:
         explicit ProcessSpawnFailed(const std::string& reason) : ProcessException(reason + " failed") {}
@@ -50,8 +45,13 @@ class Process {
         [[nodiscard]] std::optional<int> exitCode();
 
     private:
+    #ifdef _WIN32
+        void *_handle = nullptr;
+        void *_output = nullptr;
+    #else
         int _pid = -1;
         int _output = -1;
+    #endif
         std::optional<int> _code;
 };
 

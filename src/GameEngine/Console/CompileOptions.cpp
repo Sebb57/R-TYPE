@@ -7,6 +7,7 @@
 **/
 
 #include "GameEngine/Console/CompileOptions.hpp"
+#include "constants.hpp"
 #include <algorithm>
 #include <array>
 #include <format>
@@ -17,10 +18,8 @@
 namespace {
 
 #ifdef _WIN32
-constexpr std::string_view PLUGIN_EXTENSION = ".dll";
 constexpr std::string_view EXECUTABLE_EXTENSION = ".exe";
 #else
-constexpr std::string_view PLUGIN_EXTENSION = ".so";
 constexpr std::string_view EXECUTABLE_EXTENSION;
 #endif
 
@@ -71,7 +70,7 @@ constexpr std::array<std::string_view, 3> RESERVED_BINARIES{"r-type_server", "r-
     std::error_code error;
 
     for (const auto& entry : std::filesystem::directory_iterator(directory, error)) {
-        if (!entry.is_regular_file(error) || entry.path().extension() != PLUGIN_EXTENSION)
+        if (!entry.is_regular_file(error) || entry.path().extension() != OrByte::constants::PLUGIN_EXTENSION)
             continue;
         std::string name = entry.path().stem().string();
 
@@ -211,7 +210,12 @@ std::optional<std::string> OrByte::CompileOptions::checkBinaryName(const std::fi
         return "The binary name can't start with '-' or '.'";
     if (!std::ranges::all_of(name, isBinaryChar))
         return "The binary name only takes letters, digits, '_', '-' and '.'";
-    if (std::ranges::contains(RESERVED_BINARIES, name))
+    std::string lower = name;
+
+    std::ranges::transform(lower, lower.begin(), [](char character) {
+        return character >= 'A' && character <= 'Z' ? static_cast<char>(character - 'A' + 'a') : character;
+    });
+    if (std::ranges::contains(RESERVED_BINARIES, lower))
         return name + " is already a binary of the project";
 
     const std::filesystem::path target = root / (name + std::string(EXECUTABLE_EXTENSION));

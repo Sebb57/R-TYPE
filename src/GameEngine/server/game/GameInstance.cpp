@@ -26,18 +26,13 @@
 
 namespace {
 
-#ifdef _WIN32
-constexpr std::string_view PLUGIN_EXTENSION = ".dll";
-#else
-constexpr std::string_view PLUGIN_EXTENSION = ".so";
-#endif
 constexpr std::string_view SYSTEM_SUFFIX = "System";
 
 constexpr std::array<std::string_view, 6> TICK_ORDER{"Control", "Script", "Physic", "Collider", "Health", "Audio"};
 
 [[nodiscard]] std::filesystem::path systemPath(const std::string& name)
 {
-    return std::filesystem::path(OrByte::constants::SYSTEMS_DIR) / (name + std::string(SYSTEM_SUFFIX) + std::string(PLUGIN_EXTENSION));
+    return std::filesystem::path(OrByte::constants::SYSTEMS_DIR) / OrByte::constants::pluginFile(name + std::string(SYSTEM_SUFFIX));
 }
 
 [[nodiscard]] std::vector<std::string> systemsOnDisk()
@@ -48,7 +43,7 @@ constexpr std::array<std::string_view, 6> TICK_ORDER{"Control", "Script", "Physi
     for (const auto& entry : std::filesystem::directory_iterator(OrByte::constants::SYSTEMS_DIR, error)) {
         const std::string stem = entry.path().stem().string();
 
-        if (entry.path().extension() == PLUGIN_EXTENSION && stem.ends_with(SYSTEM_SUFFIX) && stem.size() > SYSTEM_SUFFIX.size())
+        if (entry.path().extension() == OrByte::constants::PLUGIN_EXTENSION && stem.ends_with(SYSTEM_SUFFIX) && stem.size() > SYSTEM_SUFFIX.size())
             names.push_back(stem.substr(0, stem.size() - SYSTEM_SUFFIX.size()));
     }
     return names;
@@ -110,7 +105,7 @@ bool server::GameInstance::loadAudio()
         return true;
     try {
         this->_audioLoader = std::make_unique<OrByte::DynamicLibrary>(
-            std::filesystem::path(OrByte::constants::PLUGINS_DIR) / ("SFMLAudio" + std::string(PLUGIN_EXTENSION)));
+            std::filesystem::path(OrByte::constants::PLUGINS_DIR) / OrByte::constants::pluginFile("SFMLAudio"));
         this->_audio.reset(this->_audioLoader->loadFunction<OrByte::IAudio* (*)()>("factory")());
     } catch (const std::exception& error) {
         std::cerr << "[Game] audio disabled: " << error.what() << std::endl;

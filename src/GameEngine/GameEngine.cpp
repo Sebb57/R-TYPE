@@ -28,22 +28,16 @@ namespace {
 
 inline constexpr std::string_view PLUGINS_DIR = "./plugins";
 
-#ifdef _WIN32
-inline constexpr std::string_view PLUGIN_EXTENSION = ".dll";
-#else
-inline constexpr std::string_view PLUGIN_EXTENSION = ".so";
-#endif
-
 std::filesystem::path getGraphicalPlugin(OrByte::GameEngine::GraphicalLibs graphicalLib)
 {
     std::filesystem::path path;
 
     switch (graphicalLib) {
         case OrByte::GameEngine::GraphicalLibs::SFML:
-            path = "SFML.so";
+            path = OrByte::constants::pluginFile("SFML");
             break;
         default:
-            path = "SFML.so";
+            path = OrByte::constants::pluginFile("SFML");
             break;
     }
 
@@ -70,8 +64,8 @@ OrByte::GameEngine::GameEngine(std::filesystem::path graphicPath)
 
 void OrByte::GameEngine::_loadAudio()
 {
-    const std::filesystem::path audioLib = std::filesystem::path(PLUGINS_DIR) / ("SFMLAudio" + std::string(PLUGIN_EXTENSION));
-    const std::filesystem::path audioSystem = std::filesystem::path(PLUGINS_DIR) / "systems" / ("AudioSystem" + std::string(PLUGIN_EXTENSION));
+    const std::filesystem::path audioLib = std::filesystem::path(PLUGINS_DIR) / constants::pluginFile("SFMLAudio");
+    const std::filesystem::path audioSystem = std::filesystem::path(PLUGINS_DIR) / "systems" / constants::pluginFile("AudioSystem");
 
     try {
         this->_audioLoader = std::make_unique<DynamicLibrary>(audioLib);

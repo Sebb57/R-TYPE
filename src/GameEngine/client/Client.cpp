@@ -7,6 +7,7 @@
 **/
 
 #include "GameEngine/client/Client.hpp"
+#include "constants.hpp"
 #include <filesystem>
 #include <iostream>
 #include <queue>
@@ -30,7 +31,7 @@ std::filesystem::path findAsset(const std::filesystem::path& path)
 
 client::Client::Client(ClientConfig config, server::GameInstance::Setup game)
     : _config(std::move(config))
-    , _graphicLoader("./plugins/SFML.so")
+    , _graphicLoader(std::filesystem::path(OrByte::constants::PLUGINS_DIR) / OrByte::constants::pluginFile("SFML"))
     , _graphic(this->_graphicLoader.loadFunction<OrByte::IGraphic* (*)()>("factory")())
     , _server(server::ServerConfig())
     , _game(this->_server, *this->_graphic, std::move(game))

@@ -8,6 +8,7 @@
 
 #include "GameEngine/ECS/ComponentPlugins.hpp"
 #include "plugins/IComponent.hpp"
+#include "constants.hpp"
 #include <algorithm>
 #include <functional>
 #include <utility>
@@ -19,6 +20,9 @@ OrByte::ComponentPlugins loadPlugins(const std::filesystem::path& directory, con
     OrByte::ComponentPlugins plugins;
 
     for (const auto& entry : std::filesystem::directory_iterator(directory)) {
+        // Linux and Windows builds share plugins/: skip the other platform's libraries
+        if (!entry.is_regular_file() || entry.path().extension() != OrByte::constants::PLUGIN_EXTENSION)
+            continue;
         const std::string name = entry.path().stem().string();
         if (!accept(name))
             continue;
