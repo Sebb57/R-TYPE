@@ -45,7 +45,7 @@ class DynamicLibrary {
 
         PluginType (*type)() = nullptr;
 
-        [[nodiscard]] std::string getPath() const noexcept { return this->_path; }
+        [[nodiscard]] std::string getPath() const noexcept { return this->_path.string(); }
         template <typename T>
         T loadFunction(std::string symbol)
         {
