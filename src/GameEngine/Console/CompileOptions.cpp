@@ -12,7 +12,6 @@
 #include <format>
 #include <fstream>
 #include <ranges>
-#include <stdexcept>
 #include <system_error>
 
 namespace {
@@ -141,13 +140,13 @@ void OrByte::CompileOptions::save(const std::filesystem::path& path) const
     std::ofstream file(path, std::ios::trunc);
 
     if (!file.is_open())
-        throw std::runtime_error("Cannot open " + path.string());
+        throw CompileOptionsOpenFailed(path);
     file << "# OrByte compile options, edited from the Compile Options tab" << std::endl
          << BINARY_KEY << '=' << this->_binaryName << std::endl
          << DISABLED_SYSTEMS_KEY << '=' << joinNames(this->_disabledSystems, ',') << std::endl
          << DISABLED_COMPONENTS_KEY << '=' << joinNames(this->_disabledComponents, ',') << std::endl;
     if (!file)
-        throw std::runtime_error("Cannot write " + path.string());
+        throw CompileOptionsWriteFailed(path);
 }
 
 void OrByte::CompileOptions::scan(const std::filesystem::path& pluginsDirectory)

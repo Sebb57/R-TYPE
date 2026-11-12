@@ -11,14 +11,37 @@
     #define COMPILEOPTIONS_HPP_
 
     #include <cstdint>
+    #include <exception>
     #include <filesystem>
     #include <optional>
     #include <set>
     #include <string>
     #include <string_view>
+    #include <utility>
     #include <vector>
 
 namespace OrByte {
+
+class CompileOptionsException : public std::exception {
+    public:
+        explicit CompileOptionsException(std::string msg) : _msg(std::move(msg)) {}
+        [[nodiscard]] const char *what() const noexcept override { return this->_msg.c_str(); }
+
+    private:
+        std::string _msg;
+};
+
+class CompileOptionsOpenFailed : public CompileOptionsException {
+    public:
+        explicit CompileOptionsOpenFailed(const std::filesystem::path& path)
+            : CompileOptionsException("Cannot open " + path.string()) {}
+};
+
+class CompileOptionsWriteFailed : public CompileOptionsException {
+    public:
+        explicit CompileOptionsWriteFailed(const std::filesystem::path& path)
+            : CompileOptionsException("Cannot write " + path.string()) {}
+};
 
 class CompileOptions {
     public:

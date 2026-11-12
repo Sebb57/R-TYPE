@@ -7,7 +7,6 @@
 
 #include "GameEngine/Console/Process.hpp"
 #include <array>
-#include <stdexcept>
 
 #ifndef _WIN32
     #include <fcntl.h>
@@ -19,7 +18,7 @@
 
 OrByte::Process::Process([[maybe_unused]] const std::string& command, [[maybe_unused]] const std::filesystem::path& cwd)
 {
-    throw std::runtime_error("the console can't run programs on Windows");
+    throw ProcessUnsupported();
 }
 
 OrByte::Process::~Process() = default;
@@ -42,12 +41,12 @@ OrByte::Process::Process(const std::string& command, const std::filesystem::path
     std::array<int, 2> fds{};
 
     if (::pipe(fds.data()) < 0)
-        throw std::runtime_error("pipe failed");
+        throw ProcessSpawnFailed("pipe");
     this->_pid = ::fork();
     if (this->_pid < 0) {
         ::close(fds[0]);
         ::close(fds[1]);
-        throw std::runtime_error("fork failed");
+        throw ProcessSpawnFailed("fork");
     }
     if (this->_pid == 0) {
         const int devNull = ::open("/dev/null", O_RDONLY);
