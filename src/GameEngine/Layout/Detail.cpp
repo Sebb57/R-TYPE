@@ -280,11 +280,6 @@ Detail::Field info(std::string label, std::string value)
     return { std::move(label), { std::move(cell) } };
 }
 
-// ---------------------------------------------------------------------------
-// Animator: the animations list is edited directly in the panel
-// ---------------------------------------------------------------------------
-
-// Clickable button (no value to type)
 Detail::Field button(std::string label, std::string text, std::function<void()> onClick)
 {
     Detail::Cell cell;
@@ -293,7 +288,6 @@ Detail::Field button(std::string label, std::string text, std::function<void()> 
     return { std::move(label), { std::move(cell) } };
 }
 
-// List of texts typed with commas: "a.png, b.png, c.png"
 Detail::Field textList(std::string label, std::vector<std::string>& values, std::size_t& count)
 {
     Detail::Cell cell;
@@ -314,7 +308,7 @@ Detail::Field textList(std::string label, std::vector<std::string>& values, std:
             start = comma + 1;
         }
         values = std::move(parsed);
-        count = std::max<std::size_t>(1, values.size()); // one frame per image
+        count = std::max<std::size_t>(1, values.size());
         return true;
     };
     return { std::move(label), { std::move(cell) } };
@@ -325,11 +319,10 @@ std::vector<std::string> animationNames(const Animator& animator)
     std::vector<std::string> names;
     for (const auto& [name, animation] : animator.animations)
         names.push_back(name);
-    std::sort(names.begin(), names.end()); // stable order on screen (unordered_map has none)
+    std::sort(names.begin(), names.end());
     return names;
 }
 
-// "Current" animation: a click switches to the next one
 Detail::Field currentAnimation(Animator& animator)
 {
     Detail::Cell cell;
@@ -348,7 +341,6 @@ Detail::Field currentAnimation(Animator& animator)
     return { "Current", { std::move(cell) } };
 }
 
-// "New animation": type a name and press Enter
 Detail::Field newAnimation(Animator& animator)
 {
     static const std::string PLACEHOLDER = "type a name + Enter";
@@ -360,7 +352,7 @@ Detail::Field newAnimation(Animator& animator)
             return false;
         animator.addAnimation(name, Animation{});
         if (animator.getCurrentAnimation() == nullptr)
-            animator.play(name, true); // the first animation becomes the current one
+            animator.play(name, true);
         return true;
     };
     return { "New anim", { std::move(cell) } };
@@ -377,7 +369,7 @@ void describeAnimation(std::vector<Detail::Field>& fields, Animator& animator, c
     }));
     fields.push_back(toggle(" Use sheet", a.isSpriteSheet));
     if (a.isSpriteSheet) {
-        fields.push_back(texture(" Sheet", a.spriteSheetPath)); // accepts an image dropped from the assets
+        fields.push_back(texture(" Sheet", a.spriteSheetPath));
         fields.push_back(vector2(" Frame size", a.frameSize));
         fields.push_back(number(" Columns", a.columns));
         fields.push_back(number(" 1st frame", a.firstFrame));
