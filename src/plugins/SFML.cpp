@@ -52,8 +52,63 @@ namespace {
             color.a
         );
     }
+    
+    OrByte::Event::GamepadButton toGamepadButton(unsigned button)
+    {
+        using Button = OrByte::Event::GamepadButton;
 
-}
+        switch (button) {
+            case 0:
+                return Button::A;
+            case 1:
+                return Button::B;
+            case 2:
+                return Button::X;
+            case 3:
+                return Button::Y;
+            case 4:
+                return Button::LeftBumper;
+            case 5:
+                return Button::RightBumper;
+            case 6:
+                return Button::Back;
+            case 7:
+                return Button::Start;
+            case 8:
+                return Button::LeftStick;
+            case 9:
+                return Button::RightStick;
+            default:
+                return Button::Unknown;
+        }
+    }
+
+    OrByte::Event::GamepadAxis toGamepadAxis(sf::Joystick::Axis axis)
+    {
+        using GamepadAxis = OrByte::Event::GamepadAxis;
+
+        switch (axis) {
+            case sf::Joystick::X:
+                return GamepadAxis::LeftX;
+            case sf::Joystick::Y:
+                return GamepadAxis::LeftY;
+            case sf::Joystick::U:
+                return GamepadAxis::RightX;
+            case sf::Joystick::V:
+                return GamepadAxis::RightY;
+            case sf::Joystick::Z:
+                return GamepadAxis::LeftTrigger;
+            case sf::Joystick::R:
+                return GamepadAxis::RightTrigger;
+            case sf::Joystick::PovX:
+                return GamepadAxis::DPadX;
+            case sf::Joystick::PovY:
+                return GamepadAxis::DPadY;
+        }
+        return GamepadAxis::Unknown;
+    }
+
+} // namespace
 
 void OrByte::SFML::open(const std::size_t width, const std::size_t height, std::string title)
 {
@@ -300,6 +355,27 @@ std::queue<OrByte::Event> OrByte::SFML::listen() const
             Vector2 mousePos = getPositionFromWindow({ event.windowX, event.windowY }, this->_window->getSize());
             event.mouseX = static_cast<int>(mousePos.x);
             event.mouseY = static_cast<int>(mousePos.y);
+            events.push(event);
+        }
+        if (sfmlEvent.type == sf::Event::JoystickConnected || sfmlEvent.type == sf::Event::JoystickDisconnected) {
+            event.type = sfmlEvent.type == sf::Event::JoystickConnected ? Event::Type::JoystickConnected
+                                                                        : Event::Type::JoystickDisconnected;
+            event.gamepadId = sfmlEvent.joystickConnect.joystickId;
+            events.push(event);
+        }
+        if (sfmlEvent.type == sf::Event::JoystickButtonPressed || sfmlEvent.type == sf::Event::JoystickButtonReleased) {
+            event.type = sfmlEvent.type == sf::Event::JoystickButtonPressed ? Event::Type::JoystickButtonPressed
+                                                                            : Event::Type::JoystickButtonReleased;
+            event.gamepadId = sfmlEvent.joystickButton.joystickId;
+            event.rawButton = sfmlEvent.joystickButton.button;
+            event.gamepadButton = toGamepadButton(sfmlEvent.joystickButton.button);
+            events.push(event);
+        }
+        if (sfmlEvent.type == sf::Event::JoystickMoved) {
+            event.type = Event::Type::JoystickMoved;
+            event.gamepadId = sfmlEvent.joystickMove.joystickId;
+            event.gamepadAxis = toGamepadAxis(sfmlEvent.joystickMove.axis);
+            event.axisValue = sfmlEvent.joystickMove.position / 100.f;
             events.push(event);
         }
     }
