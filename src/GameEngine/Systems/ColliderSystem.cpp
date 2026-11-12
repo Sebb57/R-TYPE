@@ -96,8 +96,8 @@ void ColliderSystem::update()
     collidables.reserve(entities.size());
 
     for (int entityID : entities) {
-        auto* collider = this->_world.getComponent<Collider>(entityID);
-        auto* transform = this->_world.getComponent<Transform>(entityID);
+        auto* collider = this->_world.getActiveComponent<Collider>(entityID);
+        auto* transform = this->_world.getActiveComponent<Transform>(entityID);
 
         if (collider == nullptr || transform == nullptr) {
             continue;

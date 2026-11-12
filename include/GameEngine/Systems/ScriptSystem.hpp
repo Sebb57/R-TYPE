@@ -14,6 +14,8 @@
     #include <sol/sol.hpp>
     #include <array>
     #include <optional>
+    #include <memory>
+    #include <set>
     #include <exception>
     #include <filesystem>
     #include <string>
@@ -34,6 +36,7 @@ class ScriptSystem : public ASystem {
         ~ScriptSystem() override = default;
 
         void update() override;
+        void onCollisions(const std::vector<std::pair<int, int>>& pairs);
 
         class ScriptException : public std::exception {
             protected:
@@ -68,13 +71,22 @@ class ScriptSystem : public ASystem {
         Chronometer _chrono;
         sol::state _lua;
         std::unordered_map<int, Instance> _instances;
+        std::set<std::pair<int, int>> _contacts;
+        std::set<int> _pendingDestroy;
+        std::unique_ptr<World> _pendingScene;
 
         std::array<sol::object (*)(sol::state_view, IComponent*), static_cast<std::size_t>(ComponentType::ENUM_END)> _pushers{};
         std::array<std::vector<std::string>, static_cast<std::size_t>(ComponentType::ENUM_END)> _fields{};
         std::array<void (*)(World&, int), static_cast<std::size_t>(ComponentType::ENUM_END)> _adders{};
+        std::array<std::unique_ptr<IComponent> (*)(const IComponent&), static_cast<std::size_t>(ComponentType::ENUM_END)> _cloners{};
 
         [[nodiscard]] static std::optional<ComponentType> _typeFromName(std::string_view name);
 
+        [[nodiscard]] bool _exists(int entity) const {
+            return this->_world.entityExists(entity) && !this->_pendingDestroy.contains(entity);
+        }
+        void _flushDestroy();
+        void _flushScene();
         void _collect();
         void _sync(int entity, const std::string& path);
         [[nodiscard]] Instance _load(const std::string& path);
@@ -95,6 +107,9 @@ class ScriptSystem : public ASystem {
             this->_lua.new_usertype<T>(name, sol::no_constructor, std::forward<Members>(members)...);
             this->_pushers[static_cast<std::size_t>(T::Type)] = [](sol::state_view lua, IComponent* component) {
                 return sol::make_object(lua, static_cast<T*>(component));
+            };
+            this->_cloners[static_cast<std::size_t>(T::Type)] = [](const IComponent& component) -> std::unique_ptr<IComponent> {
+                return std::make_unique<T>(static_cast<const T&>(component));
             };
             this->_adders[static_cast<std::size_t>(T::Type)] = [](World& world, int entity) {
                 world.addComponentToEntity<T>(entity);

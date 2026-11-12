@@ -29,11 +29,14 @@ class Detail final : public Widget {
             std::function<bool(const std::string&)> set;
             std::function<void()> click;
             bool acceptsImage = false;
+            bool destructive = false;
         };
 
         struct Field {
+            enum class Style : std::uint8_t { Value, Heading, Actions, Selected, Stacked };
             std::string label;
             std::vector<Cell> cells;
+            Style style = Style::Value;
         };
 
         Detail(World& world, const ComponentFactories& factories, int width = 300);

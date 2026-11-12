@@ -7,11 +7,50 @@
 
 #include "GameEngine/ECS/WorldSerializer.hpp"
 #include "plugins/Serialization.hpp"
+#include "GameEngine/ECS/Components/AddHealth.hpp"
+#include "GameEngine/ECS/Components/Animator.hpp"
+#include "GameEngine/ECS/Components/Camera.hpp"
+#include "GameEngine/ECS/Components/Collider.hpp"
+#include "GameEngine/ECS/Components/Controllable.hpp"
+#include "GameEngine/ECS/Components/Health.hpp"
+#include "GameEngine/ECS/Components/Music.hpp"
+#include "GameEngine/ECS/Components/Name.hpp"
+#include "GameEngine/ECS/Components/Orbit.hpp"
+#include "GameEngine/ECS/Components/Owner.hpp"
+#include "GameEngine/ECS/Components/Poison.hpp"
+#include "GameEngine/ECS/Components/RegenHealth.hpp"
+#include "GameEngine/ECS/Components/RemoveHealth.hpp"
+#include "GameEngine/ECS/Components/Script.hpp"
+#include "GameEngine/ECS/Components/Sinus.hpp"
+#include "GameEngine/ECS/Components/Spiral.hpp"
+#include "GameEngine/ECS/Components/Sprite.hpp"
+#include "GameEngine/ECS/Components/Transform.hpp"
+#include "GameEngine/ECS/Components/Velocity.hpp"
+#include "GameEngine/ECS/Components/Wither.hpp"
 #include <fstream>
 #include <istream>
 #include <memory>
 #include <string>
 #include <vector>
+
+namespace {
+
+// Read disabled components too: .obe payloads have no per-component byte length.
+// These native readers require no component library and preserve stream alignment.
+template <typename... Components>
+OrByte::ComponentFactories nativeReaders()
+{
+    return {{Components::Type, +[]() -> OrByte::IComponent* { return new Components; }}...};
+}
+
+const auto readers = nativeReaders<
+    OrByte::AddHealth, OrByte::Animator, OrByte::Camera, OrByte::Collider,
+    OrByte::Controllable, OrByte::Health, OrByte::Music, OrByte::Name,
+    OrByte::Orbit, OrByte::Owner, OrByte::Poison, OrByte::RegenHealth,
+    OrByte::RemoveHealth, OrByte::Script, OrByte::Sinus, OrByte::Spiral,
+    OrByte::Sprite, OrByte::Transform, OrByte::Velocity, OrByte::Wither>();
+
+} // namespace
 
 void OrByte::serializeWorld(const World& world, const std::filesystem::path& path)
 {
@@ -73,11 +112,11 @@ void OrByte::deserializeWorld(World& world, std::istream& stream, const Componen
             ComponentType type{};
             deserializer.value1b(type);
 
-            auto factory = factories.find(type);
-            if (factory == factories.end())
-                continue;
-                // throw MissingComponent(source, type);
-            std::unique_ptr<IComponent> component{factory->second()};
+            const auto factory = factories.find(type);
+            const auto reader = readers.find(type);
+            if (factory == factories.end() && reader == readers.end())
+                throw MissingComponent(source, type);
+            std::unique_ptr<IComponent> component{factory != factories.end() ? factory->second() : reader->second()};
             component->deserialize(deserializer);
             world.addComponentToEntity(id, std::move(component));
         }

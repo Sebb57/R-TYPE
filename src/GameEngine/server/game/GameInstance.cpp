@@ -61,6 +61,15 @@ server::GameInstance::GameInstance(OrByte::IGraphic& graphic, unsigned tickRate,
     , _snapshotRate(std::max(snapshotRate, 1U))
     , _world(std::make_unique<World>())
 {
+    if (const auto& compiled = client::compiledComponents(); compiled) {
+        std::vector<OrByte::ComponentType> active;
+        for (std::size_t i = 0; i < static_cast<std::size_t>(OrByte::ComponentType::ENUM_END); ++i) {
+            const auto type = static_cast<OrByte::ComponentType>(i);
+            if (std::ranges::contains(*compiled, enumToString(type)))
+                active.push_back(type);
+        }
+        this->_world->setActiveComponents(std::move(active));
+    }
     this->loadSystems(graphic);
     if (setup)
         setup(*this->_world);
@@ -96,6 +105,8 @@ OrByte::ISystem *server::GameInstance::createSystem(const std::string& name, OrB
         return loader.loadFunction<OrByte::ISystem* (*)(World&, OrByte::IGraphic&)>("factory")(*this->_world, graphic);
     if (name == "Audio")
         return this->loadAudio() ? loader.loadFunction<OrByte::ISystem* (*)(World&, OrByte::IAudio&)>("factory")(*this->_world, *this->_audio) : nullptr;
+    if (name == "Script")
+        this->_scriptCollisions = loader.loadFunction<decltype(_scriptCollisions)>("onCollisions");
     return loader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world);
 }
 
@@ -192,8 +203,12 @@ void server::GameInstance::applyInbound()
 
 void server::GameInstance::update()
 {
-    for (const LoadedSystem& loaded : this->_systems)
+    const auto script = std::ranges::find(this->_systems, "Script", &LoadedSystem::name);
+    for (const LoadedSystem& loaded : this->_systems) {
         loaded.system->update();
+        if (loaded.name == "Collider" && script != this->_systems.end() && this->_scriptCollisions)
+            this->_scriptCollisions(*script->system, loaded.system->getEntityPairs());
+    }
 }
 
 server::SnapshotDto server::GameInstance::makeSnapshot()
@@ -202,14 +217,14 @@ server::SnapshotDto server::GameInstance::makeSnapshot()
     snapshot.tick = this->_tick;
     const Vector2 origin = this->_world->getCameraOrigin(Vector2(OrByte::constants::SERVER_WINDOW_X, OrByte::constants::SERVER_WINDOW_Y));
     for (int entity : this->_world->getExistingEntities()) {
-        const auto *transform = this->_world->getComponent<OrByte::Transform>(entity);
+        const auto *transform = this->_world->getActiveComponent<OrByte::Transform>(entity);
         if (transform == nullptr)
             continue;
         const auto id = static_cast<std::uint32_t>(entity + 1);
         const Vector2 position(transform->position.x - origin.x, transform->position.y - origin.y);
-        if (const auto *controllable = this->_world->getComponent<OrByte::Controllable>(entity))
+        if (const auto *controllable = this->_world->getActiveComponent<OrByte::Controllable>(entity))
             snapshot.entities.push_back(EntityDto(id, position, transform->rotation, controllable->size, controllable->color, controllable->image));
-        else if (const auto *sprite = this->_world->getComponent<OrByte::Sprite>(entity))
+        else if (const auto *sprite = this->_world->getActiveComponent<OrByte::Sprite>(entity))
             snapshot.entities.push_back(EntityDto(id, position, transform->rotation, sprite->size, OrByte::RGBA(255, 255, 255), sprite->texturePath));
     }
     return snapshot;

@@ -62,6 +62,19 @@ The server listens on TCP port `6969` and UDP port `6767`. Start another client 
 
 Use the arrow keys to move, Space to fire, Enter to activate a menu item, and Escape to go back or leave. In a room, every player must mark ready and complete UDP linking before the host can start. A game lasts up to three minutes; the end screen shows each player's score.
 
+## Engine component selection
+
+Engine systems use `world.getActiveComponent<T>(entity)` to respect the component
+list selected when compiling a game. It returns `nullptr` for disabled types,
+even when their data is still stored on an entity. Raw `getComponent` remains
+available to the editor and serializer. Without a compilation filter, all types
+are active.
+
+Lua component access follows the same filter and returns `nil` for disabled
+types. Controls do not create a disabled `Velocity`. Loading another `.obe`
+preserves the filter; native readers consume missing libraries' component data
+so the remaining scene data stays aligned.
+
 ## Lint
 
 The checks live in `.clang-tidy`. They read the compile database that CMake writes to `build/compile_commands.json`, so configure the project first:

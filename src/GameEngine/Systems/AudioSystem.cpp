@@ -19,7 +19,7 @@ OrByte::AudioSystem::~AudioSystem()
 void OrByte::AudioSystem::update()
 {
     for (int entity : this->_world.getExistingEntities())
-        if (Music *music = this->_world.getComponent<Music>(entity))
+        if (Music *music = this->_world.getActiveComponent<Music>(entity))
             this->_updateMusic(entity, *music);
     this->_releaseUnused();
 }
@@ -68,7 +68,7 @@ void OrByte::AudioSystem::_releaseUnused()
     std::vector<int> unused;
 
     for (const auto& [entity, track] : this->_tracks)
-        if (this->_world.getComponent<Music>(entity) == nullptr)
+        if (this->_world.getActiveComponent<Music>(entity) == nullptr)
             unused.push_back(entity);
     for (int entity : unused) {
         this->_audio.unload(entity);

@@ -33,16 +33,16 @@ void OrByte::ControlSystem::update()
 {
     std::vector<int> entities = this->_world.getExistingEntities();
     for (int entity: entities) {
-        auto* controllable = this->_world.getComponent<Controllable>(entity);
-        if (controllable == nullptr)
+        auto* controllable = this->_world.getActiveComponent<Controllable>(entity);
+        if (controllable == nullptr || !this->_world.isComponentActive(Velocity::Type))
             continue;
-        if (this->_world.getComponent<Velocity>(entity) == nullptr)
+        if (this->_world.getActiveComponent<Velocity>(entity) == nullptr)
             this->_world.addComponentToEntity<Velocity>(entity);
 
         const Vector2 direction(this->_axis(controllable->right, controllable->left), this->_axis(controllable->down, controllable->up));
         const float length = std::hypot(direction.x, direction.y);
         const float speed = length > 0.0F ? controllable->speed / length : 0.0F;
-        this->_world.getComponent<Velocity>(entity)->velocity = Vector2(direction.x * speed, direction.y * speed);
+        this->_world.getActiveComponent<Velocity>(entity)->velocity = Vector2(direction.x * speed, direction.y * speed);
     }
 }
 

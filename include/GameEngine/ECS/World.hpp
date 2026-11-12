@@ -20,11 +20,14 @@ class World {
     ComponentManager componentManager;
     std::optional<int> _selectedEntityId;
     std::optional<int> _pendingEntityDrag;
+    std::optional<std::vector<OrByte::ComponentType>> _activeComponents;
 
     void _releaseCamera(int newHolder);
 
 public:
     World() = default;
+    World(World&&) = default;
+    World& operator=(World&&) = default;
     ~World() = default;
 
     int createEntity();
@@ -58,6 +61,27 @@ public:
     }
     [[nodiscard]] std::vector<OrByte::IComponent*> getComponents(int entityId) const {
         return componentManager.getComponents(entityId);
+    }
+    void setActiveComponents(std::optional<std::vector<OrByte::ComponentType>> types) {
+        this->_activeComponents = std::move(types);
+    }
+    [[nodiscard]] const auto& getActiveComponentTypes() const { return this->_activeComponents; }
+    [[nodiscard]] bool isComponentActive(OrByte::ComponentType type) const {
+        return !this->_activeComponents || std::ranges::contains(*this->_activeComponents, type);
+    }
+    [[nodiscard]] OrByte::IComponent* getActiveComponent(int entityId, OrByte::ComponentType type) const {
+        return this->isComponentActive(type) ? this->getComponent(entityId, type) : nullptr;
+    }
+    template <typename T>
+    [[nodiscard]] T* getActiveComponent(int entityId) const {
+        return static_cast<T*>(this->getActiveComponent(entityId, T::Type));
+    }
+    [[nodiscard]] std::vector<OrByte::IComponent*> getActiveComponents(int entityId) const {
+        auto components = this->getComponents(entityId);
+        std::erase_if(components, [this](const auto* component) {
+            return !this->isComponentActive(component->getType());
+        });
+        return components;
     }
     [[nodiscard]] static bool isComponentRemovable(OrByte::ComponentType type) {
         return type != OrByte::ComponentType::Name

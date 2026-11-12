@@ -7,12 +7,14 @@
 **/
 
 #include "GameEngine/Systems/ScriptSystem.hpp"
+#include "GameEngine/ECS/ComponentPlugins.hpp"
 #include "GameEngine/ECS/Components/AddHealth.hpp"
 #include "GameEngine/ECS/Components/Animator.hpp"
 #include "GameEngine/ECS/Components/Camera.hpp"
 #include "GameEngine/ECS/Components/Collider.hpp"
 #include "GameEngine/ECS/Components/Controllable.hpp"
 #include "GameEngine/ECS/Components/Health.hpp"
+#include "GameEngine/ECS/Components/Music.hpp"
 #include "GameEngine/ECS/Components/Name.hpp"
 #include "GameEngine/ECS/Components/Orbit.hpp"
 #include "GameEngine/ECS/Components/Owner.hpp"
@@ -31,6 +33,7 @@
 #include "GameEngine/ECS/Utils.hpp"
 #include <algorithm>
 #include <system_error>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -50,23 +53,86 @@ void OrByte::ScriptSystem::update()
 
     const std::vector<int> entities = this->_world.getExistingEntities();
     for (int entity : entities) {
-        const Script* script = this->_world.getComponent<Script>(entity);
-        if (script == nullptr)
+        const Script* script = this->_world.getActiveComponent<Script>(entity);
+        if (script == nullptr || !this->_exists(entity))
             continue;
 
         this->_sync(entity, script->path);
 
         auto it = this->_instances.find(entity);
-        if (it != this->_instances.end() && it->second.valid)
+        if (it != this->_instances.end() && it->second.valid && this->_exists(entity))
             this->_call(entity, it->second, deltaTime);
+        if (this->_pendingScene)
+            break;
     }
+    this->_flushDestroy();
+    this->_flushScene();
+}
+
+void OrByte::ScriptSystem::onCollisions(const std::vector<std::pair<int, int>>& pairs)
+{
+    std::set<std::pair<int, int>> current;
+    for (const auto& [first, second] : pairs)
+        if (first != second && this->_exists(first) && this->_exists(second))
+            current.emplace(std::min(first, second), std::max(first, second));
+    for (const auto& pair : current) {
+        if (this->_contacts.contains(pair))
+            continue;
+        for (const auto& [entity, other] : {pair, std::pair{pair.second, pair.first}}) {
+            if (!this->_exists(entity) || !this->_exists(other))
+                continue;
+            const Script* script = this->_world.getActiveComponent<Script>(entity);
+            if (!script)
+                continue;
+            this->_sync(entity, script->path);
+            auto it = this->_instances.find(entity);
+            if (it == this->_instances.end() || !it->second.valid || !this->_exists(entity) || !this->_exists(other))
+                continue;
+            const auto callback = it->second.env.raw_get<sol::object>("onCollisionEnter");
+            if (callback.get_type() != sol::type::function)
+                continue;
+            auto result = callback.as<sol::protected_function>()(entity, other);
+            if (!result.valid()) {
+                const sol::error error = result;
+                _reportError(entity, error.what());
+                it->second.valid = false;
+            }
+            if (this->_pendingScene)
+                break;
+        }
+        if (this->_pendingScene)
+            break;
+    }
+    this->_contacts = std::move(current);
+    this->_flushDestroy();
+    this->_flushScene();
+}
+
+void OrByte::ScriptSystem::_flushScene()
+{
+    if (!this->_pendingScene)
+        return;
+    // All callbacks have returned; release their environments before the old world.
+    this->_instances.clear();
+    this->_contacts.clear();
+    this->_world = std::move(*this->_pendingScene);
+    this->_pendingScene.reset();
+    this->_chrono.reset();
+}
+
+void OrByte::ScriptSystem::_flushDestroy()
+{
+    // Keep existing raw component references alive until all Lua callbacks return.
+    for (int entity : this->_pendingDestroy)
+        this->_world.destroyEntity(entity);
+    this->_pendingDestroy.clear();
 }
 
 void OrByte::ScriptSystem::_collect()
 {
     std::erase_if(this->_instances, [this](const auto& entry) {
         const auto& [entity, instance] = entry;
-        const Script* script = this->_world.getComponent<Script>(entity);
+        const Script* script = this->_world.getActiveComponent<Script>(entity);
         return script == nullptr || script->path != instance.path;
     });
 }
@@ -129,13 +195,18 @@ void OrByte::ScriptSystem::_bindApi()
     this->_bindComponents();
 
     this->_lua.set_function("log", [](const std::string& message) { std::cout << "[lua] " << message << std::endl; });
-    this->_lua.set_function("getEntities", [this]() { return sol::as_table(this->_world.getExistingEntities()); });
+    this->_lua.set_function("getEntities", [this]() {
+        auto entities = this->_world.getExistingEntities();
+        std::erase_if(entities, [this](int entity) { return !this->_exists(entity); });
+        return sol::as_table(std::move(entities));
+    });
     this->_lua.set_function("getComponentsFrom", [this](int id) {
-        const std::vector<OrByte::IComponent*> components = this->_world.getComponents(id);
+        const std::vector<OrByte::IComponent*> components = this->_world.getActiveComponents(id);
         std::vector<std::string> names;
         names.reserve(components.size());
-        for (const OrByte::IComponent* component : components)
-            names.emplace_back(enumToString(component->getType()));
+        if (this->_exists(id))
+            for (const OrByte::IComponent* component : components)
+                names.emplace_back(enumToString(component->getType()));
         return sol::as_table(std::move(names));
     });
     this->_lua.set_function("getComponent", [this](int id, std::string_view name, sol::this_state ts) { return this->_pushComponent(sol::state_view(ts), id, name); });
@@ -144,6 +215,48 @@ void OrByte::ScriptSystem::_bindApi()
         return sol::as_table(type ? this->_fields[static_cast<std::size_t>(*type)] : std::vector<std::string>{});
     });
 
+    this->_lua.set_function("destroyEntity", [this](int id) {
+        if (!this->_exists(id))
+            return false;
+        this->_pendingDestroy.insert(id);
+        return true;
+    });
+    this->_lua.set_function("loadScene", [this](const std::string& path) -> std::tuple<bool, sol::optional<std::string>> {
+        if (this->_pendingScene)
+            return {false, std::string("A scene load is already pending")};
+        try {
+            if (std::filesystem::path(path).extension() != WORLD_EXTENSION)
+                return {false, std::string("Expected an .obe scene")};
+            // Keep plugin factories alive while their components exist in the world.
+            static const auto components = loadComponentPlugins("plugins/components");
+            auto scene = std::make_unique<World>();
+            scene->setActiveComponents(this->_world.getActiveComponentTypes());
+            deserializeWorld(*scene, path, components.factories);
+            this->_pendingScene = std::move(scene);
+            return {true, sol::nullopt};
+        } catch (const std::exception& error) {
+            return {false, std::string(error.what())};
+        }
+    });
+    this->_lua.set_function("duplicateEntity", [this](int source) -> sol::optional<int> {
+        if (!this->_exists(source))
+            return sol::nullopt;
+        std::vector<std::unique_ptr<IComponent>> copies;
+        for (const IComponent* component : this->_world.getActiveComponents(source)) {
+            const auto type = component->getType();
+            const auto index = static_cast<std::size_t>(type);
+            // Camera is exclusive in World; adding a second one would remove the original.
+            if (type == ComponentType::Camera || index >= this->_cloners.size() || !this->_cloners[index]) {
+                _reportError(source, "duplicateEntity: component cannot be copied: " + std::string(enumToString(type)));
+                return sol::nullopt;
+            }
+            copies.push_back(this->_cloners[index](*component));
+        }
+        const int duplicate = this->_world.createEntity();
+        for (auto& component : copies)
+            this->_world.addComponentToEntity(duplicate, std::move(component));
+        return duplicate;
+    });
     this->_lua.set_function("createEntity", [this]() { return this->_world.createEntity(); });
     this->_lua.set_function("addComponent", [this](int id, std::string_view name, sol::optional<sol::table> init, sol::this_state ts) {
         return this->_addComponent(id, name, init, ts);
@@ -164,10 +277,10 @@ void OrByte::ScriptSystem::_bindApi()
 sol::object OrByte::ScriptSystem::_pushComponent(sol::state_view lua, int id, std::string_view name)
 {
     const auto type = _typeFromName(name);
-    if (!type)
+    if (!type || !this->_exists(id))
         return sol::lua_nil;
     const auto index = static_cast<std::size_t>(*type);
-    IComponent* component = this->_world.getComponent(id, *type);
+    IComponent* component = this->_world.getActiveComponent(id, *type);
     if (component == nullptr || this->_pushers[index] == nullptr)
         return sol::lua_nil;
     return this->_pushers[index](std::move(lua), component);
@@ -196,18 +309,20 @@ bool OrByte::ScriptSystem::_setComponentAttribute(int id, std::string_view name,
 
 sol::object OrByte::ScriptSystem::_addComponent(int id, std::string_view name, const sol::optional<sol::table>& init, sol::this_state ts)
 {
-    if (!this->_world.entityExists(id)) {
+    if (!this->_exists(id)) {
         _reportError(id, "addComponent: entity does not exist");
         return sol::lua_nil;
     }
     const auto type = _typeFromName(name);
+    if (type && !this->_world.isComponentActive(*type))
+        return sol::lua_nil;
     if (!type || this->_adders[static_cast<std::size_t>(*type)] == nullptr) {
         _reportError(id, "addComponent: unknown component '" + std::string(name) + "'");
         return sol::lua_nil;
     }
 
     // never replace an existing component: Lua may still hold a reference to it
-    if (this->_world.getComponent(id, *type) == nullptr)
+    if (this->_world.getActiveComponent(id, *type) == nullptr)
         this->_adders[static_cast<std::size_t>(*type)](this->_world, id);
 
     if (init) {
@@ -239,10 +354,12 @@ void OrByte::ScriptSystem::_bindComponents()
     this->_lua.new_usertype<RGBA>("RGBA", "r", &RGBA::r, "g", &RGBA::g, "b", &RGBA::b, "a", &RGBA::a);
     this->_lua.new_enum<ColliderShape>("ColliderShape", {{"Box", ColliderShape::Box}, {"Circle", ColliderShape::Circle}});
     this->_lua.new_enum<Team>("Team", {{"Player", Team::Player}, {"Enemy", Team::Enemy}});
+    this->_lua.new_enum<MusicState>("MusicState", {{"Playing", MusicState::Playing}, {"Paused", MusicState::Paused}, {"Stopped", MusicState::Stopped}});
 
     this->_bindComponent<Transform>("position", &Transform::position, "scale", &Transform::scale, "rotation", &Transform::rotation);
     this->_bindComponent<Velocity>("velocity", &Velocity::velocity);
     this->_bindComponent<Health>("currentHealth", &Health::currentHealth, "maxHealth", &Health::maxHealth);
+    this->_bindComponent<Music>("path", &Music::path, "volume", &Music::volume, "pitch", &Music::pitch, "loop", &Music::loop, "state", &Music::state);
     this->_bindComponent<AddHealth>("regenAmount", &AddHealth::regenAmount);
     this->_bindComponent<RemoveHealth>("hitDamage", &RemoveHealth::hitDamage);
     this->_bindComponent<RegenHealth>("regenAmount", &RegenHealth::regenAmount, "cooldown", &RegenHealth::cooldown, "duration", &RegenHealth::duration);
@@ -265,6 +382,11 @@ extern "C" {
     OrByte::DynamicLibrary::PluginType type()
     {
         return OrByte::DynamicLibrary::PluginType::SYSTEMS;
+    }
+
+    void onCollisions(OrByte::ISystem& system, const std::vector<std::pair<int, int>>& pairs)
+    {
+        static_cast<OrByte::ScriptSystem&>(system).onCollisions(pairs);
     }
 
     OrByte::ISystem *factory(World& world)

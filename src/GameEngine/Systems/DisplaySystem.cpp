@@ -15,7 +15,7 @@
 
 void OrByte::DisplaySystem::_handleSprite(Transform* transform, int entity)
 {
-    auto* sprite = this->_world.getComponent<Sprite>(entity);
+    auto* sprite = this->_world.getActiveComponent<Sprite>(entity);
     if (sprite == nullptr)
         return;
 
@@ -24,7 +24,7 @@ void OrByte::DisplaySystem::_handleSprite(Transform* transform, int entity)
 
 void OrByte::DisplaySystem::_handleControllable(Transform* transform, int entity)
 {
-    auto* controllable = this->_world.getComponent<Controllable>(entity);
+    auto* controllable = this->_world.getActiveComponent<Controllable>(entity);
     if (controllable == nullptr)
         return;
 
@@ -49,7 +49,7 @@ bool OrByte::DisplaySystem::_hasImage(const std::string& path)
 
 void OrByte::DisplaySystem::_handleAnimator(int entityID, Transform* transform)
 {
-    auto* animator = this->_world.getComponent<Animator>(entityID);
+    auto* animator = this->_world.getActiveComponent<Animator>(entityID);
     const Animation* animation = animator->getCurrentAnimation();
 
     if (animation == nullptr || animation->frameCount == 0)
@@ -131,12 +131,12 @@ void OrByte::DisplaySystem::update()
     const Vector2 origin = this->_world.getCameraOrigin(Vector2(constants::SERVER_WINDOW_X, constants::SERVER_WINDOW_Y));
     std::vector<int> entities = this->_world.getExistingEntities();
     for (int entity: entities) {
-        auto* worldTransform = this->_world.getComponent<Transform>(entity);
+        auto* worldTransform = this->_world.getActiveComponent<Transform>(entity);
         if (worldTransform == nullptr)
             continue;
         Transform view = _toView(*worldTransform, origin);
         Transform* transform = &view;
-        auto* animator = this->_world.getComponent<Animator>(entity);
+        auto* animator = this->_world.getActiveComponent<Animator>(entity);
         if (animator != nullptr) {
             this->_updateAnimator(animator, 1.0F / constants::FPS_LIMIT);
             this->_handleAnimator(entity, transform);

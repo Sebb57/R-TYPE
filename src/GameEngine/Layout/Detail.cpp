@@ -323,76 +323,135 @@ std::vector<std::string> animationNames(const Animator& animator)
     return names;
 }
 
-Detail::Field currentAnimation(Animator& animator)
+Detail::Field heading(std::string label)
 {
-    Detail::Cell cell;
-    cell.get = [&animator]() {
-        return animator.getCurrentAnimation() != nullptr ? animator.currentAnimation : std::string("(none)");
-    };
-    cell.click = [&animator]() {
-        const std::vector<std::string> names = animationNames(animator);
-        if (names.empty())
-            return;
-        auto it = std::upper_bound(names.begin(), names.end(), animator.currentAnimation);
-        const bool wasPlaying = animator.playing;
-        animator.play(it == names.end() ? names.front() : *it, true);
-        animator.playing = wasPlaying;
-    };
-    return { "Current", { std::move(cell) } };
+    return {std::move(label), {}, Detail::Field::Style::Heading};
+}
+
+Detail::Field stacked(Detail::Field field)
+{
+    field.style = Detail::Field::Style::Stacked;
+    return field;
 }
 
 Detail::Field newAnimation(Animator& animator)
 {
-    static const std::string PLACEHOLDER = "type a name + Enter";
+    static const std::string PLACEHOLDER = "Name, then Enter";
     Detail::Cell cell;
     cell.get = []() { return PLACEHOLDER; };
     cell.set = [&animator](const std::string& input) {
         const std::string name = trim(input);
-        if (name.empty() || name == PLACEHOLDER || animator.animations.count(name) != 0)
+        if (name.empty() || name == PLACEHOLDER || animator.animations.contains(name))
             return false;
         animator.addAnimation(name, Animation{});
-        if (animator.getCurrentAnimation() == nullptr)
-            animator.play(name, true);
+        animator.play(name, true);
         return true;
     };
-    return { "New anim", { std::move(cell) } };
+    return stacked({"Add animation", {std::move(cell)}});
 }
 
-void describeAnimation(std::vector<Detail::Field>& fields, Animator& animator, const std::string& name)
+template <typename T>
+Detail::Field animationNumber(std::string label, T& value, T minimum, Animator& animator)
 {
-    Animation& a = animator.animations.at(name);
-
-    fields.push_back(button("[" + name + "]", "Remove", [&animator, name]() {
-        if (animator.currentAnimation == name)
-            animator.stop();
-        animator.animations.erase(name);
-    }));
-    fields.push_back(toggle(" Use sheet", a.isSpriteSheet));
-    if (a.isSpriteSheet) {
-        fields.push_back(texture(" Sheet", a.spriteSheetPath));
-        fields.push_back(vector2(" Frame size", a.frameSize));
-        fields.push_back(number(" Columns", a.columns));
-        fields.push_back(number(" 1st frame", a.firstFrame));
-        fields.push_back(number(" Frames", a.frameCount));
-        fields.push_back(vector2(" Draw size", a.displaySize));
-    } else {
-        fields.push_back(textList(" Images", a.spritePaths, a.frameCount));
-        fields.push_back(vector2(" Size", a.frameSize));
-    }
-    fields.push_back(number(" Frame time", a.frameDuration));
-    fields.push_back(toggle(" Loop", a.loop));
+    Detail::Field field = number(std::move(label), value);
+    field.cells.front().set = [&value, minimum, &animator](const std::string& input) {
+        T parsed{};
+        if (!parseNumber(input, parsed) || parsed < minimum)
+            return false;
+        if constexpr (std::is_floating_point_v<T>)
+            if (!std::isfinite(parsed))
+                return false;
+        value = parsed;
+        animator.currentFrame = 0;
+        animator.elapsed = 0;
+        return true;
+    };
+    return field;
 }
 
 std::vector<Detail::Field> describeAnimator(Animator& animator)
 {
-    std::vector<Detail::Field> fields = {
-        currentAnimation(animator),
-        toggle("Playing", animator.playing),
-        info("Frame", std::to_string(animator.currentFrame)),
+    using Style = Detail::Field::Style;
+    std::vector<Detail::Field> fields = {newAnimation(animator), heading("Animations (" + std::to_string(animator.animations.size()) + ")")};
+    for (const std::string& name : animationNames(animator)) {
+        Detail::Field item = button("", name, [&animator, name]() {
+            const bool playing = animator.playing;
+            animator.play(name, true);
+            animator.playing = playing;
+        });
+        item.style = animator.currentAnimation == name ? Style::Selected : Style::Actions;
+        fields.push_back(std::move(item));
+    }
+    if (animator.getCurrentAnimation() == nullptr) {
+        fields.push_back(info("Selection", animator.animations.empty() ? "Add an animation above" : "Select an animation"));
+        return fields;
+    }
+
+    const std::string name = animator.currentAnimation;
+    Animation& animation = animator.animations.at(name);
+    fields.push_back(heading("Animation settings"));
+
+    Detail::Cell rename;
+    rename.get = [name]() { return name; };
+    rename.set = [&animator, name](const std::string& input) {
+        const std::string next = trim(input);
+        if (next == name)
+            return true;
+        if (next.empty() || animator.animations.contains(next))
+            return false;
+        auto node = animator.animations.extract(name);
+        node.key() = next;
+        animator.animations.insert(std::move(node));
+        animator.currentAnimation = next;
+        return true;
     };
-    for (const std::string& name : animationNames(animator))
-        describeAnimation(fields, animator, name);
-    fields.push_back(newAnimation(animator));
+    fields.push_back(stacked({"Name", {std::move(rename)}}));
+    fields.push_back(button("Source", animation.isSpriteSheet ? "Spritesheet" : "Image list", [&animation, &animator]() {
+        animation.isSpriteSheet = !animation.isSpriteSheet;
+        if (!animation.isSpriteSheet)
+            animation.frameCount = std::max<std::size_t>(1, animation.spritePaths.size());
+        animator.currentFrame = 0;
+        animator.elapsed = 0;
+    }));
+    if (animation.isSpriteSheet) {
+        fields.push_back(stacked(texture("Spritesheet (drop an image)", animation.spriteSheetPath)));
+        fields.push_back(vector2("Cell size", animation.frameSize));
+        fields.push_back(animationNumber("Columns", animation.columns, std::size_t{1}, animator));
+        fields.push_back(animationNumber("First frame", animation.firstFrame, std::size_t{0}, animator));
+        fields.push_back(animationNumber("Frame count", animation.frameCount, std::size_t{1}, animator));
+        fields.push_back(vector2("Draw size", animation.displaySize));
+    } else {
+        fields.push_back(stacked(textList("Images (comma-separated)", animation.spritePaths, animation.frameCount)));
+        fields.push_back(vector2("Draw size", animation.frameSize));
+    }
+    fields.push_back(animationNumber("Frame (s)", animation.frameDuration, std::numeric_limits<float>::min(), animator));
+    fields.push_back(toggle("Loop", animation.loop));
+    Detail::Field actions = button("", "Duplicate", [&animator]() {
+        const std::string name = animator.currentAnimation;
+        std::string copy = name + "_copy";
+        for (int i = 2; animator.animations.contains(copy); ++i)
+            copy = name + "_copy_" + std::to_string(i);
+        const bool playing = animator.playing;
+        animator.addAnimation(copy, animator.animations.at(name));
+        animator.play(copy, true);
+        animator.playing = playing;
+    });
+    actions.style = Style::Actions;
+    auto remove = button("", "Delete", [&animator]() {
+        const std::string name = animator.currentAnimation;
+        const bool playing = animator.playing;
+        animator.stop();
+        animator.animations.erase(name);
+        animator.currentAnimation.clear();
+        const auto names = animationNames(animator);
+        if (!names.empty()) {
+            animator.play(names.front(), true);
+            animator.playing = playing;
+        }
+    }).cells.front();
+    remove.destructive = true;
+    actions.cells.push_back(std::move(remove));
+    fields.push_back(std::move(actions));
     return fields;
 }
 
@@ -598,8 +657,9 @@ std::vector<OrByte::Detail::Row> OrByte::Detail::_buildRows(int entityId)
         if (this->_collapsed.count(type) == 0) {
             std::vector<Field> fields = describe(*component);
             for (std::size_t i = 0; i < fields.size(); ++i) {
-                rows.push_back(Row{ RowKind::Value, y, static_cast<float>(ROW_HEIGHT), type, static_cast<int>(i), std::move(fields[i]) });
-                y += static_cast<float>(ROW_HEIGHT);
+                const float height = fields[i].style == Field::Style::Stacked ? 44.f : static_cast<float>(ROW_HEIGHT);
+                rows.push_back(Row{ RowKind::Value, y, height, type, static_cast<int>(i), std::move(fields[i]) });
+                y += height;
             }
         }
         y += 4.f;
@@ -620,13 +680,15 @@ std::vector<OrByte::Detail::Row> OrByte::Detail::_buildRows(int entityId)
 
 Rect OrByte::Detail::_cellRect(const Row& row, std::size_t cellIndex, int width) const
 {
-    const int labelWidth = std::clamp(static_cast<int>(static_cast<float>(width) * 0.35f), 70, 150);
+    const bool fullWidth = row.field.style != Field::Style::Value;
+    const int labelWidth = fullWidth ? PADDING : std::clamp(static_cast<int>(static_cast<float>(width) * 0.35f), 70, 150);
     const int count = static_cast<int>(std::max<std::size_t>(1, row.field.cells.size()));
     const int available = std::max(count, width - labelWidth - PADDING - CELL_GAP * (count - 1));
     const int cellWidth = available / count;
 
+    const int top = row.field.style == Field::Style::Stacked ? 21 : 2;
     return Rect(labelWidth + static_cast<int>(cellIndex) * (cellWidth + CELL_GAP),
-        static_cast<int>(row.y) + 2, cellWidth, static_cast<int>(row.height) - 4);
+        static_cast<int>(row.y) + top, cellWidth, static_cast<int>(row.height) - top - 2);
 }
 
 Rect OrByte::Detail::_removeRect(const Row& row, int width) const
@@ -923,10 +985,19 @@ void OrByte::Detail::_drawRow(const IGraphic& graphic, const Row& row, int width
         return;
     }
 
+    if (row.field.style == Field::Style::Heading) {
+        fillRect(graphic, static_cast<float>(PADDING), row.y + 3.f, w - PADDING * 2.f, row.height - 4.f, HEADER_COLOR);
+        drawLabel(graphic, static_cast<float>(PADDING + 6), row.y + 4.f,
+            fit(row.field.label, w - PADDING * 3.f, FIELD_FONT), FIELD_FONT, MUTED_COLOR);
+        return;
+    }
     const Rect first = this->_cellRect(row, 0, width);
     const float labelX = static_cast<float>(PADDING + 8);
-    const float textY = row.y + (row.height - static_cast<float>(FIELD_FONT)) / 2.f - 2.f;
-    drawLabel(graphic, labelX, textY, fit(row.field.label, static_cast<float>(first.x) - labelX - 4.f, FIELD_FONT), FIELD_FONT, MUTED_COLOR);
+    const float textY = static_cast<float>(first.y) + (first.h - static_cast<float>(FIELD_FONT)) / 2.f - 2.f;
+    if (row.field.style == Field::Style::Stacked)
+        drawLabel(graphic, static_cast<float>(PADDING), row.y + 3.f, fit(row.field.label, w - PADDING * 2.f, FIELD_FONT), FIELD_FONT, MUTED_COLOR);
+    else if (row.field.style == Field::Style::Value)
+        drawLabel(graphic, labelX, textY, fit(row.field.label, static_cast<float>(first.x) - labelX - 4.f, FIELD_FONT), FIELD_FONT, MUTED_COLOR);
 
     const bool blink = (std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now().time_since_epoch()).count() / 500) % 2 == 0;
@@ -938,8 +1009,14 @@ void OrByte::Detail::_drawRow(const IGraphic& graphic, const Row& row, int width
         const bool readOnly = !cell.set && !cell.click;
         float textX = static_cast<float>(rect.x) + 4.f;
 
+        const bool selectedAnimation = row.field.style == Field::Style::Selected;
+        RGBA background = readOnly ? READONLY_COLOR : CELL_COLOR;
+        if (selectedAnimation)
+            background = SELECTION_COLOR;
+        if (cell.destructive)
+            background = REMOVE_COLOR;
         fillRect(graphic, static_cast<float>(rect.x), static_cast<float>(rect.y), static_cast<float>(rect.w), static_cast<float>(rect.h),
-            readOnly ? READONLY_COLOR : CELL_COLOR, 1, editing ? EDIT_BORDER_COLOR : BORDER_COLOR);
+            background, 1, editing || selectedAnimation ? EDIT_BORDER_COLOR : BORDER_COLOR);
         if (!cell.tag.empty()) {
             drawLabel(graphic, textX, textY, cell.tag, FIELD_FONT, tagColor(cell.tag));
             textX += 11.f;

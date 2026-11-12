@@ -67,6 +67,7 @@ class GameInstance {
         std::unique_ptr<World> _world;
         std::vector<LoadedSystem> _systems;
         LoadedSystem _display;
+        void (*_scriptCollisions)(OrByte::ISystem&, const std::vector<std::pair<int, int>>&) = nullptr;
         BoundedQueue<OrByte::Event> _inbox{256};
         std::mutex _mutex;
         SnapshotSink _sink;

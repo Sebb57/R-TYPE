@@ -102,8 +102,10 @@ Vector2 World::getCameraOrigin(const Vector2& view)
     if (!holder)
         return {};
 
-    const auto *camera = this->componentManager.getComponent<OrByte::Camera>(*holder);
-    const auto *transform = this->componentManager.getComponent<OrByte::Transform>(*holder);
+    const auto *camera = this->getActiveComponent<OrByte::Camera>(*holder);
+    if (camera == nullptr)
+        return {};
+    const auto *transform = this->getActiveComponent<OrByte::Transform>(*holder);
     const Vector2 target = transform != nullptr ? transform->position : Vector2(view.x / 2.0F, view.y / 2.0F);
     return camera->origin(target, view);
 }

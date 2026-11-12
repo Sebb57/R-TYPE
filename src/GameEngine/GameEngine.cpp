@@ -16,10 +16,8 @@
 #include "GameEngine/Layout/FilesManagementWidget.hpp"
 #include "GameEngine/Layout/SceneManagerWidget.hpp"
 #include "constants.hpp"
-#include <exception>
 #include "GameEngine/Layout/SceneView.hpp"
 #include <filesystem>
-#include <iostream>
 #include <memory>
 #include <queue>
 #include <string_view>
@@ -58,42 +56,11 @@ OrByte::GameEngine::GameEngine(std::filesystem::path graphicPath)
       _console(this->_scenes, this->_components)
 {
     this->_graphicLib->open();
-    this->_loadAudio();
     this->_initLayout();
-}
-
-void OrByte::GameEngine::_loadAudio()
-{
-    const std::filesystem::path audioLib = std::filesystem::path(PLUGINS_DIR) / constants::pluginFile("SFMLAudio");
-    const std::filesystem::path audioSystem = std::filesystem::path(PLUGINS_DIR) / "systems" / constants::pluginFile("AudioSystem");
-
-    try {
-        this->_audioLoader = std::make_unique<DynamicLibrary>(audioLib);
-        this->_audio.reset(this->_audioLoader->loadFunction<IAudio* (*)()>("factory")());
-        this->_audioSystemLoader = std::make_unique<DynamicLibrary>(audioSystem);
-    } catch (const std::exception& error) {
-        std::cerr << "[GameEngine] audio disabled: " << error.what() << std::endl;
-        this->_audioSystem.reset();
-        this->_audio.reset();
-    }
-}
-
-void OrByte::GameEngine::_bindAudioToScene()
-{
-    // Release the previous scene's tracks before binding the active world.
-    this->_audioSystem.reset();
-    if (!this->_audio || !this->_audioSystemLoader || this->_scenes.empty())
-        return;
-    try {
-        this->_audioSystem.reset(this->_audioSystemLoader->loadFunction<ISystem* (*)(World&, IAudio&)>("factory")(this->_scenes.currentWorld(), *this->_audio));
-    } catch (const std::exception& error) {
-        std::cerr << "[GameEngine] audio disabled: " << error.what() << std::endl;
-    }
 }
 
 void OrByte::GameEngine::_initLayout()
 {
-    this->_bindAudioToScene();
     std::unique_ptr<Widget> scene;
     if (this->_scenes.empty())
         scene = std::make_unique<Panel>("", 0);
@@ -173,8 +140,6 @@ bool OrByte::GameEngine::_handleEvent(Event& event)
 void OrByte::GameEngine::_update()
 {
     this->_console.update();
-    if (this->_audioSystem)
-        this->_audioSystem->update();
 }
 
 void OrByte::GameEngine::_render()

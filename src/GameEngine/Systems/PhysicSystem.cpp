@@ -24,11 +24,11 @@ OrByte::PhysicSystem::PhysicSystem(World& world) : _world(world)
 
 void OrByte::PhysicSystem::_handleOrbit(Transform* transform, int entity, double deltaTime)
 {
-    Orbit* orbit = this->_world.getComponent<Orbit>(entity);
+    Orbit* orbit = this->_world.getActiveComponent<Orbit>(entity);
     if (orbit == nullptr)
         return;
 
-    Transform* target = this->_world.getComponent<Transform>(orbit->targetEntity);
+    Transform* target = this->_world.getActiveComponent<Transform>(orbit->targetEntity);
     Vector2 center = target ? target->position : orbit->center;
 
     orbit->angle += (orbit->angleSpeed * deltaTime);
@@ -38,11 +38,11 @@ void OrByte::PhysicSystem::_handleOrbit(Transform* transform, int entity, double
 
 void OrByte::PhysicSystem::_handleSinus(Transform* transform, int entity, double deltaTime)
 {
-    Sinus* sinus = this->_world.getComponent<Sinus>(entity);
+    Sinus* sinus = this->_world.getActiveComponent<Sinus>(entity);
     if (sinus == nullptr)
         return;
 
-    Transform* target = this->_world.getComponent<Transform>(sinus->targetEntity);
+    Transform* target = this->_world.getActiveComponent<Transform>(sinus->targetEntity);
     Vector2 center = target ? target->position : sinus->center;
 
     sinus->curr += (sinus->speed * deltaTime);
@@ -52,11 +52,11 @@ void OrByte::PhysicSystem::_handleSinus(Transform* transform, int entity, double
 
 void OrByte::PhysicSystem::_handleSpiral(Transform* transform, int entity, double deltaTime)
 {
-    Spiral* spiral = this->_world.getComponent<Spiral>(entity);
+    Spiral* spiral = this->_world.getActiveComponent<Spiral>(entity);
     if (spiral == nullptr)
         return;
 
-    Transform* target = this->_world.getComponent<Transform>(spiral->targetEntity);
+    Transform* target = this->_world.getActiveComponent<Transform>(spiral->targetEntity);
     Vector2 center = target ? target->position : spiral->center;
 
     spiral->angle += (spiral->angleSpeed * deltaTime);
@@ -67,7 +67,7 @@ void OrByte::PhysicSystem::_handleSpiral(Transform* transform, int entity, doubl
 
 void OrByte::PhysicSystem::_handleVelocity(Transform* transform, int entity, double deltaTime)
 {
-    Velocity* velocity = this->_world.getComponent<Velocity>(entity);
+    Velocity* velocity = this->_world.getActiveComponent<Velocity>(entity);
     if (velocity == nullptr)
         return;
 
@@ -77,7 +77,7 @@ void OrByte::PhysicSystem::_handleVelocity(Transform* transform, int entity, dou
 
 void OrByte::PhysicSystem::_handleBounds(Transform* transform, int entity)
 {
-    const Controllable* controllable = this->_world.getComponent<Controllable>(entity);
+    const Controllable* controllable = this->_world.getActiveComponent<Controllable>(entity);
     if (controllable == nullptr)
         return;
 
@@ -92,7 +92,7 @@ void OrByte::PhysicSystem::update()
 
     std::vector<int> entities = this->_world.getExistingEntities();
     for (int entity: entities) {
-        Transform* transform = this->_world.getComponent<Transform>(entity);
+        Transform* transform = this->_world.getActiveComponent<Transform>(entity);
         if (transform == nullptr)
             continue;
 
