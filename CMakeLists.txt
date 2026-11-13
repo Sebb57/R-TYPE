@@ -202,17 +202,9 @@ rtype_configure_plugin(rtype_sfml "SFML" "${CMAKE_SOURCE_DIR}/plugins")
 target_include_directories(rtype_sfml PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(rtype_sfml PRIVATE
     bitsery
+    SFML::Audio
     SFML::Graphics
     SFML::Window
-    SFML::System
-)
-
-# Audio library plugin: the only audio code that knows SFML (like rtype_sfml for graphics)
-add_library(rtype_sfml_audio MODULE src/plugins/SFMLAudio.cpp)
-rtype_configure_plugin(rtype_sfml_audio "SFMLAudio" "${CMAKE_SOURCE_DIR}/plugins")
-target_include_directories(rtype_sfml_audio PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(rtype_sfml_audio PRIVATE
-    SFML::Audio
     SFML::System
 )
 
@@ -254,7 +246,7 @@ target_link_libraries(r-type_client PRIVATE
     rtype-protocol
     SFML::Audio
 )
-add_dependencies(r-type_client rtype_sfml rtype_sfml_audio ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
+add_dependencies(r-type_client rtype_sfml ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
 target_compile_features(r-type_client PRIVATE cxx_std_23)
 set_target_properties(r-type_client PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}>"
@@ -278,7 +270,7 @@ endif()
 # ---------------------------------------------------------------------------
 add_executable(r-type_game-engine src/GameEngine/main.cpp)
 target_link_libraries(r-type_game-engine PRIVATE rtype_engine)
-add_dependencies(r-type_game-engine rtype_sfml rtype_sfml_audio ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
+add_dependencies(r-type_game-engine rtype_sfml ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
 target_compile_features(r-type_game-engine PRIVATE cxx_std_23)
 set_target_properties(r-type_game-engine PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}>"
@@ -301,7 +293,6 @@ foreach(target IN ITEMS
     r-type_client
     r-type_game-engine
     rtype_sfml
-    rtype_sfml_audio
     ${SYSTEM_TARGETS}
     ${COMPONENT_TARGETS}
 )
@@ -322,7 +313,6 @@ foreach(target IN ITEMS
     rtype-protocol
     rtype_engine
     rtype_sfml
-    rtype_sfml_audio
     r-type_server
     r-type_client
     r-type_game-engine
@@ -345,7 +335,6 @@ if(MINGW)
         r-type_client
         r-type_game-engine
         rtype_sfml
-        rtype_sfml_audio
         ${SYSTEM_TARGETS}
         ${COMPONENT_TARGETS}
     )

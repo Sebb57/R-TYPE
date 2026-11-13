@@ -12,7 +12,6 @@
 #include "plugins/SFML.hpp"
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 #include <queue>
 #include <SFML/Graphics.hpp>
 #include <thread>
@@ -696,6 +695,77 @@ void OrByte::SFML::setCursor(CursorType type)
     if (cursor) {
         this->_window->setMouseCursor(*cursor);
         this->_currentCursor = type;
+    }
+}
+
+void OrByte::SFML::playSound(const std::filesystem::path& path, float volume, float pitch) const
+{
+    const std::string key = path.string();
+    auto entry = this->_sounds.find(key);
+
+    if (entry == this->_sounds.end()) {
+        entry = this->_sounds.try_emplace(key).first;
+        if (!entry->second.buffer.loadFromFile(path)) {
+            this->_sounds.erase(entry);
+            return;
+        }
+        entry->second.sound.emplace(entry->second.buffer);
+    }
+    sf::Sound& sound = *entry->second.sound;
+
+    sound.stop();
+    sound.setVolume(volume);
+    sound.setPitch(pitch);
+    sound.play();
+}
+
+void OrByte::SFML::stopSound(const std::filesystem::path& path) const
+{
+    const auto entry = this->_sounds.find(path.string());
+
+    if (entry != this->_sounds.end() && entry->second.sound)
+        entry->second.sound->stop();
+}
+
+void OrByte::SFML::playMusic(const std::filesystem::path& path, bool loop, float volume) const
+{
+    if (this->_music && this->_musicPath == path.string()) {
+        this->_music->setLooping(loop);
+        this->_music->setVolume(volume);
+        if (this->_music->getStatus() != sf::SoundSource::Status::Playing)
+            this->_music->play();
+        return;
+    }
+
+    auto music = std::make_unique<sf::Music>();
+
+    if (!music->openFromFile(path))
+        return;
+    music->setLooping(loop);
+    music->setVolume(volume);
+    music->play();
+    this->_music = std::move(music);
+    this->_musicPath = path.string();
+}
+
+void OrByte::SFML::stopMusic() const
+{
+    if (this->_music)
+        this->_music->stop();
+}
+
+bool OrByte::SFML::isMusicPlaying() const
+{
+    return this->_music && this->_music->getStatus() == sf::SoundSource::Status::Playing;
+}
+
+void OrByte::SFML::stopAudio() const
+{
+    this->stopMusic();
+    for (auto& [name, entry] : this->_sounds) {
+        (void)name;
+        if (entry.sound)
+            entry.sound->stop();
     }
 }
 

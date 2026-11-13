@@ -26,6 +26,16 @@
 
 namespace {
 
+constexpr const char *SoundPaths[] = {
+    "./assets/sounds/Assets_Sound_Fx_shot1.wav",
+    "./assets/sounds/Assets_Sound_Fx_shot2.wav",
+    "./assets/sounds/Assets_Sound_Fx_hit.wav",
+    "./assets/sounds/Assets_Sound_Fx_explosion.wav",
+};
+constexpr const char *MusicPath = "./assets/sounds/backmusic.mp3";
+constexpr float SoundVolume = 75.0f;
+constexpr float MusicVolume = 35.0f;
+
 constexpr std::size_t Shot1Sound = 0;
 constexpr std::size_t Shot2Sound = 1;
 constexpr std::size_t HitSound = 2;
@@ -42,29 +52,9 @@ client::GameScene::GameScene(SceneContext& context)
         {Action::Right, server::InputKey::Right},
         {Action::Fire, server::InputKey::Fire},
     }
-    , _sounds{
-        sf::Sound(_soundBuffers[0]),
-        sf::Sound(_soundBuffers[1]),
-        sf::Sound(_soundBuffers[2]),
-        sf::Sound(_soundBuffers[3])
-    }
 {
-    constexpr const char* soundPaths[] = {
-        "./assets/sounds/Assets_Sound_Fx_shot1.wav",
-        "./assets/sounds/Assets_Sound_Fx_shot2.wav",
-        "./assets/sounds/Assets_Sound_Fx_hit.wav",
-        "./assets/sounds/Assets_Sound_Fx_explosion.wav",
-    };
+    this->graphic().playMusic(MusicPath, true, MusicVolume);
 
-    for (std::size_t sound = 0; sound < this->_sounds.size(); ++sound)
-        if (this->_soundBuffers[sound].loadFromFile(soundPaths[sound]))
-            this->_sounds[sound].setVolume(75.0f);
-
-    if (this->_music.openFromFile("./assets/sounds/backmusic.mp3")) {
-        this->_music.setLooping(true);
-        this->_music.setVolume(35.0f);
-        this->_music.play();
-    }
     constexpr float backgroundHeight = OrByte::constants::SERVER_WINDOW_Y;
     constexpr float backgroundWidth = backgroundHeight * (4224.0f / 240.0f);
     this->_backgroundEntity = this->_world.createEntity();
@@ -85,9 +75,7 @@ client::GameScene::GameScene(SceneContext& context)
 client::GameScene::~GameScene()
 {
     this->_context.network.setKeys(0);
-    this->_music.stop();
-    for (sf::Sound& sound : this->_sounds)
-        sound.stop();
+    this->graphic().stopAudio();
 }
 
 void client::GameScene::update(double deltaTime)
@@ -139,8 +127,7 @@ void client::GameScene::update(double deltaTime)
     this->_tick = this->_view.tick;
     this->applySnapshot(this->_view.entities);
     if (this->_view.gameOver) {
-        if (this->_music.getStatus() == sf::SoundSource::Status::Playing)
-            this->_music.stop();
+        this->graphic().stopMusic();
         if (auto *velocity = this->_world.getComponent<OrByte::Velocity>(this->_backgroundEntity))
             velocity->velocity = Vector2(0.0f, 0.0f);
     }
@@ -355,8 +342,7 @@ void client::GameScene::addCollisionEffect(const CollisionEffectView& effect)
 
 void client::GameScene::playSound(std::size_t sound)
 {
-    if (sound >= this->_sounds.size() || this->_soundBuffers[sound].getSampleCount() == 0)
+    if (sound >= std::size(SoundPaths))
         return;
-    this->_sounds[sound].stop();
-    this->_sounds[sound].play();
+    this->graphic().playSound(SoundPaths[sound], SoundVolume);
 }
