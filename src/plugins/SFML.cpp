@@ -59,21 +59,12 @@ void OrByte::SFML::open(const std::size_t width, const std::size_t height, std::
 {
     if (this->_isOpen)
         return;
-    this->_window = std::make_unique<sf::RenderWindow>(sf::VideoMode(width, height, 32), title, sf::Style::Default);
+    this->_window = std::make_unique<sf::RenderWindow>(sf::VideoMode(sf::Vector2u(width, height), 32), title, sf::Style::Default);
     this->_window->setFramerateLimit(constants::FPS_LIMIT);
 
     this->_width = width;
     this->_height = height;
     this->_nextFrameTime = std::chrono::steady_clock::now();
-
-    this->_cursorArrow.loadFromSystem(sf::Cursor::Arrow);
-    this->_cursorHorizontal.loadFromSystem(sf::Cursor::SizeHorizontal);
-    this->_cursorVertical.loadFromSystem(sf::Cursor::SizeVertical);
-    this->_cursorMove.loadFromSystem(sf::Cursor::SizeAll);
-    this->_cursorClick.loadFromSystem(sf::Cursor::Hand);
-    this->_cursorDiagonalNWSE.loadFromSystem(sf::Cursor::SizeTopLeft);
-    this->_cursorDiagonalNESW.loadFromSystem(sf::Cursor::SizeTopRight);
-    this->_currentCursor = CursorType::Arrow;
 
     this->_isOpen = true;
 }
@@ -90,216 +81,196 @@ void OrByte::SFML::close()
 std::queue<OrByte::Event> OrByte::SFML::listen() const
 {
     std::queue<Event> events;
-    sf::Event sfmlEvent;
 
     if (!this->_isOpen || !this->_window)
         return events;
-    while (this->_window->pollEvent(sfmlEvent)) {
+
+    const auto mapKey = [](sf::Keyboard::Key key, Event& event) {
+        switch (key) {
+            case sf::Keyboard::Key::Left:
+                event.key = Event::Key::Left; break;
+            case sf::Keyboard::Key::Right:
+                event.key = Event::Key::Right; break;
+            case sf::Keyboard::Key::Down:
+                event.key = Event::Key::Down; break;
+            case sf::Keyboard::Key::Up:
+                event.key = Event::Key::Up; break;
+            case sf::Keyboard::Key::Enter:
+                event.key = Event::Key::Enter; break;
+            case sf::Keyboard::Key::Escape:
+                event.key = Event::Key::Escape; break;
+            case sf::Keyboard::Key::Space:
+                event.key = Event::Key::Space; break;
+            case sf::Keyboard::Key::Backspace:
+                event.key = Event::Key::Backspace; break;
+            case sf::Keyboard::Key::Delete:
+                event.key = Event::Key::Delete; break;
+            case sf::Keyboard::Key::Insert:
+                event.key = Event::Key::Insert; break;
+            case sf::Keyboard::Key::A:
+                event.key = Event::Key::A;
+                break;
+            case sf::Keyboard::Key::B:
+                event.key = Event::Key::B;
+                break;
+            case sf::Keyboard::Key::C:
+                event.key = Event::Key::C;
+                break;
+            case sf::Keyboard::Key::D:
+                event.key = Event::Key::D;
+                break;
+            case sf::Keyboard::Key::E:
+                event.key = Event::Key::E;
+                break;
+            case sf::Keyboard::Key::F:
+                event.key = Event::Key::F;
+                break;
+            case sf::Keyboard::Key::G:
+                event.key = Event::Key::G;
+                break;
+            case sf::Keyboard::Key::H:
+                event.key = Event::Key::H;
+                break;
+            case sf::Keyboard::Key::I:
+                event.key = Event::Key::I;
+                break;
+            case sf::Keyboard::Key::J:
+                event.key = Event::Key::J;
+                break;
+            case sf::Keyboard::Key::K:
+                event.key = Event::Key::K;
+                break;
+            case sf::Keyboard::Key::L:
+                event.key = Event::Key::L;
+                break;
+            case sf::Keyboard::Key::M:
+                event.key = Event::Key::M;
+                break;
+            case sf::Keyboard::Key::N:
+                event.key = Event::Key::N;
+                break;
+            case sf::Keyboard::Key::O:
+                event.key = Event::Key::O;
+                break;
+            case sf::Keyboard::Key::P:
+                event.key = Event::Key::P;
+                break;
+            case sf::Keyboard::Key::Q:
+                event.key = Event::Key::Q;
+                break;
+            case sf::Keyboard::Key::R:
+                event.key = Event::Key::R;
+                break;
+            case sf::Keyboard::Key::S:
+                event.key = Event::Key::S;
+                break;
+            case sf::Keyboard::Key::T:
+                event.key = Event::Key::T;
+                break;
+            case sf::Keyboard::Key::U:
+                event.key = Event::Key::U;
+                break;
+            case sf::Keyboard::Key::V:
+                event.key = Event::Key::V;
+                break;
+            case sf::Keyboard::Key::W:
+                event.key = Event::Key::W;
+                break;
+            case sf::Keyboard::Key::X:
+                event.key = Event::Key::X;
+                break;
+            case sf::Keyboard::Key::Y:
+                event.key = Event::Key::Y;
+                break;
+            case sf::Keyboard::Key::Z:
+                event.key = Event::Key::Z;
+                break;
+            default: break;
+        }
+    };
+
+    const auto mapMouseButton = [](sf::Mouse::Button button, Event& event) {
+        switch (button) {
+            case sf::Mouse::Button::Left:
+                event.mouseButton = Event::MouseButton::Left;
+                break;
+            case sf::Mouse::Button::Right:
+                event.mouseButton = Event::MouseButton::Right;
+                break;
+            case sf::Mouse::Button::Middle:
+                event.mouseButton = Event::MouseButton::Middle;
+                break;
+            default:
+                break;
+        }
+    };
+
+    const auto setMousePosition = [this](int x, int y, Event& event) {
+        event.windowX = x;
+        event.windowY = y;
+
+        Vector2 mousePos = getPositionFromWindow(
+            {event.windowX, event.windowY},
+            this->_window->getSize()
+        );
+
+        event.mouseX = static_cast<int>(mousePos.x);
+        event.mouseY = static_cast<int>(mousePos.y);
+    };
+
+    while (const auto sfmlEvent = this->_window->pollEvent()) {
         Event event;
 
-        if (sfmlEvent.type == sf::Event::Closed) {
+        if (sfmlEvent->is<sf::Event::Closed>()) {
             event.type = Event::Type::Closed;
             events.push(event);
-            continue;
         }
-        if (sfmlEvent.type == sf::Event::Resized) {
-            this->_window->setView(sf::View(sf::FloatRect(0, 0, sfmlEvent.size.width, sfmlEvent.size.height)));
+        else if (const auto* resized = sfmlEvent->getIf<sf::Event::Resized>()) {
             event.type = Event::Type::Resized;
-            event.width = sfmlEvent.size.width;
-            event.height = sfmlEvent.size.height;
+            event.width = resized->size.x;
+            event.height = resized->size.y;
+
+            this->_window->setView(sf::View(sf::FloatRect({0.f, 0.f},
+                { static_cast<float>(resized->size.x), static_cast<float>(resized->size.y) })));
+
             events.push(event);
-            continue;
         }
-        if (sfmlEvent.type == sf::Event::KeyPressed || sfmlEvent.type == sf::Event::KeyReleased || sfmlEvent.type == sf::Event::TextEntered) {
-            switch (sfmlEvent.key.code) {
-                case sf::Keyboard::Left:
-                    event.key = Event::Key::Left;
-                    break;
-                case sf::Keyboard::Right:
-                    event.key = Event::Key::Right;
-                    break;
-                case sf::Keyboard::Down:
-                    event.key = Event::Key::Down;
-                    break;
-                case sf::Keyboard::Up:
-                    event.key = Event::Key::Up;
-                    break;
-                case sf::Keyboard::Enter:
-                    event.key = Event::Key::Enter;
-                    break;
-                case sf::Keyboard::Escape:
-                    event.key = Event::Key::Escape;
-                    break;
-                case sf::Keyboard::Space:
-                    event.key = Event::Key::Space;
-                    break;
-                case sf::Keyboard::Backspace:
-                    event.key = Event::Key::Backspace;
-                    break;
-                case sf::Keyboard::Delete:
-                    event.key = Event::Key::Delete;
-                    break;
-                case sf::Keyboard::Insert:
-                    event.key = Event::Key::Insert;
-                    break;
-                case sf::Keyboard::A:
-                    event.key = Event::Key::A;
-                    break;
-                case sf::Keyboard::B:
-                    event.key = Event::Key::B;
-                    break;
-                case sf::Keyboard::C:
-                    event.key = Event::Key::C;
-                    break;
-                case sf::Keyboard::D:
-                    event.key = Event::Key::D;
-                    break;
-                case sf::Keyboard::E:
-                    event.key = Event::Key::E;
-                    break;
-                case sf::Keyboard::F:
-                    event.key = Event::Key::F;
-                    break;
-                case sf::Keyboard::G:
-                    event.key = Event::Key::G;
-                    break;
-                case sf::Keyboard::H:
-                    event.key = Event::Key::H;
-                    break;
-                case sf::Keyboard::I:
-                    event.key = Event::Key::I;
-                    break;
-                case sf::Keyboard::J:
-                    event.key = Event::Key::J;
-                    break;
-                case sf::Keyboard::K:
-                    event.key = Event::Key::K;
-                    break;
-                case sf::Keyboard::L:
-                    event.key = Event::Key::L;
-                    break;
-                case sf::Keyboard::M:
-                    event.key = Event::Key::M;
-                    break;
-                case sf::Keyboard::N:
-                    event.key = Event::Key::N;
-                    break;
-                case sf::Keyboard::O:
-                    event.key = Event::Key::O;
-                    break;
-                case sf::Keyboard::P:
-                    event.key = Event::Key::P;
-                    break;
-                case sf::Keyboard::Q:
-                    event.key = Event::Key::Q;
-                    break;
-                case sf::Keyboard::R:
-                    event.key = Event::Key::R;
-                    break;
-                case sf::Keyboard::S:
-                    event.key = Event::Key::S;
-                    break;
-                case sf::Keyboard::T:
-                    event.key = Event::Key::T;
-                    break;
-                case sf::Keyboard::U:
-                    event.key = Event::Key::U;
-                    break;
-                case sf::Keyboard::V:
-                    event.key = Event::Key::V;
-                    break;
-                case sf::Keyboard::W:
-                    event.key = Event::Key::W;
-                    break;
-                case sf::Keyboard::X:
-                    event.key = Event::Key::X;
-                    break;
-                case sf::Keyboard::Y:
-                    event.key = Event::Key::Y;
-                    break;
-                case sf::Keyboard::Z:
-                    event.key = Event::Key::Z;
-                    break;
-                default:
-                    break;
-            }
-        }
-        if (sfmlEvent.type == sf::Event::KeyPressed) {
+        else if (const auto* keyPressed = sfmlEvent->getIf<sf::Event::KeyPressed>()) {
             event.type = Event::Type::KeyPressed;
-            event.keyChar = static_cast<unsigned>(sfmlEvent.text.unicode);
+            mapKey(keyPressed->code, event);
             events.push(event);
         }
-        if (sfmlEvent.type == sf::Event::KeyReleased) {
+        else if (const auto* keyReleased = sfmlEvent->getIf<sf::Event::KeyReleased>()) {
             event.type = Event::Type::KeyReleased;
-            event.keyChar = static_cast<unsigned>(sfmlEvent.text.unicode);
+            mapKey(keyReleased->code, event);
             events.push(event);
         }
-        if (sfmlEvent.type == sf::Event::TextEntered) {
+        else if (const auto* textEntered = sfmlEvent->getIf<sf::Event::TextEntered>()) {
             event.type = Event::Type::TextEntered;
-            event.keyChar = static_cast<char>(sfmlEvent.text.unicode);
+            event.keyChar = static_cast<char>(textEntered->unicode);
             events.push(event);
         }
-        if (sfmlEvent.type == sf::Event::MouseButtonPressed) {
+        else if (const auto* mousePressed = sfmlEvent->getIf<sf::Event::MouseButtonPressed>()) {
             event.type = Event::Type::MouseButtonPressed;
-            event.windowX = sfmlEvent.mouseButton.x;
-            event.windowY = sfmlEvent.mouseButton.y;
-            Vector2 mousePos = getPositionFromWindow({ event.windowX, event.windowY }, this->_window->getSize());
-            event.mouseX = static_cast<int>(mousePos.x);
-            event.mouseY = static_cast<int>(mousePos.y);
-            switch (sfmlEvent.mouseButton.button) {
-                case sf::Mouse::Button::Left:
-                    event.mouseButton = Event::MouseButton::Left;
-                    break;
-                case sf::Mouse::Button::Right:
-                    event.mouseButton = Event::MouseButton::Right;
-                    break;
-                case sf::Mouse::Button::Middle:
-                    event.mouseButton = Event::MouseButton::Middle;
-                    break;
-                default:
-                    break;
-                }
-                events.push(event);
+            setMousePosition(mousePressed->position.x, mousePressed->position.y, event);
+            mapMouseButton(mousePressed->button, event);
+            events.push(event);
         }
-        if (sfmlEvent.type == sf::Event::MouseButtonReleased) {
+        else if (const auto* mouseReleased = sfmlEvent->getIf<sf::Event::MouseButtonReleased>()) {
             event.type = Event::Type::MouseButtonReleased;
-            event.windowX = sfmlEvent.mouseButton.x;
-            event.windowY = sfmlEvent.mouseButton.y;
-            Vector2 mousePos = getPositionFromWindow({ event.windowX, event.windowY }, this->_window->getSize());
-            event.mouseX = static_cast<int>(mousePos.x);
-            event.mouseY = static_cast<int>(mousePos.y);
-            switch (sfmlEvent.mouseButton.button) {
-                case sf::Mouse::Button::Left:
-                    event.mouseButton = Event::MouseButton::Left;
-                    break;
-                case sf::Mouse::Button::Right:
-                    event.mouseButton = Event::MouseButton::Right;
-                    break;
-                case sf::Mouse::Button::Middle:
-                    event.mouseButton = Event::MouseButton::Middle;
-                    break;
-                default:
-                    break;
-            }
+            setMousePosition(mouseReleased->position.x, mouseReleased->position.y, event);
+            mapMouseButton(mouseReleased->button, event);
             events.push(event);
         }
-        if (sfmlEvent.type == sf::Event::MouseMoved) {
+        else if (const auto* mouseMoved = sfmlEvent->getIf<sf::Event::MouseMoved>()) {
             event.type = Event::Type::MouseMoved;
-            event.windowX = sfmlEvent.mouseMove.x;
-            event.windowY = sfmlEvent.mouseMove.y;
-            Vector2 mousePos = getPositionFromWindow({ event.windowX, event.windowY }, this->_window->getSize());
-            event.mouseX = static_cast<int>(mousePos.x);
-            event.mouseY = static_cast<int>(mousePos.y);
+            setMousePosition(mouseMoved->position.x, mouseMoved->position.y, event);
             events.push(event);
         }
-        if (sfmlEvent.type == sf::Event::MouseWheelScrolled) {
+        else if (const auto* mouseWheel = sfmlEvent->getIf<sf::Event::MouseWheelScrolled>()) {
             event.type = Event::Type::MouseWheelScrolled;
-            event.windowX = sfmlEvent.mouseWheelScroll.x;
-            event.windowY = sfmlEvent.mouseWheelScroll.y;
-            event.wheelDelta = sfmlEvent.mouseWheelScroll.delta;
-            Vector2 mousePos = getPositionFromWindow({ event.windowX, event.windowY }, this->_window->getSize());
-            event.mouseX = static_cast<int>(mousePos.x);
-            event.mouseY = static_cast<int>(mousePos.y);
+            setMousePosition(mouseWheel->position.x, mouseWheel->position.y, event);
+            event.wheelDelta = mouseWheel->delta;
             events.push(event);
         }
     }
@@ -339,7 +310,7 @@ void OrByte::SFML::drawRectangle(const Transform& transform, Vector2 size, RGBA 
     rectangle.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x, offset.y + transform.position.y * ratio.y));
     rectangle.setSize(sizeRatio);
     rectangle.setOrigin({ sizeRatio.x / 2, sizeRatio.y / 2 });
-    rectangle.setRotation(transform.rotation);
+    rectangle.setRotation(sf::degrees(transform.rotation));
     rectangle.setFillColor(colorNormalize(fillColor));
     rectangle.setOutlineThickness(outlineThickness);
     rectangle.setOutlineColor(colorNormalize(outlineColor));
@@ -360,7 +331,7 @@ void OrByte::SFML::drawCircle(const Transform& transform, float radius, RGBA fil
     circle.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x, offset.y + transform.position.y * ratio.y));
     circle.setRadius(radiusRatio);
     circle.setOrigin({radiusRatio, radiusRatio});
-    circle.setRotation(transform.rotation);
+    circle.setRotation(sf::degrees(transform.rotation));
     circle.setFillColor(colorNormalize(fillColor));
     circle.setOutlineThickness(outlineThickness);
     circle.setOutlineColor(colorNormalize(outlineColor));
@@ -374,7 +345,7 @@ const sf::Font *OrByte::SFML::getFont(const std::filesystem::path& path) const
 
     if (font == this->_fonts.end()) {
         sf::Font loaded;
-        if (!loaded.loadFromFile(path.string()))
+        if (!loaded.openFromFile(path))
             return nullptr;
         font = this->_fonts.emplace(path.string(), std::move(loaded)).first;
     }
@@ -406,7 +377,7 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     if (textureSize.x == 0 || textureSize.y == 0)
         return;
 
-    sf::Sprite sprite;
+    sf::Sprite sprite(*texture);
     const Vector2 ratio = this->currentRatio();
     const Vector2 offset = this->currentOffset();
     const float scaleX = (size.x * ratio.x) / static_cast<float>(textureSize.x);
@@ -414,13 +385,12 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     const float scale = contain ? std::min(scaleX, scaleY) : scaleY;
     const float clamped = std::clamp(opacity, 0.f, 1.f);
 
-    sprite.setTexture(*texture);
     sprite.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x,
                                     offset.y + transform.position.y * ratio.y));
     sprite.setScale({ scale, scale });
     sprite.setOrigin({ textureSize.x / 2.f, textureSize.y / 2.f });
-    sprite.setRotation(transform.rotation);
-    sprite.setColor(sf::Color(255, 255, 255, static_cast<sf::Uint8>(clamped * 255.f)));
+    sprite.setRotation(sf::degrees(transform.rotation));
+    sprite.setColor(sf::Color(255, 255, 255, static_cast<std::uint8_t>(clamped * 255.f)));
 
     this->_window->draw(sprite);
 }
@@ -436,7 +406,7 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     if (rect.w <= 0 || rect.h <= 0)
         return;
 
-    sf::Sprite sprite;
+    sf::Sprite sprite(*texture);
     const Vector2 ratio = this->currentRatio();
     const Vector2 offset = this->currentOffset();
     const float scaleX = (size.x * ratio.x) / static_cast<float>(rect.w);
@@ -444,14 +414,13 @@ void OrByte::SFML::drawImage(const Transform& transform, Vector2 size, std::file
     const float scale = contain ? std::min(scaleX, scaleY) : scaleY;
     const float clamped = std::clamp(opacity, 0.f, 1.f);
 
-    sprite.setTexture(*texture);
-    sprite.setTextureRect(sf::IntRect(rect.x, rect.y, rect.w, rect.h));
+    sprite.setTextureRect(sf::IntRect({ rect.x, rect.y }, { rect.w, rect.h }));
     sprite.setPosition(sf::Vector2f(offset.x + transform.position.x * ratio.x,
                                     offset.y + transform.position.y * ratio.y));
     sprite.setScale({ scale, scale });
     sprite.setOrigin({ rect.w / 2.f, rect.h / 2.f });
-    sprite.setRotation(transform.rotation);
-    sprite.setColor(sf::Color(255, 255, 255, static_cast<sf::Uint8>(clamped * 255.f)));
+    sprite.setRotation(sf::degrees(transform.rotation));
+    sprite.setColor(sf::Color(255, 255, 255, static_cast<std::uint8_t>(clamped * 255.f)));
 
     this->_window->draw(sprite);
 }
@@ -464,26 +433,24 @@ Vector2 OrByte::SFML::drawText(const Transform& transform, std::string text, uns
     if (sfmlFont == nullptr)
         return {0.f, 0.f};
 
-    sf::Text sfmlText;
     const Vector2 ratio = this->currentRatio();
     const Vector2 offset = this->currentOffset();
 
-    sfmlText.setFont(*sfmlFont);
-    sfmlText.setCharacterSize(static_cast<unsigned>(static_cast<float>(fontSize) * ratio.y));
+    sf::Text sfmlText(*sfmlFont, text, static_cast<unsigned>(static_cast<float>(fontSize) * ratio.y));
+
     sfmlText.setFillColor(colorNormalize(fillColor));
     sfmlText.setOutlineThickness(outlineThickness);
     sfmlText.setOutlineColor(colorNormalize(outlineColor));
-    sfmlText.setString(text);
 
     if (maxWidth > 0.f) {
         const float limit = maxWidth * ratio.x;
 
-        if (sfmlText.getLocalBounds().width > limit) {
+        if (sfmlText.getLocalBounds().size.x > limit) {
             const std::string ellipsis = "...";
             while (!text.empty()) {
                 text.pop_back();
                 sfmlText.setString(text + ellipsis);
-                if (sfmlText.getLocalBounds().width <= limit)
+                if (sfmlText.getLocalBounds().size.x <= limit)
                     break;
             }
             if (text.empty())
@@ -495,7 +462,7 @@ Vector2 OrByte::SFML::drawText(const Transform& transform, std::string text, uns
     this->_window->draw(sfmlText);
 
     const auto localBounds = sfmlText.getLocalBounds();
-    return {localBounds.width, localBounds.height};
+    return {localBounds.size.x, localBounds.size.y};
 }
 
 Vector2 OrByte::SFML::getTextSize(std::string text, unsigned fontSize, float maxWidth, std::filesystem::path font) const
@@ -506,22 +473,19 @@ Vector2 OrByte::SFML::getTextSize(std::string text, unsigned fontSize, float max
     if (sfmlFont == nullptr)
         return {0.f, 0.f};
 
-    sf::Text sfmlText;
     const Vector2 ratio = this->currentRatio();
 
-    sfmlText.setFont(*sfmlFont);
-    sfmlText.setCharacterSize(static_cast<unsigned>(static_cast<float>(fontSize) * ratio.y));
-    sfmlText.setString(text);
+    sf::Text sfmlText(*sfmlFont, text, static_cast<unsigned>(static_cast<float>(fontSize) * ratio.y));
 
     if (maxWidth > 0.f) {
         const float limit = maxWidth * ratio.x;
 
-        if (sfmlText.getLocalBounds().width > limit) {
+        if (sfmlText.getLocalBounds().size.x > limit) {
             const std::string ellipsis = "...";
             while (!text.empty()) {
                 text.pop_back();
                 sfmlText.setString(text + ellipsis);
-                if (sfmlText.getLocalBounds().width <= limit)
+                if (sfmlText.getLocalBounds().size.x <= limit)
                     break;
             }
             if (text.empty())
@@ -530,7 +494,7 @@ Vector2 OrByte::SFML::getTextSize(std::string text, unsigned fontSize, float max
     }
 
     const auto localBounds = sfmlText.getLocalBounds();
-    return {localBounds.width, localBounds.height};
+    return {localBounds.size.x, localBounds.size.y};
 }
 
 Vector2u OrByte::SFML::regionSize() const
@@ -548,14 +512,17 @@ void OrByte::SFML::applyRegionView() const
     const sf::Vector2f windowSize(this->_window->getSize());
 
     if (this->_regions.empty()) {
-        this->_window->setView(sf::View(sf::FloatRect(0, 0, windowSize.x, windowSize.y)));
+        this->_window->setView(sf::View(sf::FloatRect({0.f, 0.f}, {windowSize.x, windowSize.y})));
         return;
     }
 
     const Rect& rect = this->_regions.back();
-    sf::View view(sf::FloatRect(0, 0, rect.w, rect.h));
+    sf::View view(sf::FloatRect(
+        {0.f, 0.f},
+        {static_cast<float>(rect.w), static_cast<float>(rect.h)}
+    ));
 
-    view.setViewport(sf::FloatRect(rect.x / windowSize.x, rect.y / windowSize.y, rect.w / windowSize.x, rect.h / windowSize.y));
+    view.setViewport(sf::FloatRect({rect.x / windowSize.x, rect.y / windowSize.y}, {rect.w / windowSize.x, rect.h / windowSize.y}));
     this->_window->setView(view);
 }
 

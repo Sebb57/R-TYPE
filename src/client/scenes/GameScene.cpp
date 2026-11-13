@@ -42,21 +42,26 @@ client::GameScene::GameScene(SceneContext& context)
         {Action::Right, server::InputKey::Right},
         {Action::Fire, server::InputKey::Fire},
     }
+    , _sounds{
+        sf::Sound(_soundBuffers[0]),
+        sf::Sound(_soundBuffers[1]),
+        sf::Sound(_soundBuffers[2]),
+        sf::Sound(_soundBuffers[3])
+    }
 {
-    constexpr const char *soundPaths[] = {
+    constexpr const char* soundPaths[] = {
         "./assets/sounds/Assets_Sound_Fx_shot1.wav",
         "./assets/sounds/Assets_Sound_Fx_shot2.wav",
         "./assets/sounds/Assets_Sound_Fx_hit.wav",
         "./assets/sounds/Assets_Sound_Fx_explosion.wav",
     };
-    for (std::size_t sound = 0; sound < this->_sounds.size(); ++sound) {
-        if (this->_soundBuffers[sound].loadFromFile(soundPaths[sound])) {
-            this->_sounds[sound].setBuffer(this->_soundBuffers[sound]);
+
+    for (std::size_t sound = 0; sound < this->_sounds.size(); ++sound)
+        if (this->_soundBuffers[sound].loadFromFile(soundPaths[sound]))
             this->_sounds[sound].setVolume(75.0f);
-        }
-    }
+
     if (this->_music.openFromFile("./assets/sounds/backmusic.mp3")) {
-        this->_music.setLoop(true);
+        this->_music.setLooping(true);
         this->_music.setVolume(35.0f);
         this->_music.play();
     }
@@ -134,7 +139,7 @@ void client::GameScene::update(double deltaTime)
     this->_tick = this->_view.tick;
     this->applySnapshot(this->_view.entities);
     if (this->_view.gameOver) {
-        if (this->_music.getStatus() == sf::SoundSource::Playing)
+        if (this->_music.getStatus() == sf::SoundSource::Status::Playing)
             this->_music.stop();
         if (auto *velocity = this->_world.getComponent<OrByte::Velocity>(this->_backgroundEntity))
             velocity->velocity = Vector2(0.0f, 0.0f);

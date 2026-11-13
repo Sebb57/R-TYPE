@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.28)
 
 project(RType VERSION 1.0 DESCRIPTION "R-Type multiplayer game" LANGUAGES C CXX)
 
@@ -171,7 +171,7 @@ if(CMAKE_CROSSCOMPILING AND MINGW)
 endif()
 FetchContent_Declare(sfml
     GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG 2.6.1
+    GIT_TAG 3.1.0
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(sfml)
@@ -202,9 +202,9 @@ rtype_configure_plugin(rtype_sfml "SFML" "${CMAKE_SOURCE_DIR}/plugins")
 target_include_directories(rtype_sfml PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(rtype_sfml PRIVATE
     bitsery
-    sfml-graphics
-    sfml-window
-    sfml-system
+    SFML::Graphics
+    SFML::Window
+    SFML::System
 )
 
 # Audio library plugin: the only audio code that knows SFML (like rtype_sfml for graphics)
@@ -212,8 +212,8 @@ add_library(rtype_sfml_audio MODULE src/plugins/SFMLAudio.cpp)
 rtype_configure_plugin(rtype_sfml_audio "SFMLAudio" "${CMAKE_SOURCE_DIR}/plugins")
 target_include_directories(rtype_sfml_audio PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(rtype_sfml_audio PRIVATE
-    sfml-audio
-    sfml-system
+    SFML::Audio
+    SFML::System
 )
 
 set(SYSTEM_PLUGINS Collider Control Display Health Physic Audio Script)
@@ -249,7 +249,11 @@ file(GLOB_RECURSE CLIENT_SOURCES CONFIGURE_DEPENDS
 )
 add_executable(r-type_client ${CLIENT_SOURCES})
 target_include_directories(r-type_client PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(r-type_client PRIVATE rtype_engine rtype-protocol sfml-audio)
+target_link_libraries(r-type_client PRIVATE
+    rtype_engine
+    rtype-protocol
+    SFML::Audio
+)
 add_dependencies(r-type_client rtype_sfml rtype_sfml_audio ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
 target_compile_features(r-type_client PRIVATE cxx_std_23)
 set_target_properties(r-type_client PROPERTIES

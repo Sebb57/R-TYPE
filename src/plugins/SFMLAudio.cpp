@@ -28,7 +28,7 @@ bool OrByte::SFMLAudio::load(int channel, const std::filesystem::path& path)
 
     this->unload(channel);
     if (!music->openFromFile(path.string()))
-        return false; // SFML already prints the reason in the console
+        return false;
     this->_musics[channel] = std::move(music);
     return true;
 }
@@ -70,9 +70,12 @@ OrByte::AudioStatus OrByte::SFMLAudio::getStatus(int channel) const
     if (music == nullptr)
         return AudioStatus::Stopped;
     switch (music->getStatus()) {
-        case sf::SoundSource::Playing: return AudioStatus::Playing;
-        case sf::SoundSource::Paused: return AudioStatus::Paused;
-        default: return AudioStatus::Stopped;
+        case sf::SoundSource::Status::Playing:
+            return AudioStatus::Playing;
+        case sf::SoundSource::Status::Paused:
+            return AudioStatus::Paused;
+        default:
+            return AudioStatus::Stopped;
     }
 }
 
@@ -91,7 +94,7 @@ void OrByte::SFMLAudio::setPitch(int channel, float pitch)
 void OrByte::SFMLAudio::setLoop(int channel, bool loop)
 {
     if (sf::Music *music = this->_get(channel))
-        music->setLoop(loop);
+        music->setLooping(loop);
 }
 
 void OrByte::SFMLAudio::setOffset(int channel, float seconds)
