@@ -26,7 +26,7 @@ namespace OrByte {
         Collider() = default;
         Collider(const Vector2& size, ColliderShape shape = ColliderShape::Box) : size(size), colliderShape(shape) {}
     
-        Vector2 size{0.0f, 0.0f};
+        Vector2 size{64.0f, 64.0f};
         ColliderShape colliderShape{ColliderShape::Box};
 
         void serialize(OrByte::Serializer& serializer) const final

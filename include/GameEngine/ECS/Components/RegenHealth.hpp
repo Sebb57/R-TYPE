@@ -20,7 +20,7 @@ struct RegenHealth : public OrByte::AComponent<OrByte::ComponentType::RegenHealt
     RegenHealth(int regenAmount, float duration) : regenAmount(regenAmount), duration(duration) {}
     RegenHealth(int regenAmount, float cooldown, float duration) : regenAmount(regenAmount), cooldown(cooldown), duration(duration) {}
 
-    int regenAmount{100};
+    int regenAmount{5};
     float cooldown{1.0F};
     float duration{3.0F};
 

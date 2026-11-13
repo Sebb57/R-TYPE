@@ -24,7 +24,7 @@ namespace OrByte {
         std::string currentAnimation;
         std::size_t currentFrame{0};
         float elapsed{0.0f};
-        bool playing{false};
+        bool playing{true};
 
         void addAnimation(const std::string& name, const Animation& animation)
         {

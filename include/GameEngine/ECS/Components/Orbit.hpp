@@ -26,11 +26,11 @@ struct Orbit : public OrByte::AComponent<OrByte::ComponentType::Orbit>
     Orbit(const Vector2 center, int targetEntity, const float radius, float angleSpeed)
         : center(center), targetEntity(targetEntity), radius(radius), angleSpeed(angleSpeed) {}
 
-    Vector2 center{0.0F, 0.0F};
+    Vector2 center{960.0F, 540.0F};
     int targetEntity = -1;
-    float radius = 0.0F;
+    float radius = 100.0F;
     float angle = 0.0F;
-    float angleSpeed = 0.0F;
+    float angleSpeed = 1.0F;
 
     void serialize(Serializer& serializer) const final
     {

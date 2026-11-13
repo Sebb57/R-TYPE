@@ -19,7 +19,7 @@ struct AddHealth : public OrByte::AComponent<OrByte::ComponentType::AddHealth>
     AddHealth() = default;
     AddHealth(int regenAmount) : regenAmount(regenAmount) {}
 
-    int regenAmount{100};
+    int regenAmount{25};
 
     void serialize(Serializer& serializer) const final { serializer.value4b(this->regenAmount); }
     void deserialize(Deserializer& deserializer) final { deserializer.value4b(this->regenAmount); }
