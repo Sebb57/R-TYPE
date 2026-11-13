@@ -30,6 +30,9 @@ class SpectateScene : public AScene {
         void applySnapshot();
         void freeze();
         [[nodiscard]] std::string roomName() const;
+#ifdef ORBYTE_METRIC_LAGOMETER
+        void drawLagometer() const;
+#endif
 
         ClientView _view;
         std::uint32_t _tick = 0;

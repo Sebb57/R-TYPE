@@ -81,7 +81,15 @@ void drawButton(const OrByte::IGraphic& graphic, const Rect& rect, const std::st
 
 [[nodiscard]] const char *sectionTitle(OrByte::CompileOptions::Kind kind)
 {
-    return kind == OrByte::CompileOptions::Kind::System ? "Systems" : "Components";
+    switch (kind) {
+        case OrByte::CompileOptions::Kind::System:
+            return "Systems";
+        case OrByte::CompileOptions::Kind::Component:
+            return "Components";
+        case OrByte::CompileOptions::Kind::Metric:
+            return "Metrics";
+    }
+    return "";
 }
 
 [[nodiscard]] const char *sectionDirectory(OrByte::CompileOptions::Kind kind)
@@ -315,5 +323,6 @@ void OrByte::CompileOptionsWidget::draw(const IGraphic& graphic, Vector2u size)
     y += ROW_HEIGHT + (2 * PADDING);
     y = this->_drawSection(graphic, CompileOptions::Kind::System, y, width);
     y = this->_drawSection(graphic, CompileOptions::Kind::Component, y, width);
+    y = this->_drawSection(graphic, CompileOptions::Kind::Metric, y, width);
     this->_contentHeight = y + this->_scroll;
 }

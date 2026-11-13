@@ -9,6 +9,7 @@
 #ifndef GAMEENGINE_CLIENT_NETWORK_CLIENTVIEW_HPP
 #define GAMEENGINE_CLIENT_NETWORK_CLIENTVIEW_HPP
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -35,6 +36,21 @@ struct EntityView {
     std::string image;
 };
 
+#ifdef ORBYTE_METRIC_LAGOMETER
+struct NetworkMetrics {
+    static constexpr std::size_t History = 120;
+    static constexpr float Lost = -1.0F;
+
+    std::vector<float> samples;
+    float last = 0.0F;
+    float smoothed = 0.0F;
+    float jitter = 0.0F;
+    std::uint32_t sent = 0;
+    std::uint32_t received = 0;
+    std::uint32_t lost = 0;
+};
+#endif
+
 struct ClientView {
     std::string status = "Not connected";
     std::vector<RoomView> rooms;
@@ -48,6 +64,9 @@ struct ClientView {
     std::uint64_t token = 0;
     std::uint16_t udpPort = 0;
     std::uint8_t snapshotRate = 60;
+#ifdef ORBYTE_METRIC_LAGOMETER
+    NetworkMetrics metrics;
+#endif
 };
 
 } // namespace client

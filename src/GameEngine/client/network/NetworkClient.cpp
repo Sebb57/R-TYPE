@@ -12,8 +12,18 @@
 #include <iterator>
 #include <utility>
 #include <vector>
+#ifdef ORBYTE_METRIC_LAGOMETER
+    #include <cmath>
+#endif
 
 namespace {
+
+#ifdef ORBYTE_METRIC_LAGOMETER
+constexpr auto PingInterval = std::chrono::milliseconds(250);
+constexpr auto PingTimeout = std::chrono::seconds(2);
+#else
+constexpr auto PingInterval = std::chrono::seconds(1);
+#endif
 
 const std::array<std::string, 6> Errors{
     "bad request", "incompatible version", "invalid player name", "game not found", "too many spectators", "too many games",
@@ -39,6 +49,15 @@ std::string localImage(const std::string& image)
     return image;
 }
 
+#ifdef ORBYTE_METRIC_LAGOMETER
+void pushSample(client::NetworkMetrics& metrics, float sample)
+{
+    if (metrics.samples.size() >= client::NetworkMetrics::History)
+        metrics.samples.erase(metrics.samples.begin());
+    metrics.samples.push_back(sample);
+}
+#endif
+
 } // namespace
 
 client::NetworkClient::NetworkClient()
@@ -52,6 +71,9 @@ client::NetworkClient::NetworkClient()
     , _udpHandlers{
         {server::UdpType::HelloAck, &NetworkClient::onHelloAck},
         {server::UdpType::Snapshot, &NetworkClient::onSnapshot},
+#ifdef ORBYTE_METRIC_LAGOMETER
+        {server::UdpType::Pong, &NetworkClient::onPong},
+#endif
     }
     , _work(asio::make_work_guard(this->_io))
     , _tcp(this->_io)
@@ -298,6 +320,12 @@ void client::NetworkClient::startUdp(std::uint16_t port, std::uint64_t token)
     }
     this->_udpEndpoint = {this->_hostAddress, port};
     this->_udpSequence = 0;
+#ifdef ORBYTE_METRIC_LAGOMETER
+    {
+        std::scoped_lock lock(this->_mutex);
+        this->_view.metrics = {};
+    }
+#endif
     this->sendHello(token);
     this->readUdp();
 }
@@ -309,6 +337,9 @@ void client::NetworkClient::stopUdp()
     this->_pingTimer.cancel(ignored);
     this->_udp.close(ignored);
     this->_pending = {};
+#ifdef ORBYTE_METRIC_LAGOMETER
+    this->_pings.clear();
+#endif
 }
 
 void client::NetworkClient::sendHello(std::uint64_t token)
@@ -422,7 +453,7 @@ void client::NetworkClient::assemble(std::uint32_t tick, std::uint8_t part, std:
 
 void client::NetworkClient::beginPingLoop()
 {
-    this->_pingTimer.expires_after(std::chrono::seconds(1));
+    this->_pingTimer.expires_after(PingInterval);
     this->_pingTimer.async_wait([this](const asio::error_code& error) {
         if (error)
             return;
@@ -436,8 +467,57 @@ void client::NetworkClient::sendPing()
     server::Buffer payload;
     server::UdpProtocol::appendU32(payload, ++this->_udpSequence);
     auto bytes = std::make_shared<server::Buffer>(server::UdpProtocol::encode(server::UdpType::Ping, this->_udpSequence, this->_view.token, payload));
+#ifdef ORBYTE_METRIC_LAGOMETER
+    this->trackPing(this->_udpSequence);
+#endif
     this->_udp.async_send_to(asio::buffer(*bytes), this->_udpEndpoint, [bytes](const asio::error_code&, std::size_t) {});
 }
+
+#ifdef ORBYTE_METRIC_LAGOMETER
+void client::NetworkClient::trackPing(std::uint32_t sequence)
+{
+    const auto now = std::chrono::steady_clock::now();
+    std::scoped_lock lock(this->_mutex);
+    NetworkMetrics& metrics = this->_view.metrics;
+
+    for (auto ping = this->_pings.begin(); ping != this->_pings.end();) {
+        if (now - ping->second < PingTimeout) {
+            ++ping;
+            continue;
+        }
+        ++metrics.lost;
+        pushSample(metrics, NetworkMetrics::Lost);
+        ping = this->_pings.erase(ping);
+    }
+    this->_pings.insert_or_assign(sequence, now);
+    ++metrics.sent;
+}
+
+void client::NetworkClient::onPong(const server::Buffer& packet)
+{
+    const auto now = std::chrono::steady_clock::now();
+    std::uint32_t sequence = 0;
+    if (!server::UdpProtocol::readU32(packet, server::UdpHeaderSize, sequence))
+        return;
+    const auto ping = this->_pings.find(sequence);
+    if (ping == this->_pings.end())
+        return;
+    const float rtt = std::chrono::duration<float, std::milli>(now - ping->second).count();
+    this->_pings.erase(ping);
+
+    std::scoped_lock lock(this->_mutex);
+    NetworkMetrics& metrics = this->_view.metrics;
+    if (metrics.received == 0) {
+        metrics.smoothed = rtt;
+    } else {
+        metrics.smoothed += (rtt - metrics.smoothed) / 8.0F;
+        metrics.jitter += (std::abs(rtt - metrics.last) - metrics.jitter) / 16.0F;
+    }
+    metrics.last = rtt;
+    ++metrics.received;
+    pushSample(metrics, rtt);
+}
+#endif
 
 void client::NetworkClient::onDisconnect(const std::string& reason)
 {

@@ -11,6 +11,7 @@
 
 #include <array>
 #include <asio.hpp>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
@@ -75,6 +76,10 @@ class NetworkClient {
         void assemble(std::uint32_t tick, std::uint8_t part, std::uint8_t parts, std::vector<EntityView> entities);
         void beginPingLoop();
         void sendPing();
+#ifdef ORBYTE_METRIC_LAGOMETER
+        void trackPing(std::uint32_t sequence);
+        void onPong(const server::Buffer& packet);
+#endif
         void onDisconnect(const std::string& reason);
 
         const std::unordered_map<server::Type, TcpHandler> _tcpHandlers;
@@ -95,6 +100,9 @@ class NetworkClient {
         std::string _username;
         PendingSnapshot _pending;
         std::uint32_t _udpSequence = 0;
+#ifdef ORBYTE_METRIC_LAGOMETER
+        std::map<std::uint32_t, std::chrono::steady_clock::time_point> _pings; // sent, waiting for their pong
+#endif
         std::jthread _thread;
 };
 

@@ -9,6 +9,10 @@
 #include "GameEngine/client/scenes/SpectateScene.hpp"
 #include <algorithm>
 #include <unordered_set>
+#ifdef ORBYTE_METRIC_LAGOMETER
+    #include <cstddef>
+    #include <format>
+#endif
 #include "GameEngine/ECS/Components/Controllable.hpp"
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "GameEngine/ECS/Components/Velocity.hpp"
@@ -21,6 +25,31 @@
 namespace {
 
 constexpr double StaleSnapshot = 0.25;
+
+#ifdef ORBYTE_METRIC_LAGOMETER
+namespace lagometer {
+
+constexpr float Width = 360.0F;
+constexpr float Height = 160.0F;
+constexpr float Padding = 12.0F;
+constexpr float GraphTop = 64.0F;
+constexpr float MinScale = 100.0F;
+constexpr float GoodPing = 50.0F;
+constexpr float SlowPing = 100.0F;
+
+constexpr OrByte::RGBA Good(110, 200, 120);
+constexpr OrByte::RGBA Slow(230, 190, 90);
+constexpr OrByte::RGBA Bad(230, 110, 100);
+
+[[nodiscard]] OrByte::RGBA colorOf(float rtt)
+{
+    if (rtt == client::NetworkMetrics::Lost || rtt >= SlowPing)
+        return Bad;
+    return rtt >= GoodPing ? Slow : Good;
+}
+
+} // namespace lagometer
+#endif
 
 } // namespace
 
@@ -63,6 +92,9 @@ void client::SpectateScene::render()
     if (this->_tick == 0)
         this->drawText(this->_view.status, Vector2(40.0F, 75.0F), 22, theme::Muted);
     this->drawText(this->_context.controls.keyName(Action::Back) + "  leave", Vector2(40.0F, 1020.0F), 22, theme::Muted);
+#ifdef ORBYTE_METRIC_LAGOMETER
+    this->drawLagometer();
+#endif
 }
 
 void client::SpectateScene::applySnapshot()
@@ -112,3 +144,42 @@ std::string client::SpectateScene::roomName() const
     const auto room = std::ranges::find(this->_view.rooms, this->_view.room, &RoomView::id);
     return room != this->_view.rooms.end() ? room->name : "#" + std::to_string(this->_view.room);
 }
+
+#ifdef ORBYTE_METRIC_LAGOMETER
+void client::SpectateScene::drawLagometer() const
+{
+    namespace lag = lagometer;
+    const NetworkMetrics& metrics = this->_view.metrics;
+    const Vector2 origin(theme::Width - lag::Width - 40.0F, 30.0F);
+    const float graphHeight = lag::Height - lag::GraphTop - lag::Padding;
+    const float graphWidth = lag::Width - (2.0F * lag::Padding);
+    const float graphBottom = origin.y + lag::Height - lag::Padding;
+
+    this->drawPanel(origin, Vector2(lag::Width, lag::Height), theme::Panel, 1, theme::PanelOutline);
+    if (metrics.received == 0) {
+        this->drawText(metrics.sent == 0 ? "PING  waiting..." : "PING  no answer", Vector2(origin.x + lag::Padding, origin.y + 8.0F),
+            20, metrics.sent == 0 ? theme::Muted : lag::Bad);
+    } else {
+        this->drawText(std::format("PING  {:.0f} ms", metrics.smoothed), Vector2(origin.x + lag::Padding, origin.y + 8.0F), 20,
+            lag::colorOf(metrics.smoothed));
+        this->drawText(std::format("jitter {:.1f}", metrics.jitter), Vector2(origin.x + 200.0F, origin.y + 12.0F), 16, theme::Muted);
+    }
+    const float loss = metrics.sent == 0 ? 0.0F : 100.0F * static_cast<float>(metrics.lost) / static_cast<float>(metrics.sent);
+    this->drawText(std::format("loss {}/{} ({:.1f}%)", metrics.lost, metrics.sent, loss),
+        Vector2(origin.x + lag::Padding, origin.y + 36.0F), 16, metrics.lost == 0 ? theme::Muted : lag::Bad);
+
+    float scale = lag::MinScale;
+    for (const float sample : metrics.samples)
+        scale = std::max(scale, sample);
+    this->drawText(std::format("{:.0f}", scale), Vector2(origin.x + lag::Width - lag::Padding - 40.0F, origin.y + 36.0F), 14,
+        theme::Disabled);
+
+    const float barWidth = graphWidth / static_cast<float>(NetworkMetrics::History);
+    float x = origin.x + lag::Padding + graphWidth - (barWidth * static_cast<float>(metrics.samples.size()));
+    for (const float sample : metrics.samples) {
+        const float height = sample == NetworkMetrics::Lost ? graphHeight : std::max(1.0F, graphHeight * sample / scale);
+        this->drawPanel(Vector2(x, graphBottom - height), Vector2(std::max(1.0F, barWidth - 1.0F), height), lag::colorOf(sample));
+        x += barWidth;
+    }
+}
+#endif
