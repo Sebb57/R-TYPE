@@ -67,6 +67,7 @@ namespace OrByte {
             virtual Vector2 drawText(const Transform& transform, std::string text, unsigned fontSize = 20, float maxWidth = 0.f, RGBA fillColor = {255, 255, 255}, unsigned outlineThickness = 0, RGBA outlineColor = {0, 0, 0}, std::filesystem::path font = constants::FONT_DEFAULT) const = 0;
             virtual Vector2 getTextSize(std::string text, unsigned fontSize = 20, float maxWidth = 0.f, std::filesystem::path font = constants::FONT_DEFAULT) const = 0;
 
+            // Layout
             virtual Vector2u regionSize() const = 0;
             virtual void applyRegionView() const = 0;
             virtual void pushRegion(const Rect& pixelRect) const = 0;
@@ -74,6 +75,14 @@ namespace OrByte {
 
             virtual void setGameMode(bool enabled) const = 0;
             virtual void setCursor(CursorType type) = 0;
+
+            // Audio
+            virtual void playSound(const std::filesystem::path& path, float volume = 100.f, float pitch = 1.f) const = 0;
+            virtual void stopSound(const std::filesystem::path& path) const = 0;
+            virtual void playMusic(const std::filesystem::path& path, bool loop = true, float volume = 100.f) const = 0;
+            virtual void stopMusic() const = 0;
+            virtual bool isMusicPlaying() const = 0;
+            virtual void stopAudio() const = 0;
 
             [[nodiscard]] virtual std::pair<unsigned, unsigned> getWindowSize() const noexcept = 0;
 

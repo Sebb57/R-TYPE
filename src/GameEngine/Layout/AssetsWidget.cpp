@@ -9,7 +9,6 @@
 #include "GameEngine/ECS/Utils.hpp"
 #include <cmath>
 #include <filesystem>
-#include <iostream>
 #include <sys/stat.h>
 
 namespace {

@@ -273,6 +273,84 @@ Detail::Field key(std::string label, Event::Key& value)
     return { std::move(label), { std::move(cell) } };
 }
 
+struct PadOption {
+    const char *name;
+    GamepadInput input;
+};
+
+const std::vector<PadOption>& padOptions()
+{
+    using Button = Event::GamepadButton;
+    using Axis = Event::GamepadAxis;
+
+    static const std::vector<PadOption> options = {
+        { "None", GamepadInput{} },
+        { "Button A", GamepadInput::onButton(Button::A) },
+        { "Button B", GamepadInput::onButton(Button::B) },
+        { "Button X", GamepadInput::onButton(Button::X) },
+        { "Button Y", GamepadInput::onButton(Button::Y) },
+        { "Left Bumper", GamepadInput::onButton(Button::LeftBumper) },
+        { "Right Bumper", GamepadInput::onButton(Button::RightBumper) },
+        { "Back", GamepadInput::onButton(Button::Back) },
+        { "Start", GamepadInput::onButton(Button::Start) },
+        { "Left Stick Click", GamepadInput::onButton(Button::LeftStick) },
+        { "Right Stick Click", GamepadInput::onButton(Button::RightStick) },
+        { "Left Stick Left", GamepadInput::onAxis(Axis::LeftX, false) },
+        { "Left Stick Right", GamepadInput::onAxis(Axis::LeftX, true) },
+        { "Left Stick Up", GamepadInput::onAxis(Axis::LeftY, false) },
+        { "Left Stick Down", GamepadInput::onAxis(Axis::LeftY, true) },
+        { "Right Stick Left", GamepadInput::onAxis(Axis::RightX, false) },
+        { "Right Stick Right", GamepadInput::onAxis(Axis::RightX, true) },
+        { "Right Stick Up", GamepadInput::onAxis(Axis::RightY, false) },
+        { "Right Stick Down", GamepadInput::onAxis(Axis::RightY, true) },
+        { "D-Pad X-", GamepadInput::onAxis(Axis::DPadX, false) },
+        { "D-Pad X+", GamepadInput::onAxis(Axis::DPadX, true) },
+        { "D-Pad Y-", GamepadInput::onAxis(Axis::DPadY, false) },
+        { "D-Pad Y+", GamepadInput::onAxis(Axis::DPadY, true) },
+        { "Left Trigger", GamepadInput::onAxis(Axis::LeftTrigger, true) },
+        { "Right Trigger", GamepadInput::onAxis(Axis::RightTrigger, true) },
+    };
+
+    return options;
+}
+
+bool samePad(const GamepadInput& a, const GamepadInput& b)
+{
+    if (a.kind != b.kind)
+        return false;
+    if (a.kind == GamepadInput::Kind::Button)
+        return a.button == b.button;
+    if (a.kind == GamepadInput::Kind::Axis)
+        return a.axis == b.axis && a.positive == b.positive;
+    return true;
+}
+
+Detail::Field padInput(std::string label, GamepadInput& value)
+{
+    Detail::Cell cell;
+
+    cell.get = [&value]() {
+        for (const PadOption& option : padOptions()) {
+            if (samePad(option.input, value))
+                return std::string(option.name);
+        }
+        return std::string("Custom");
+    };
+    cell.click = [&value]() {
+        const std::vector<PadOption>& options = padOptions();
+        std::size_t next = 0;
+
+        for (std::size_t i = 0; i < options.size(); ++i) {
+            if (samePad(options[i].input, value)) {
+                next = (i + 1) % options.size();
+                break;
+            }
+        }
+        value = options[next].input;
+    };
+    return { std::move(label), { std::move(cell) } };
+}
+
 Detail::Field info(std::string label, std::string value)
 {
     Detail::Cell cell;
@@ -458,26 +536,46 @@ std::vector<Detail::Field> describeAnimator(Animator& animator)
 const char *componentName(ComponentType type)
 {
     switch (type) {
-        case ComponentType::AddHealth: return "Add Health";
-        case ComponentType::Collider: return "Collider";
-        case ComponentType::Health: return "Health";
-        case ComponentType::Orbit: return "Orbit";
-        case ComponentType::Poison: return "Poison";
-        case ComponentType::RegenHealth: return "Regen Health";
-        case ComponentType::RemoveHealth: return "Remove Health";
-        case ComponentType::Sinus: return "Sinus";
-        case ComponentType::Spiral: return "Spiral";
-        case ComponentType::Sprite: return "Sprite";
-        case ComponentType::Transform: return "Transform";
-        case ComponentType::Velocity: return "Velocity";
-        case ComponentType::Wither: return "Wither";
-        case ComponentType::Animator: return "Animator";
-        case ComponentType::Owner: return "Owner";
-        case ComponentType::Controllable: return "Controllable";
-        case ComponentType::Name: return "Name";
-        case ComponentType::Camera: return "Camera";
-        case ComponentType::Music: return "Music";
-        case ComponentType::Script: return "Script";
+        case ComponentType::AddHealth:
+            return "Add Health";
+        case ComponentType::Collider:
+            return "Collider";
+        case ComponentType::Health:
+            return "Health";
+        case ComponentType::Orbit:
+            return "Orbit";
+        case ComponentType::Poison:
+            return "Poison";
+        case ComponentType::RegenHealth:
+            return "Regen Health";
+        case ComponentType::RemoveHealth:
+            return "Remove Health";
+        case ComponentType::Sinus:
+            return "Sinus";
+        case ComponentType::Spiral:
+            return "Spiral";
+        case ComponentType::Sprite:
+            return "Sprite";
+        case ComponentType::Transform:
+            return "Transform";
+        case ComponentType::Velocity:
+            return "Velocity";
+        case ComponentType::Wither:
+            return "Wither";
+        case ComponentType::Animator:
+            return "Animator";
+        case ComponentType::Owner:
+            return "Owner";
+        case ComponentType::Controllable:
+            return "Controllable";
+        case ComponentType::Name:
+            return "Name";
+        case ComponentType::Camera:
+            return "Camera";
+        case ComponentType::Music:
+            return "Music";
+        case ComponentType::Script:
+            return "Script";
         case ComponentType::ENUM_END: break;
     }
     return "Unknown";
@@ -553,7 +651,10 @@ std::vector<Detail::Field> describe(IComponent& component)
         }
         case ComponentType::Controllable: {
             auto& c = static_cast<Controllable&>(component);
-            return { key("Up", c.up), key("Down", c.down), key("Left", c.left), key("Right", c.right),
+            return { key("Up", c.up.key), padInput("Pad Up", c.up.pad),
+                key("Down", c.down.key), padInput("Pad Down", c.down.pad),
+                key("Left", c.left.key), padInput("Pad Left", c.left.pad),
+                key("Right", c.right.key), padInput("Pad Right", c.right.pad),
                 number("Speed", c.speed), vector2("Size", c.size), color("Color", c.color), texture("Image", c.image),
                 number("Bound X", c.boundX), number("Bound Y", c.boundY) };
         }

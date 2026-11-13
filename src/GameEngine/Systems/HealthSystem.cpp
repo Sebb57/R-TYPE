@@ -14,7 +14,6 @@
 #include "plugins/DynamicLibrary.hpp"
 #include "plugins/ISystem.hpp"
 #include <vector>
-#include <iostream>
 
 OrByte::HealthSystem::HealthSystem(World& world) : _world(world)
 {}
