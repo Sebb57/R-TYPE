@@ -8,6 +8,9 @@
 
 #include "GameEngine/server/lobby/RoomManager.hpp"
 #include "GameEngine/server/net/TcpConnection.hpp"
+#ifdef ORBYTE_FEATURE_CHAT
+    #include "GameEngine/protocol/TcpProtocol.hpp"
+#endif
 #include <algorithm>
 #include <ranges>
 #include <iostream>
@@ -127,3 +130,32 @@ void server::RoomManager::stopAll()
     for (RoomId id : ids)
         this->close(id);
 }
+
+#ifdef ORBYTE_FEATURE_CHAT
+void server::RoomManager::chat(SessionToken token, std::string text)
+{
+    const Session* session = this->_sessions.find(token);
+    if (session != nullptr)
+        this->chat(session->room, ChatLine{session->username, std::move(text), false});
+}
+
+void server::RoomManager::chat(RoomId id, ChatLine line)
+{
+    const auto it = this->_rooms.find(id);
+    if (it == this->_rooms.end())
+        return;
+
+    Buffer message{static_cast<Byte>(Type::Chat), static_cast<Byte>(line.host ? 1 : 0)};
+    TcpProtocol::appendString(message, line.author);
+    TcpProtocol::appendString(message, line.text);
+    for (SessionToken token : it->second->getSpectators()) {
+        const Session* session = this->_sessions.find(token);
+        if (session == nullptr)
+            continue;
+        if (const auto connection = session->tcp.lock())
+            connection->send(message);
+    }
+    if (this->_chatSink)
+        this->_chatSink(id, line);
+}
+#endif

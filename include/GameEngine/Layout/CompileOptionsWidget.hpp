@@ -1,6 +1,6 @@
 /**
  * @file CompileOptionsWidget.hpp
- * @brief picks the game binary name and the systems / components it is compiled with
+ * @brief picks the game binary name and the systems / components / features it is compiled with
  *
  * @author Seb
  * @date 2026-11-11

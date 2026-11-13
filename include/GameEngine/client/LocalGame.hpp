@@ -15,6 +15,9 @@
 #include "GameEngine/server/Server.hpp"
 #include "GameEngine/server/game/GameInstance.hpp"
 #include "plugins/IGraphic.hpp"
+#ifdef ORBYTE_FEATURE_CHAT
+    #include "GameEngine/protocol/Chat.hpp"
+#endif
 
 namespace client {
 
@@ -33,6 +36,10 @@ class LocalGame {
         void push(const OrByte::Event& event);
         void render();
         [[nodiscard]] bool running() const;
+#ifdef ORBYTE_FEATURE_CHAT
+        void say(std::string text);
+        [[nodiscard]] server::ChatLog chat() const;
+#endif
 
     private:
         server::Server& _server;

@@ -183,6 +183,13 @@ void OrByte::Console::_compile([[maybe_unused]] const std::string& argument)
     this->_print(std::format("Compiling {} with {}/{} systems and {}/{} components", options.getBinaryName(),
         systems.size(), options.getPlugins(CompileOptions::Kind::System).size(),
         components.size(), options.getPlugins(CompileOptions::Kind::Component).size()), LineKind::Info);
+    if (const std::vector<std::string> features = options.getEnabled(CompileOptions::Kind::Feature); !features.empty()) {
+        std::string names;
+
+        for (const std::string& name : features)
+            names += (names.empty() ? "" : ", ") + name;
+        this->_print("Features compiled in: " + names, LineKind::Info);
+    }
     if (!options.getPlugins(CompileOptions::Kind::System).empty() && !std::ranges::contains(systems, "Display"))
         this->_print("Display is not compiled: the game won't draw anything", LineKind::Info);
     this->_run(std::format("cmake -S cmake/GameEngine -B {} \"-DORBYTE_GAME_WORLD={}\" {}{} && cmake --build {}{}",

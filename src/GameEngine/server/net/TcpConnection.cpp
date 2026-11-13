@@ -9,6 +9,9 @@
 #include "GameEngine/server/net/TcpConnection.hpp"
 #include "GameEngine/server/lobby/RoomManager.hpp"
 #include "GameEngine/protocol/TcpProtocol.hpp"
+#ifdef ORBYTE_FEATURE_CHAT
+    #include "GameEngine/protocol/Chat.hpp"
+#endif
 #include <array>
 #include <algorithm>
 #include <iostream>
@@ -18,6 +21,13 @@
 namespace {
 
 constexpr std::size_t kMaxWriteQueue = 128;
+#ifdef ORBYTE_FEATURE_CHAT
+constexpr auto kChatInterval = std::chrono::milliseconds(500);
+constexpr auto kChatBurst = std::chrono::milliseconds(2500);
+constexpr server::Byte kFeatures = server::FeatureChat;
+#else
+constexpr server::Byte kFeatures = 0;
+#endif
 
 const char* typeName(server::Type type)
 {
@@ -31,6 +41,7 @@ const char* typeName(server::Type type)
         case server::Type::Leave: return "LEAVE";
         case server::Type::Left: return "LEFT";
         case server::Type::Error: return "ERROR";
+        case server::Type::Chat: return "CHAT";
     }
     return "UNKNOWN";
 }
@@ -212,7 +223,7 @@ void server::TcpConnection::onFrame(const Buffer& frame)
         std::cerr << "[TCP] authenticated user=" << this->_username << '\n';
         asio::error_code ignored;
         this->_deadline.cancel(ignored);
-        this->send(Buffer{static_cast<Byte>(server::Type::ConnectOk)});
+        this->send(Buffer{static_cast<Byte>(server::Type::ConnectOk), kFeatures});
         return;
     }
 
@@ -241,6 +252,12 @@ void server::TcpConnection::onFrame(const Buffer& frame)
         }
         return;
     }
+#ifdef ORBYTE_FEATURE_CHAT
+    if (type == server::Type::Chat) {
+        this->onChat(payload);
+        return;
+    }
+#endif
     if (type == server::Type::Spectate && this->_state == State::Lobby) {
         std::uint32_t id = 0;
         if (!TcpProtocol::readU32(payload, offset, id) || offset != payload.size()) {
@@ -262,6 +279,34 @@ void server::TcpConnection::onFrame(const Buffer& frame)
     }
     badRequest();
 }
+
+#ifdef ORBYTE_FEATURE_CHAT
+void server::TcpConnection::onChat(const Buffer& payload)
+{
+    std::size_t offset = 0;
+    std::string text;
+
+    if (!TcpProtocol::readString(payload, offset, MaxChatLength, text) || offset != payload.size()) {
+        this->_closeAfterWrite = true;
+        this->send(Buffer{static_cast<Byte>(server::Type::Error), static_cast<Byte>(LobbyError::BadRequest)});
+        return;
+    }
+    if (this->_state != State::Spectating || !this->_token || !isChatText(text) || !this->acceptChat())
+        return;
+    this->_rooms.chat(*this->_token, std::move(text));
+}
+
+bool server::TcpConnection::acceptChat()
+{
+    const auto now = Clock::now();
+    const auto next = std::max(this->_chatAllowedAt, now) + kChatInterval;
+
+    if (next - now > kChatBurst)
+        return false;
+    this->_chatAllowedAt = next;
+    return true;
+}
+#endif
 
 void server::TcpConnection::flushWrites()
 {

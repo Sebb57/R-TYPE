@@ -27,6 +27,9 @@ constexpr std::string_view SYSTEM_SUFFIX = "System";
 constexpr std::string_view BINARY_KEY = "binary";
 constexpr std::string_view DISABLED_SYSTEMS_KEY = "disabled_systems";
 constexpr std::string_view DISABLED_COMPONENTS_KEY = "disabled_components";
+constexpr std::string_view FEATURES_KEY = "features";
+
+const std::vector<std::string> FEATURES{"Lagometer", "Chat"};
 
 constexpr std::array<std::string_view, 3> RESERVED_BINARIES{"r-type_server", "r-type_client", "r-type_game-engine"};
 
@@ -127,6 +130,9 @@ OrByte::CompileOptions OrByte::CompileOptions::load(const std::filesystem::path&
             options._disabledSystems = parseNames(value);
         else if (key == DISABLED_COMPONENTS_KEY)
             options._disabledComponents = parseNames(value);
+        else if (key == FEATURES_KEY)
+            for (const std::string& name : parseNames(value))
+                options.setEnabled(Kind::Feature, name, true);
     }
     return options;
 }
@@ -143,7 +149,8 @@ void OrByte::CompileOptions::save(const std::filesystem::path& path) const
     file << "# OrByte compile options, edited from the Compile Options tab" << std::endl
          << BINARY_KEY << '=' << this->_binaryName << std::endl
          << DISABLED_SYSTEMS_KEY << '=' << joinNames(this->_disabledSystems, ',') << std::endl
-         << DISABLED_COMPONENTS_KEY << '=' << joinNames(this->_disabledComponents, ',') << std::endl;
+         << DISABLED_COMPONENTS_KEY << '=' << joinNames(this->_disabledComponents, ',') << std::endl
+         << FEATURES_KEY << '=' << joinNames(this->_enabledFeatures, ',') << std::endl;
     if (!file)
         throw CompileOptionsWriteFailed(path);
 }
@@ -156,6 +163,8 @@ void OrByte::CompileOptions::scan(const std::filesystem::path& pluginsDirectory)
 
 const std::vector<std::string>& OrByte::CompileOptions::getPlugins(Kind kind) const noexcept
 {
+    if (kind == Kind::Feature)
+        return FEATURES;
     return kind == Kind::System ? this->_systems : this->_components;
 }
 
@@ -171,11 +180,20 @@ const std::set<std::string>& OrByte::CompileOptions::_disabled(Kind kind) const 
 
 bool OrByte::CompileOptions::isEnabled(Kind kind, const std::string& name) const
 {
+    if (kind == Kind::Feature)
+        return this->_enabledFeatures.contains(name);
     return !this->_disabled(kind).contains(name);
 }
 
 void OrByte::CompileOptions::setEnabled(Kind kind, const std::string& name, bool enabled)
 {
+    if (kind == Kind::Feature) {
+        if (!enabled)
+            this->_enabledFeatures.erase(name);
+        else if (std::ranges::contains(FEATURES, name))
+            this->_enabledFeatures.insert(name);
+        return;
+    }
     if (enabled)
         this->_disabled(kind).erase(name);
     else if (isPluginName(name))
@@ -235,13 +253,15 @@ std::optional<std::string> OrByte::CompileOptions::checkBinaryName(const std::fi
 
 std::string OrByte::CompileOptions::cmakeArguments() const
 {
-    return std::format("-DORBYTE_GAME_NAME={} \"-DORBYTE_SYSTEMS={}\" \"-DORBYTE_COMPONENTS={}\"",
-        this->_binaryName, cmakeList(*this, Kind::System), cmakeList(*this, Kind::Component));
+    return std::format("-DORBYTE_GAME_NAME={} \"-DORBYTE_SYSTEMS={}\" \"-DORBYTE_COMPONENTS={}\" \"-DORBYTE_FEATURES={}\"",
+        this->_binaryName, cmakeList(*this, Kind::System), cmakeList(*this, Kind::Component),
+        joinNames(this->getEnabled(Kind::Feature), ';'));
 }
 
 bool OrByte::CompileOptions::operator==(const CompileOptions& other) const
 {
     return this->_binaryName == other._binaryName
         && this->_disabledSystems == other._disabledSystems
-        && this->_disabledComponents == other._disabledComponents;
+        && this->_disabledComponents == other._disabledComponents
+        && this->_enabledFeatures == other._enabledFeatures;
 }

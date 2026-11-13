@@ -12,28 +12,29 @@
 #include "GameEngine/ECS/Components/Music.hpp"
 #include "GameEngine/ECS/World.hpp"
 #include "plugins/ASystem.hpp"
-#include "plugins/IAudio.hpp"
+#include "plugins/IGraphic.hpp"
+#include <optional>
 #include <string>
-#include <unordered_map>
 
 namespace OrByte {
 
 class AudioSystem : public ASystem {
     struct Track {
+        int entity;
         std::string path;
-        bool loaded = false;
-        bool wasPlaying = false;
+        float volume;
+        bool loop;
     };
 
     World& _world;
-    IAudio& _audio;
-    std::unordered_map<int, Track> _tracks;
+    IGraphic& _graphic;
+    std::optional<Track> _track;
 
-    void _updateMusic(int entity, Music& music);
-    void _releaseUnused();
+    [[nodiscard]] bool _keepTrack();
+    void _play(int entity, const Music& music);
 
     public:
-        AudioSystem(World& world, IAudio& audio) : _world(world), _audio(audio) {}
+        AudioSystem(World& world, IGraphic& graphic) : _world(world), _graphic(graphic) {}
         ~AudioSystem() override;
 
         void update() override;
