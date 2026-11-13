@@ -34,6 +34,10 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
         void readFrameBody(std::uint16_t len);
         void onFrame(const Buffer& frame);
         void flushWrites();
+#ifdef ORBYTE_FEATURE_CHAT
+        void onChat(const Buffer& payload);
+        [[nodiscard]] bool acceptChat();
+#endif
 
         enum class State { AwaitingConnect, Lobby, Spectating };
 
@@ -46,6 +50,9 @@ class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
         bool _closeAfterWrite = false;
         RoomManager& _rooms;
         ServerConfig _conf;
+#ifdef ORBYTE_FEATURE_CHAT
+        Clock::time_point _chatAllowedAt{};
+#endif
 };
 
 } // namespace server

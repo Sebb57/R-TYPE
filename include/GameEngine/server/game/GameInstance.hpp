@@ -14,7 +14,9 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <thread>
+#include <vector>
 #include "GameEngine/Event.hpp"
 #include "GameEngine/server/common/ServerMessages.hpp"
 #include "GameEngine/server/game/BoundedQueue.hpp"
@@ -43,6 +45,14 @@ class GameInstance {
         [[nodiscard]] bool finished() const;
 
     private:
+        struct LoadedSystem {
+            std::string name;
+            std::unique_ptr<OrByte::DynamicLibrary> loader;
+            std::unique_ptr<OrByte::ISystem> system;
+        };
+
+        void loadSystems(OrByte::IGraphic& graphic);
+        [[nodiscard]] OrByte::ISystem *createSystem(const std::string& name, OrByte::DynamicLibrary& loader, OrByte::IGraphic& graphic);
         void run(std::stop_token);
         void applyInbound();
         void update();
@@ -50,15 +60,10 @@ class GameInstance {
 
         unsigned _tickRate;
         unsigned _snapshotRate;
-        OrByte::DynamicLibrary _controlLoader;
-        OrByte::DynamicLibrary _physicLoader;
-        OrByte::DynamicLibrary _displayLoader;
-        OrByte::DynamicLibrary _scriptLoader;
         std::unique_ptr<World> _world;
-        std::unique_ptr<OrByte::ISystem> _controlSystem;
-        std::unique_ptr<OrByte::ISystem> _physicSystem;
-        std::unique_ptr<OrByte::ISystem> _displaySystem;
-        std::unique_ptr<OrByte::ISystem> _scriptSystem;
+        std::vector<LoadedSystem> _systems;
+        LoadedSystem _display;
+        void (*_scriptCollisions)(OrByte::ISystem&, const std::vector<std::pair<int, int>>&) = nullptr;
         BoundedQueue<OrByte::Event> _inbox{256};
         std::mutex _mutex;
         SnapshotSink _sink;

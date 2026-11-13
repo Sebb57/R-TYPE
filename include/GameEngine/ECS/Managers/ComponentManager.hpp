@@ -10,6 +10,8 @@ class ComponentManager
 
     public:
         ComponentManager() = default;
+        ComponentManager(ComponentManager&&) = default;
+        ComponentManager& operator=(ComponentManager&&) = default;
         ~ComponentManager() = default;
 
         template <typename T, typename ... Args>

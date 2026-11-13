@@ -26,11 +26,11 @@ struct Sinus : public OrByte::AComponent<OrByte::ComponentType::Sinus>
     Sinus(const Vector2 center, int targetEntity, const float distance, float speed)
         : center(center), targetEntity(targetEntity), distance(distance), speed(speed) {}
 
-    Vector2 center{0.0F, 0.0F};
+    Vector2 center{960.0F, 540.0F};
     int targetEntity = -1;
-    float distance = 0.0F;
+    float distance = 50.0F;
     float curr = 0.0F;
-    float speed = 0.0F;
+    float speed = 0.5F;
 
     void serialize(Serializer& serializer) const final
     {

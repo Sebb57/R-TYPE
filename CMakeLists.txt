@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.28)
 
 project(RType VERSION 1.0 DESCRIPTION "R-Type multiplayer game" LANGUAGES C CXX)
 
@@ -160,18 +160,9 @@ set(SFML_BUILD_NETWORK OFF CACHE BOOL "" FORCE)
 if(WIN32)
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 endif()
-if(CMAKE_CROSSCOMPILING AND MINGW)
-    list(APPEND CMAKE_FIND_ROOT_PATH "${FETCHCONTENT_BASE_DIR}/sfml-src")
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-        set(RTYPE_SFML_EXTLIBS "${FETCHCONTENT_BASE_DIR}/sfml-src/extlibs/libs-mingw/x64")
-    else()
-        set(RTYPE_SFML_EXTLIBS "${FETCHCONTENT_BASE_DIR}/sfml-src/extlibs/libs-mingw/x86")
-    endif()
-    set(OPENAL_LIBRARY "${RTYPE_SFML_EXTLIBS}/libopenal32.a" CACHE FILEPATH "")
-endif()
 FetchContent_Declare(sfml
     GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG 2.6.1
+    GIT_TAG 3.1.0
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(sfml)
@@ -202,18 +193,10 @@ rtype_configure_plugin(rtype_sfml "SFML" "${CMAKE_SOURCE_DIR}/plugins")
 target_include_directories(rtype_sfml PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(rtype_sfml PRIVATE
     bitsery
-    sfml-graphics
-    sfml-window
-    sfml-system
-)
-
-# Audio library plugin: the only audio code that knows SFML (like rtype_sfml for graphics)
-add_library(rtype_sfml_audio MODULE src/plugins/SFMLAudio.cpp)
-rtype_configure_plugin(rtype_sfml_audio "SFMLAudio" "${CMAKE_SOURCE_DIR}/plugins")
-target_include_directories(rtype_sfml_audio PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(rtype_sfml_audio PRIVATE
-    sfml-audio
-    sfml-system
+    SFML::Audio
+    SFML::Graphics
+    SFML::Window
+    SFML::System
 )
 
 set(SYSTEM_PLUGINS Collider Control Display Health Physic Audio Script)
@@ -249,44 +232,27 @@ file(GLOB_RECURSE CLIENT_SOURCES CONFIGURE_DEPENDS
 )
 add_executable(r-type_client ${CLIENT_SOURCES})
 target_include_directories(r-type_client PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(r-type_client PRIVATE rtype_engine rtype-protocol sfml-audio)
-add_dependencies(r-type_client rtype_sfml rtype_sfml_audio ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
+target_link_libraries(r-type_client PRIVATE
+    rtype_engine
+    rtype-protocol
+    SFML::Audio
+)
+add_dependencies(r-type_client rtype_sfml ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
 target_compile_features(r-type_client PRIVATE cxx_std_23)
 set_target_properties(r-type_client PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}>"
 )
-
-if(WIN32)
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-        set(RTYPE_OPENAL_DLL "${sfml_SOURCE_DIR}/extlibs/bin/x64/openal32.dll")
-    else()
-        set(RTYPE_OPENAL_DLL "${sfml_SOURCE_DIR}/extlibs/bin/x86/openal32.dll")
-    endif()
-    add_custom_command(TARGET r-type_client POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${RTYPE_OPENAL_DLL}" "$<TARGET_FILE_DIR:r-type_client>"
-        VERBATIM
-    )
-endif()
 
 # ---------------------------------------------------------------------------
 # Standalone game engine executable
 # ---------------------------------------------------------------------------
 add_executable(r-type_game-engine src/GameEngine/main.cpp)
 target_link_libraries(r-type_game-engine PRIVATE rtype_engine)
-add_dependencies(r-type_game-engine rtype_sfml rtype_sfml_audio ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
+add_dependencies(r-type_game-engine rtype_sfml ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
 target_compile_features(r-type_game-engine PRIVATE cxx_std_23)
 set_target_properties(r-type_game-engine PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_SOURCE_DIR}>"
 )
-if(WIN32)
-    # the audio plugin needs openal32.dll next to the executable
-    add_custom_command(TARGET r-type_game-engine POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${RTYPE_OPENAL_DLL}" "$<TARGET_FILE_DIR:r-type_game-engine>"
-        VERBATIM
-    )
-endif()
 
 # ---------------------------------------------------------------------------
 # Warnings
@@ -297,7 +263,6 @@ foreach(target IN ITEMS
     r-type_client
     r-type_game-engine
     rtype_sfml
-    rtype_sfml_audio
     ${SYSTEM_TARGETS}
     ${COMPONENT_TARGETS}
 )
@@ -318,7 +283,6 @@ foreach(target IN ITEMS
     rtype-protocol
     rtype_engine
     rtype_sfml
-    rtype_sfml_audio
     r-type_server
     r-type_client
     r-type_game-engine
@@ -333,9 +297,17 @@ foreach(target IN ITEMS
     endif()
 endforeach()
 
-# MinGW: embed the C++ runtime so the .exe files run without the toolchain's DLLs.
+# MinGW: embed the C++ runtime so the .exe and plugin .dll files run without the
+# toolchain's DLLs (libstdc++-6, libgcc_s_seh-1, libwinpthread-1).
 if(MINGW)
-    foreach(target IN ITEMS r-type_server r-type_client r-type_game-engine)
+    foreach(target IN ITEMS
+        r-type_server
+        r-type_client
+        r-type_game-engine
+        rtype_sfml
+        ${SYSTEM_TARGETS}
+        ${COMPONENT_TARGETS}
+    )
         target_link_options(${target} PRIVATE -static)
     endforeach()
 endif()

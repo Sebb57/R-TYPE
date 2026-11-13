@@ -23,7 +23,8 @@ void OrByte::SceneCollection::_add(Scene scene)
 
 void OrByte::SceneCollection::close(std::size_t index)
 {
-    this->_scenes.at(index);
+    (void) this->_scenes.at(index);
+
     this->_scenes.erase(this->_scenes.begin() + index);
     ++this->_revision;
     if (this->_scenes.empty()) {
@@ -41,7 +42,8 @@ World& OrByte::SceneCollection::currentWorld() const
 
 void OrByte::SceneCollection::select(std::size_t index)
 {
-    this->_scenes.at(index);
+    (void) this->_scenes.at(index);
+
     this->currentWorld().clearPendingEntityDrag();
     if (this->_selected != index) {
         this->_selected = index;

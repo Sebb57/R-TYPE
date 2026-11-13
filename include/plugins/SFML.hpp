@@ -16,29 +16,39 @@
     #include <filesystem>
     #include <map>
     #include <memory>
+    #include <optional>
     #include <queue>
     #include <string>
     #include <unordered_map>
     #include <vector>
+    #include <SFML/Audio.hpp>
     #include <SFML/Graphics.hpp>
     #include <SFML/System.hpp>
     #include <SFML/Window.hpp>
 
 namespace OrByte {
     class SFML : public AGraphic {
+        struct SoundEntry {
+            sf::SoundBuffer buffer;
+            std::optional<sf::Sound> sound;
+        };
+
         std::chrono::steady_clock::time_point _nextFrameTime = std::chrono::steady_clock::now();
         std::unique_ptr<sf::RenderWindow> _window;
         mutable std::unordered_map<std::string, sf::Font> _fonts;
         mutable std::unordered_map<std::string, sf::Texture> _textures;
         mutable std::vector<Rect> _regions;
+        mutable std::unordered_map<std::string, SoundEntry> _sounds;
+        mutable std::unique_ptr<sf::Music> _music;
+        mutable std::string _musicPath;
 
-        sf::Cursor _cursorArrow;
-        sf::Cursor _cursorHorizontal;
-        sf::Cursor _cursorVertical;
-        sf::Cursor _cursorMove;
-        sf::Cursor _cursorClick;
-        sf::Cursor _cursorDiagonalNWSE;
-        sf::Cursor _cursorDiagonalNESW;
+        const std::optional<sf::Cursor> _cursorArrow = sf::Cursor::createFromSystem(sf::Cursor::Type::Arrow);
+        const std::optional<sf::Cursor> _cursorHorizontal = sf::Cursor::createFromSystem(sf::Cursor::Type::SizeHorizontal);
+        const std::optional<sf::Cursor> _cursorVertical = sf::Cursor::createFromSystem(sf::Cursor::Type::SizeVertical);
+        const std::optional<sf::Cursor> _cursorMove = sf::Cursor::createFromSystem(sf::Cursor::Type::SizeAll);
+        const std::optional<sf::Cursor> _cursorClick = sf::Cursor::createFromSystem(sf::Cursor::Type::Hand);
+        const std::optional<sf::Cursor> _cursorDiagonalNWSE = sf::Cursor::createFromSystem(sf::Cursor::Type::SizeTopLeftBottomRight);
+        const std::optional<sf::Cursor> _cursorDiagonalNESW = sf::Cursor::createFromSystem(sf::Cursor::Type::SizeBottomLeftTopRight);
         CursorType _currentCursor = CursorType::Arrow;
 
         const sf::Font *getFont(const std::filesystem::path& path) const;
@@ -50,7 +60,7 @@ namespace OrByte {
 
         public:
             SFML() = default;
-            ~SFML() override = default;
+            ~SFML() override { this->stopAudio(); }
 
             void open(const std::size_t width, const std::size_t height, std::string title) final;
             void close() final;
@@ -71,6 +81,14 @@ namespace OrByte {
             virtual void pushRegion(const Rect& pixelRect) const override;
             virtual void popRegion() const override;
             virtual void setCursor(CursorType type) override;
+
+            // Audio
+            void playSound(const std::filesystem::path& path, float volume, float pitch) const override;
+            void stopSound(const std::filesystem::path& path) const override;
+            void playMusic(const std::filesystem::path& path, bool loop, float volume) const override;
+            void stopMusic() const override;
+            bool isMusicPlaying() const override;
+            void stopAudio() const override;
 
             std::pair<unsigned, unsigned> getWindowSize() const noexcept final;
     };

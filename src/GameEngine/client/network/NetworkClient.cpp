@@ -12,8 +12,21 @@
 #include <iterator>
 #include <utility>
 #include <vector>
+#ifdef ORBYTE_FEATURE_LAGOMETER
+    #include <cmath>
+#endif
+#ifdef ORBYTE_FEATURE_CHAT
+    #include "GameEngine/protocol/Chat.hpp"
+#endif
 
 namespace {
+
+#ifdef ORBYTE_FEATURE_LAGOMETER
+constexpr auto PingInterval = std::chrono::milliseconds(250);
+constexpr auto PingTimeout = std::chrono::seconds(2);
+#else
+constexpr auto PingInterval = std::chrono::seconds(1);
+#endif
 
 const std::array<std::string, 6> Errors{
     "bad request", "incompatible version", "invalid player name", "game not found", "too many spectators", "too many games",
@@ -39,6 +52,15 @@ std::string localImage(const std::string& image)
     return image;
 }
 
+#ifdef ORBYTE_FEATURE_LAGOMETER
+void pushSample(client::NetworkMetrics& metrics, float sample)
+{
+    if (metrics.samples.size() >= client::NetworkMetrics::History)
+        metrics.samples.erase(metrics.samples.begin());
+    metrics.samples.push_back(sample);
+}
+#endif
+
 } // namespace
 
 client::NetworkClient::NetworkClient()
@@ -48,10 +70,16 @@ client::NetworkClient::NetworkClient()
         {server::Type::Spectating, &NetworkClient::onSpectating},
         {server::Type::Left, &NetworkClient::onLeft},
         {server::Type::Error, &NetworkClient::onError},
+#ifdef ORBYTE_FEATURE_CHAT
+        {server::Type::Chat, &NetworkClient::onChat},
+#endif
     }
     , _udpHandlers{
         {server::UdpType::HelloAck, &NetworkClient::onHelloAck},
         {server::UdpType::Snapshot, &NetworkClient::onSnapshot},
+#ifdef ORBYTE_FEATURE_LAGOMETER
+        {server::UdpType::Pong, &NetworkClient::onPong},
+#endif
     }
     , _work(asio::make_work_guard(this->_io))
     , _tcp(this->_io)
@@ -210,10 +238,14 @@ void client::NetworkClient::onTcpMessage(const server::Buffer& message)
         (this->*handler->second)(message, 1);
 }
 
-void client::NetworkClient::onConnectOk(const server::Buffer& /* buffer */, std::size_t /* size */)
+void client::NetworkClient::onConnectOk([[maybe_unused]] const server::Buffer& message, [[maybe_unused]] std::size_t offset)
 {
     {
         std::scoped_lock lock(this->_mutex);
+#ifdef ORBYTE_FEATURE_CHAT
+        std::uint8_t features = 0;
+        this->_view.chatAvailable = server::TcpProtocol::readU8(message, offset, features) && (features & server::FeatureChat) != 0;
+#endif
         this->_view.connected = true;
         this->_view.username = this->_username;
         this->_view.status = "Connected as " + this->_username;
@@ -258,6 +290,9 @@ void client::NetworkClient::onSpectating(const server::Buffer& message, std::siz
         this->_view.udpPort = port;
         this->_view.tick = 0;
         this->_view.entities.clear();
+#ifdef ORBYTE_FEATURE_CHAT
+        this->_view.chat = {};
+#endif
         this->_view.status = "Joining game " + std::to_string(id) + "...";
     }
     this->startUdp(port, token);
@@ -287,6 +322,32 @@ void client::NetworkClient::onError(const server::Buffer& message, std::size_t o
         this->setStatus("Server error: " + describe(Errors, code));
 }
 
+#ifdef ORBYTE_FEATURE_CHAT
+void client::NetworkClient::say(std::string text)
+{
+    if (!server::isChatText(text))
+        return;
+    server::Buffer payload;
+    server::TcpProtocol::appendString(payload, text);
+    this->sendTcp(server::TcpProtocol::message(server::Type::Chat, std::move(payload)));
+}
+
+void client::NetworkClient::onChat(const server::Buffer& message, std::size_t offset)
+{
+    std::uint8_t host = 0;
+    server::ChatLine line;
+    if (!server::TcpProtocol::readU8(message, offset, host) ||
+        !server::TcpProtocol::readString(message, offset, 16, line.author) ||
+        !server::TcpProtocol::readString(message, offset, server::MaxChatLength, line.text) ||
+        offset != message.size() || !server::isChatText(line.text))
+        return;
+    line.host = host != 0;
+    std::scoped_lock lock(this->_mutex);
+    if (this->_view.spectating)
+        this->_view.chat.add(std::move(line));
+}
+#endif
+
 void client::NetworkClient::startUdp(std::uint16_t port, std::uint64_t token)
 {
     asio::error_code error;
@@ -298,6 +359,12 @@ void client::NetworkClient::startUdp(std::uint16_t port, std::uint64_t token)
     }
     this->_udpEndpoint = {this->_hostAddress, port};
     this->_udpSequence = 0;
+#ifdef ORBYTE_FEATURE_LAGOMETER
+    {
+        std::scoped_lock lock(this->_mutex);
+        this->_view.metrics = {};
+    }
+#endif
     this->sendHello(token);
     this->readUdp();
 }
@@ -309,6 +376,9 @@ void client::NetworkClient::stopUdp()
     this->_pingTimer.cancel(ignored);
     this->_udp.close(ignored);
     this->_pending = {};
+#ifdef ORBYTE_FEATURE_LAGOMETER
+    this->_pings.clear();
+#endif
 }
 
 void client::NetworkClient::sendHello(std::uint64_t token)
@@ -397,6 +467,12 @@ void client::NetworkClient::onSnapshot(const server::Buffer& packet)
         entity.rotation = static_cast<std::int16_t>(rotation);
         entity.size = Vector2(width, height);
         entity.image = image < images.size() ? localImage(images[image]) : "";
+        std::uint16_t frameX = 0, frameY = 0, frameWidth = 0, frameHeight = 0;
+        server::TcpProtocol::readU16(packet, offset, frameX);
+        server::TcpProtocol::readU16(packet, offset, frameY);
+        server::TcpProtocol::readU16(packet, offset, frameWidth);
+        server::TcpProtocol::readU16(packet, offset, frameHeight);
+        entity.frame = Rect(frameX, frameY, frameWidth, frameHeight);
     }
     this->assemble(tick, part, parts, std::move(entities));
 }
@@ -422,7 +498,7 @@ void client::NetworkClient::assemble(std::uint32_t tick, std::uint8_t part, std:
 
 void client::NetworkClient::beginPingLoop()
 {
-    this->_pingTimer.expires_after(std::chrono::seconds(1));
+    this->_pingTimer.expires_after(PingInterval);
     this->_pingTimer.async_wait([this](const asio::error_code& error) {
         if (error)
             return;
@@ -436,8 +512,57 @@ void client::NetworkClient::sendPing()
     server::Buffer payload;
     server::UdpProtocol::appendU32(payload, ++this->_udpSequence);
     auto bytes = std::make_shared<server::Buffer>(server::UdpProtocol::encode(server::UdpType::Ping, this->_udpSequence, this->_view.token, payload));
+#ifdef ORBYTE_FEATURE_LAGOMETER
+    this->trackPing(this->_udpSequence);
+#endif
     this->_udp.async_send_to(asio::buffer(*bytes), this->_udpEndpoint, [bytes](const asio::error_code&, std::size_t) {});
 }
+
+#ifdef ORBYTE_FEATURE_LAGOMETER
+void client::NetworkClient::trackPing(std::uint32_t sequence)
+{
+    const auto now = std::chrono::steady_clock::now();
+    std::scoped_lock lock(this->_mutex);
+    NetworkMetrics& metrics = this->_view.metrics;
+
+    for (auto ping = this->_pings.begin(); ping != this->_pings.end();) {
+        if (now - ping->second < PingTimeout) {
+            ++ping;
+            continue;
+        }
+        ++metrics.lost;
+        pushSample(metrics, NetworkMetrics::Lost);
+        ping = this->_pings.erase(ping);
+    }
+    this->_pings.insert_or_assign(sequence, now);
+    ++metrics.sent;
+}
+
+void client::NetworkClient::onPong(const server::Buffer& packet)
+{
+    const auto now = std::chrono::steady_clock::now();
+    std::uint32_t sequence = 0;
+    if (!server::UdpProtocol::readU32(packet, server::UdpHeaderSize, sequence))
+        return;
+    const auto ping = this->_pings.find(sequence);
+    if (ping == this->_pings.end())
+        return;
+    const float rtt = std::chrono::duration<float, std::milli>(now - ping->second).count();
+    this->_pings.erase(ping);
+
+    std::scoped_lock lock(this->_mutex);
+    NetworkMetrics& metrics = this->_view.metrics;
+    if (metrics.received == 0) {
+        metrics.smoothed = rtt;
+    } else {
+        metrics.smoothed += (rtt - metrics.smoothed) / 8.0F;
+        metrics.jitter += (std::abs(rtt - metrics.last) - metrics.jitter) / 16.0F;
+    }
+    metrics.last = rtt;
+    ++metrics.received;
+    pushSample(metrics, rtt);
+}
+#endif
 
 void client::NetworkClient::onDisconnect(const std::string& reason)
 {

@@ -11,9 +11,9 @@
 OrByte::DynamicLibrary::DynamicLibrary(const std::filesystem::path& path) : _path(path)
 {
 #ifdef _WIN32
-    this->_handle = LoadLibraryA(path.c_str());
+    this->_handle = LoadLibraryA(path.string().c_str());
     if (!this->_handle)
-        throw LibraryLoadFailed(path, "error code " + std::to_string(GetLastError()));
+        throw LibraryLoadFailed(path.string(), "error code " + std::to_string(GetLastError()));
 #else
     this->_handle = dlopen(path.c_str(), RTLD_NOW);
     if (!this->_handle)

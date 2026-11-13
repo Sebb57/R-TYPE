@@ -14,7 +14,6 @@
 #include "plugins/DynamicLibrary.hpp"
 #include "plugins/ISystem.hpp"
 #include <vector>
-#include <iostream>
 
 OrByte::HealthSystem::HealthSystem(World& world) : _world(world)
 {}
@@ -30,7 +29,7 @@ bool OrByte::HealthSystem::_handleDeath(Health* health, int entity)
 
 void OrByte::HealthSystem::_handleRemoveHealth(Health* health, int entity)
 {
-    RemoveHealth* rh = this->_world.getComponent<RemoveHealth>(entity);
+    RemoveHealth* rh = this->_world.getActiveComponent<RemoveHealth>(entity);
     if (rh == nullptr)
         return;
 
@@ -40,7 +39,7 @@ void OrByte::HealthSystem::_handleRemoveHealth(Health* health, int entity)
 
 void OrByte::HealthSystem::_handlePoison(Health* health, int entity)
 {
-    Poison* poison = this->_world.getComponent<Poison>(entity);
+    Poison* poison = this->_world.getActiveComponent<Poison>(entity);
     if (poison == nullptr)
         return;
 
@@ -69,7 +68,7 @@ void OrByte::HealthSystem::_handlePoison(Health* health, int entity)
 
 void OrByte::HealthSystem::_handleWither(Health* health, int entity)
 {
-    Wither* wither = this->_world.getComponent<Wither>(entity);
+    Wither* wither = this->_world.getActiveComponent<Wither>(entity);
     if (wither == nullptr)
         return;
 
@@ -96,7 +95,7 @@ void OrByte::HealthSystem::_handleWither(Health* health, int entity)
 
 void OrByte::HealthSystem::_handleAddHealth(Health* health, int entity)
 {
-    AddHealth* ah = this->_world.getComponent<AddHealth>(entity);
+    AddHealth* ah = this->_world.getActiveComponent<AddHealth>(entity);
     if (ah == nullptr)
         return;
 
@@ -108,7 +107,7 @@ void OrByte::HealthSystem::_handleAddHealth(Health* health, int entity)
 
 void OrByte::HealthSystem::_handleRegenHealth(Health* health, int entity)
 {
-    RegenHealth* regen = this->_world.getComponent<RegenHealth>(entity);
+    RegenHealth* regen = this->_world.getActiveComponent<RegenHealth>(entity);
     if (regen == nullptr)
         return;
 
@@ -139,7 +138,7 @@ void OrByte::HealthSystem::update()
 {
     std::vector<int> entities = this->_world.getExistingEntities();
     for (int entity: entities) {
-        Health* health = this->_world.getComponent<Health>(entity);
+        Health* health = this->_world.getActiveComponent<Health>(entity);
         if (health == nullptr)
             continue;
 

@@ -7,6 +7,7 @@
 **/
 
 #include "client/Client.hpp"
+#include "constants.hpp"
 #include <filesystem>
 #include <iostream>
 #include <queue>
@@ -30,7 +31,7 @@ std::filesystem::path findAsset(const std::filesystem::path& path)
 
 client::Client::Client(ClientConfig config)
     : _config(std::move(config))
-    , _graphicLoader("./plugins/SFML.so")
+    , _graphicLoader(std::filesystem::path(OrByte::constants::PLUGINS_DIR) / OrByte::constants::pluginFile("SFML"))
     , _graphicLib(this->_graphicLoader.loadFunction<OrByte::IGraphic* (*)()>("factory")())
     , _context(this->_config, *this->_graphicLib, this->_network, this->_scenes, this->_controls, findAsset(this->_config.font))
 {

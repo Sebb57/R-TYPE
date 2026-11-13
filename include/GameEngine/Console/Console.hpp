@@ -9,7 +9,9 @@
 #ifndef CONSOLE_HPP_
     #define CONSOLE_HPP_
 
+    #include "GameEngine/Console/CompileOptions.hpp"
     #include "GameEngine/Console/Process.hpp"
+    #include "GameEngine/ECS/ComponentPlugins.hpp"
     #include "GameEngine/ECS/SceneCollection.hpp"
     #include <cstdint>
     #include <filesystem>
@@ -36,7 +38,7 @@ class Console {
             LineKind kind = LineKind::Output;
         };
 
-        explicit Console(SceneCollection& scenes);
+        Console(SceneCollection& scenes, const ComponentPlugins& components);
 
         void execute(const std::string& input);
         void update();
@@ -55,11 +57,12 @@ class Console {
         const std::map<std::string, Command> _commands{
             {"cd", {&Console::_changeDirectory, "change the console directory, back to the project without a path"}},
             {"clear", {&Console::_clear, "empty the console"}},
-            {"compile", {&Console::_compile, "export the world and build the game"}},
+            {"compile", {&Console::_compile, "export the world and build the game with the saved compile options"}},
             {"help", {&Console::_help, "list the commands"}},
         };
 
         SceneCollection& _scenes;
+        const ComponentPlugins& _components;
         std::filesystem::path _root;
         std::filesystem::path _cwd;
         std::vector<Line> _lines;

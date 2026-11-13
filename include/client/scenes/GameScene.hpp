@@ -15,7 +15,6 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
-#include <SFML/Audio.hpp>
 #include "client/network/ClientView.hpp"
 #include "client/scenes/AScene.hpp"
 #include "protocol/UdpProtocol.hpp"
@@ -60,9 +59,6 @@ class GameScene : public AScene {
         std::unordered_set<int> _playersWhoPlayedIdle;
         std::vector<CollisionFlash> _collisionFlashes;
         std::vector<int> _explosions;
-        sf::Music _music;
-        std::array<sf::SoundBuffer, 4> _soundBuffers;
-        std::array<sf::Sound, 4> _sounds;
         std::size_t _nextShotSound = 0;
         double _shotSoundTimer = 0.0;
 };

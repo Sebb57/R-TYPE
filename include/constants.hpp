@@ -11,6 +11,8 @@
     #define CONSTANTS_HPP_
 
     #include <array>
+    #include <string>
+    #include <string_view>
 
 namespace OrByte::constants {
 
@@ -23,7 +25,25 @@ inline constexpr int SERVER_WINDOW_Y = 1080;
 
 inline constexpr const char *CONFIGS_DIR = "./configs";
 inline constexpr const char *GAME_WORLD = "/tmp/game.obe";
-inline constexpr const char *COMPONENTS_DIR = "./plugins/components";
+#ifndef ORBYTE_PLUGINS_DIR
+    #define ORBYTE_PLUGINS_DIR "./plugins"
+#endif
+inline constexpr const char *PLUGINS_DIR = ORBYTE_PLUGINS_DIR;
+inline constexpr const char *SYSTEMS_DIR = ORBYTE_PLUGINS_DIR "/systems";
+inline constexpr const char *COMPONENTS_DIR = ORBYTE_PLUGINS_DIR "/components";
+#ifdef _WIN32
+inline constexpr std::string_view PLUGIN_EXTENSION = ".dll";
+#else
+inline constexpr std::string_view PLUGIN_EXTENSION = ".so";
+#endif
+
+/** @brief file name of a plugin for the current platform ("SFML" -> "SFML.so" / "SFML.dll") */
+inline std::string pluginFile(std::string_view name)
+{
+    return std::string(name) + std::string(PLUGIN_EXTENSION);
+}
+
+inline constexpr const char *COMPILE_OPTIONS = "./configs/compile.options";
 inline constexpr const char *FONT_DEFAULT = "assets/fonts/NotoSans-Regular.ttf";
 inline constexpr const char *SPRITE_PLAYER = "./assets/sprites/thanks.png";
 inline constexpr const char *SPRITE_PROJECTILE = "./assets/sprites/thanks.png";

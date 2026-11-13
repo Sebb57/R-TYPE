@@ -8,17 +8,16 @@
 #include "GameEngine/GameEngine.hpp"
 #include "GameEngine/Layout/Panel.hpp"
 #include "GameEngine/Layout/AssetsWidget.hpp"
+#include "GameEngine/Layout/CompileOptionsWidget.hpp"
 #include "GameEngine/Layout/ConsoleWidget.hpp"
 #include "GameEngine/Layout/TabWidget.hpp"
-#include "GameEngine/Detail/Detail.hpp"
+#include "GameEngine/Layout/Detail.hpp"
 #include "GameEngine/Layout/EntityWidget.hpp"
 #include "GameEngine/Layout/FilesManagementWidget.hpp"
 #include "GameEngine/Layout/SceneManagerWidget.hpp"
 #include "constants.hpp"
-#include <exception>
 #include "GameEngine/Layout/SceneView.hpp"
 #include <filesystem>
-#include <iostream>
 #include <memory>
 #include <queue>
 #include <string_view>
@@ -27,22 +26,16 @@ namespace {
 
 inline constexpr std::string_view PLUGINS_DIR = "./plugins";
 
-#ifdef _WIN32
-inline constexpr std::string_view PLUGIN_EXTENSION = ".dll";
-#else
-inline constexpr std::string_view PLUGIN_EXTENSION = ".so";
-#endif
-
 std::filesystem::path getGraphicalPlugin(OrByte::GameEngine::GraphicalLibs graphicalLib)
 {
     std::filesystem::path path;
 
     switch (graphicalLib) {
         case OrByte::GameEngine::GraphicalLibs::SFML:
-            path = "SFML.so";
+            path = OrByte::constants::pluginFile("SFML");
             break;
         default:
-            path = "SFML.so";
+            path = OrByte::constants::pluginFile("SFML");
             break;
     }
 
@@ -60,45 +53,14 @@ OrByte::GameEngine::GameEngine(std::filesystem::path graphicPath)
     : _graphicLoader(graphicPath),
       _graphicLib(this->_graphicLoader.loadFunction<IGraphic* (*)()>("factory")()),
       _components(loadComponentPlugins(constants::COMPONENTS_DIR)),
-      _console(this->_scenes)
+      _console(this->_scenes, this->_components)
 {
     this->_graphicLib->open();
-    this->_loadAudio();
     this->_initLayout();
-}
-
-void OrByte::GameEngine::_loadAudio()
-{
-    const std::filesystem::path audioLib = std::filesystem::path(PLUGINS_DIR) / ("SFMLAudio" + std::string(PLUGIN_EXTENSION));
-    const std::filesystem::path audioSystem = std::filesystem::path(PLUGINS_DIR) / "systems" / ("AudioSystem" + std::string(PLUGIN_EXTENSION));
-
-    try {
-        this->_audioLoader = std::make_unique<DynamicLibrary>(audioLib);
-        this->_audio.reset(this->_audioLoader->loadFunction<IAudio* (*)()>("factory")());
-        this->_audioSystemLoader = std::make_unique<DynamicLibrary>(audioSystem);
-    } catch (const std::exception& error) {
-        std::cerr << "[GameEngine] audio disabled: " << error.what() << std::endl;
-        this->_audioSystem.reset();
-        this->_audio.reset();
-    }
-}
-
-void OrByte::GameEngine::_bindAudioToScene()
-{
-    // Release the previous scene's tracks before binding the active world.
-    this->_audioSystem.reset();
-    if (!this->_audio || !this->_audioSystemLoader || this->_scenes.empty())
-        return;
-    try {
-        this->_audioSystem.reset(this->_audioSystemLoader->loadFunction<ISystem* (*)(World&, IAudio&)>("factory")(this->_scenes.currentWorld(), *this->_audio));
-    } catch (const std::exception& error) {
-        std::cerr << "[GameEngine] audio disabled: " << error.what() << std::endl;
-    }
 }
 
 void OrByte::GameEngine::_initLayout()
 {
-    this->_bindAudioToScene();
     std::unique_ptr<Widget> scene;
     if (this->_scenes.empty())
         scene = std::make_unique<Panel>("", 0);
@@ -122,13 +84,19 @@ void OrByte::GameEngine::_initLayout()
     }
     const Widget& console = tabs.addTab(std::make_unique<ConsoleWidget>(this->_console));
     this->_console.setOnStart([&tabs, &console] { tabs.select(console); });
+    auto& compileOptions = static_cast<CompileOptionsWidget&>(tabs.addTab(std::make_unique<CompileOptionsWidget>()));
     scene->attach(Widget::Side::Bottom, std::move(bottom));
     if (!this->_scenes.empty()) {
         World& world = this->_scenes.currentWorld();
         scene->attach(Widget::Side::Left, std::make_unique<EntityWidget>(world, 250));
         scene->attach(Widget::Side::Right, std::make_unique<Detail>(world, this->_components.factories, 300));
     }
-    toolbar.attach(Widget::Side::Left, std::make_unique<FilesManagementWidget>(this->_scenes, this->_components.factories, this->_console, assetsWidget, this->_projectDirectory));
+    auto files = std::make_unique<FilesManagementWidget>(this->_scenes, this->_components.factories, this->_console, assetsWidget, this->_projectDirectory);
+    files->setOnCompileOptions([&tabs, &compileOptions] {
+        compileOptions.rescan();
+        tabs.select(compileOptions);
+    });
+    toolbar.attach(Widget::Side::Left, std::move(files));
 
     const auto [w, h] = this->_graphicLib->getWindowSize();
 
@@ -172,8 +140,6 @@ bool OrByte::GameEngine::_handleEvent(Event& event)
 void OrByte::GameEngine::_update()
 {
     this->_console.update();
-    if (this->_audioSystem)
-        this->_audioSystem->update();
 }
 
 void OrByte::GameEngine::_render()

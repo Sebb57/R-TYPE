@@ -11,6 +11,7 @@
 
 #include <array>
 #include <asio.hpp>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
@@ -43,6 +44,9 @@ class NetworkClient {
         void listRooms();
         void spectate(std::uint32_t id);
         void leave();
+#ifdef ORBYTE_FEATURE_CHAT
+        void say(std::string text);
+#endif
 
     private:
         using TcpHandler = void (NetworkClient::*)(const server::Buffer&, std::size_t);
@@ -65,6 +69,9 @@ class NetworkClient {
         void onSpectating(const server::Buffer& message, std::size_t offset);
         void onLeft(const server::Buffer& message, std::size_t offset);
         void onError(const server::Buffer& message, std::size_t offset);
+#ifdef ORBYTE_FEATURE_CHAT
+        void onChat(const server::Buffer& message, std::size_t offset);
+#endif
         void startUdp(std::uint16_t port, std::uint64_t token);
         void stopUdp();
         void sendHello(std::uint64_t token);
@@ -75,6 +82,10 @@ class NetworkClient {
         void assemble(std::uint32_t tick, std::uint8_t part, std::uint8_t parts, std::vector<EntityView> entities);
         void beginPingLoop();
         void sendPing();
+#ifdef ORBYTE_FEATURE_LAGOMETER
+        void trackPing(std::uint32_t sequence);
+        void onPong(const server::Buffer& packet);
+#endif
         void onDisconnect(const std::string& reason);
 
         const std::unordered_map<server::Type, TcpHandler> _tcpHandlers;
@@ -95,6 +106,9 @@ class NetworkClient {
         std::string _username;
         PendingSnapshot _pending;
         std::uint32_t _udpSequence = 0;
+#ifdef ORBYTE_FEATURE_LAGOMETER
+        std::map<std::uint32_t, std::chrono::steady_clock::time_point> _pings; // sent, waiting for their pong
+#endif
         std::jthread _thread;
 };
 

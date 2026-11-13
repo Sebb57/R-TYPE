@@ -91,6 +91,10 @@ server::Buffer encode(std::uint32_t tick, std::size_t index, std::size_t count, 
         server::TcpProtocol::appendU16(payload, clampTo<std::uint16_t>(entity->size.y));
         payload.insert(payload.end(), {entity->color.r, entity->color.g, entity->color.b, entity->color.a});
         payload.push_back(image);
+        server::TcpProtocol::appendU16(payload, clampTo<std::uint16_t>(entity->frame.x));
+        server::TcpProtocol::appendU16(payload, clampTo<std::uint16_t>(entity->frame.y));
+        server::TcpProtocol::appendU16(payload, clampTo<std::uint16_t>(entity->frame.w));
+        server::TcpProtocol::appendU16(payload, clampTo<std::uint16_t>(entity->frame.h));
     }
     return payload;
 }

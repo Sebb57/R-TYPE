@@ -8,35 +8,113 @@
 
 #include "GameEngine/server/game/GameInstance.hpp"
 #include <algorithm>
+#include <array>
 #include <chrono>
+#include <exception>
+#include <filesystem>
+#include <iostream>
+#include <string_view>
 #include <utility>
 #include "GameEngine/ECS/Components/Controllable.hpp"
+#include "GameEngine/ECS/Components/Animator.hpp"
 #include "GameEngine/ECS/Components/Sprite.hpp"
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "GameEngine/ECS/World.hpp"
+#include "GameEngine/client/GamePlugins.hpp"
 #include "constants.hpp"
 #include "plugins/IGraphic.hpp"
+
+namespace {
+
+constexpr std::string_view SYSTEM_SUFFIX = "System";
+
+constexpr std::array<std::string_view, 6> TICK_ORDER{"Control", "Script", "Physic", "Collider", "Health", "Audio"};
+
+[[nodiscard]] std::filesystem::path systemPath(const std::string& name)
+{
+    return std::filesystem::path(OrByte::constants::SYSTEMS_DIR) / OrByte::constants::pluginFile(name + std::string(SYSTEM_SUFFIX));
+}
+
+[[nodiscard]] std::vector<std::string> systemsOnDisk()
+{
+    std::vector<std::string> names;
+    std::error_code error;
+
+    for (const auto& entry : std::filesystem::directory_iterator(OrByte::constants::SYSTEMS_DIR, error)) {
+        const std::string stem = entry.path().stem().string();
+
+        if (entry.path().extension() == OrByte::constants::PLUGIN_EXTENSION && stem.ends_with(SYSTEM_SUFFIX) && stem.size() > SYSTEM_SUFFIX.size())
+            names.push_back(stem.substr(0, stem.size() - SYSTEM_SUFFIX.size()));
+    }
+    return names;
+}
+
+[[nodiscard]] std::size_t tickRank(const std::string& name)
+{
+    return static_cast<std::size_t>(std::ranges::distance(TICK_ORDER.begin(), std::ranges::find(TICK_ORDER, name)));
+}
+
+} // namespace
 
 server::GameInstance::GameInstance(OrByte::IGraphic& graphic, unsigned tickRate, unsigned snapshotRate, const Setup& setup)
     : _tickRate(std::max(tickRate, 1U))
     , _snapshotRate(std::max(snapshotRate, 1U))
-    , _controlLoader("./plugins/systems/ControlSystem.so")
-    , _physicLoader("./plugins/systems/PhysicSystem.so")
-    , _displayLoader("./plugins/systems/DisplaySystem.so")
-    , _scriptLoader("./plugins/systems/ScriptSystem.so")
     , _world(std::make_unique<World>())
-    , _controlSystem(this->_controlLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world))
-    , _physicSystem(this->_physicLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world))
-    , _displaySystem(this->_displayLoader.loadFunction<OrByte::ISystem* (*)(World&, OrByte::IGraphic&)>("factory")(*this->_world, graphic))
-    , _scriptSystem(this->_scriptLoader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world))
 {
+    if (const auto& compiled = client::compiledComponents(); compiled) {
+        std::vector<OrByte::ComponentType> active;
+        for (std::size_t i = 0; i < static_cast<std::size_t>(OrByte::ComponentType::ENUM_END); ++i) {
+            const auto type = static_cast<OrByte::ComponentType>(i);
+            if (std::ranges::contains(*compiled, enumToString(type)))
+                active.push_back(type);
+        }
+        this->_world->setActiveComponents(std::move(active));
+    }
+    this->loadSystems(graphic);
     if (setup)
         setup(*this->_world);
+}
+
+void server::GameInstance::loadSystems(OrByte::IGraphic& graphic)
+{
+    const auto& compiled = client::compiledSystems();
+    std::vector<std::string> names = compiled ? *compiled : systemsOnDisk();
+
+    std::ranges::stable_sort(names, {}, tickRank);
+    for (const std::string& name : names) {
+        try {
+            auto loader = std::make_unique<OrByte::DynamicLibrary>(systemPath(name));
+            OrByte::ISystem *system = this->createSystem(name, *loader, graphic);
+
+            if (system == nullptr)
+                continue;
+            LoadedSystem loaded{name, std::move(loader), std::unique_ptr<OrByte::ISystem>(system)};
+            if (name == "Display")
+                this->_display = std::move(loaded);
+            else
+                this->_systems.push_back(std::move(loaded));
+        } catch (const std::exception& error) {
+            std::cerr << "[Game] " << name << " system disabled: " << error.what() << std::endl;
+        }
+    }
+}
+
+OrByte::ISystem *server::GameInstance::createSystem(const std::string& name, OrByte::DynamicLibrary& loader, OrByte::IGraphic& graphic)
+{
+    if (name == "Display" || name == "Audio")
+        return loader.loadFunction<OrByte::ISystem* (*)(World&, OrByte::IGraphic&)>("factory")(*this->_world, graphic);
+    if (name == "Script")
+        this->_scriptCollisions = loader.loadFunction<decltype(_scriptCollisions)>("onCollisions");
+    return loader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world);
 }
 
 server::GameInstance::~GameInstance()
 {
     this->stop();
+    this->_display.system.reset();
+    for (LoadedSystem& loaded : this->_systems)
+        loaded.system.reset();
+    this->_world.reset();
 }
 
 void server::GameInstance::start()
@@ -62,7 +140,8 @@ bool server::GameInstance::push(const OrByte::Event& event)
 void server::GameInstance::render()
 {
     std::scoped_lock lock(this->_mutex);
-    this->_displaySystem->update();
+    if (this->_display.system)
+        this->_display.system->update();
 }
 
 void server::GameInstance::setSink(SnapshotSink sink)
@@ -100,14 +179,18 @@ void server::GameInstance::run(std::stop_token token)
 void server::GameInstance::applyInbound()
 {
     for (const OrByte::Event& event : this->_inbox.drain())
-        this->_controlSystem->onEvent(event);
+        for (const LoadedSystem& loaded : this->_systems)
+            loaded.system->onEvent(event);
 }
 
 void server::GameInstance::update()
 {
-    this->_controlSystem->update();
-    this->_scriptSystem->update();
-    this->_physicSystem->update();
+    const auto script = std::ranges::find(this->_systems, "Script", &LoadedSystem::name);
+    for (const LoadedSystem& loaded : this->_systems) {
+        loaded.system->update();
+        if (loaded.name == "Collider" && script != this->_systems.end() && this->_scriptCollisions)
+            this->_scriptCollisions(*script->system, loaded.system->getEntityPairs());
+    }
 }
 
 server::SnapshotDto server::GameInstance::makeSnapshot()
@@ -116,15 +199,36 @@ server::SnapshotDto server::GameInstance::makeSnapshot()
     snapshot.tick = this->_tick;
     const Vector2 origin = this->_world->getCameraOrigin(Vector2(OrByte::constants::SERVER_WINDOW_X, OrByte::constants::SERVER_WINDOW_Y));
     for (int entity : this->_world->getExistingEntities()) {
-        const auto *transform = this->_world->getComponent<OrByte::Transform>(entity);
+        const auto *transform = this->_world->getActiveComponent<OrByte::Transform>(entity);
         if (transform == nullptr)
             continue;
-        const auto id = static_cast<std::uint32_t>(entity + 1);
+        // Preserve the renderer order: animation/sprite first, controllable second.
+        const auto id = static_cast<std::uint32_t>(entity + 1) * 2U;
         const Vector2 position(transform->position.x - origin.x, transform->position.y - origin.y);
-        if (const auto *controllable = this->_world->getComponent<OrByte::Controllable>(entity))
-            snapshot.entities.push_back(EntityDto(id, position, transform->rotation, controllable->size, controllable->color, controllable->image));
-        else if (const auto *sprite = this->_world->getComponent<OrByte::Sprite>(entity))
-            snapshot.entities.push_back(EntityDto(id, position, transform->rotation, sprite->size, OrByte::RGBA(255, 255, 255), sprite->texturePath));
+        if (const auto* animator = this->_world->getActiveComponent<OrByte::Animator>(entity)) {
+            const auto* animation = animator->getCurrentAnimation();
+            if (animation != nullptr && animation->frameCount > 0) {
+                if (animation->isSpriteSheet && animation->columns > 0 && animation->frameSize.x > 0 && animation->frameSize.y > 0) {
+                    const auto frame = animation->firstFrame + animator->currentFrame;
+                    const Rect rect(static_cast<int>((frame % animation->columns) * animation->frameSize.x),
+                        static_cast<int>((frame / animation->columns) * animation->frameSize.y),
+                        static_cast<int>(animation->frameSize.x), static_cast<int>(animation->frameSize.y));
+                    const Vector2 size = animation->displaySize.x > 0 && animation->displaySize.y > 0
+                        ? animation->displaySize : animation->frameSize;
+                    snapshot.entities.push_back(EntityDto{id, position, transform->rotation, size,
+                        OrByte::RGBA(255, 255, 255), animation->spriteSheetPath, rect});
+                } else if (!animation->isSpriteSheet && animator->currentFrame < animation->frameCount && animator->currentFrame < animation->spritePaths.size()) {
+                    snapshot.entities.push_back(EntityDto{id, position, transform->rotation, animation->frameSize,
+                        OrByte::RGBA(255, 255, 255), animation->spritePaths[animator->currentFrame], {}});
+                }
+            }
+        } else if (const auto* sprite = this->_world->getActiveComponent<OrByte::Sprite>(entity)) {
+            snapshot.entities.push_back(EntityDto{id, position, transform->rotation, sprite->size,
+                OrByte::RGBA(255, 255, 255), sprite->texturePath, {}});
+        }
+        if (const auto* controllable = this->_world->getActiveComponent<OrByte::Controllable>(entity))
+            snapshot.entities.push_back(EntityDto{id + 1U, position, transform->rotation,
+                controllable->size, controllable->color, controllable->image, {}});
     }
     return snapshot;
 }
