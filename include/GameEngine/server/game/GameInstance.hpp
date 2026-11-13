@@ -25,7 +25,6 @@
 
 class World;
 namespace OrByte {
-class IAudio;
 class IGraphic;
 }
 
@@ -54,7 +53,6 @@ class GameInstance {
 
         void loadSystems(OrByte::IGraphic& graphic);
         [[nodiscard]] OrByte::ISystem *createSystem(const std::string& name, OrByte::DynamicLibrary& loader, OrByte::IGraphic& graphic);
-        [[nodiscard]] bool loadAudio();
         void run(std::stop_token);
         void applyInbound();
         void update();
@@ -62,8 +60,6 @@ class GameInstance {
 
         unsigned _tickRate;
         unsigned _snapshotRate;
-        std::unique_ptr<OrByte::DynamicLibrary> _audioLoader;
-        std::unique_ptr<OrByte::IAudio> _audio;
         std::unique_ptr<World> _world;
         std::vector<LoadedSystem> _systems;
         LoadedSystem _display;

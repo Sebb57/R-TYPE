@@ -8,7 +8,7 @@
 #   ORBYTE_COMPONENTS   ;-list of components to compile (Transform, Sprite, ...), ALL for every one
 #   ORBYTE_FEATURES     ;-list of features to compile (Lagometer, Chat, ...), each one defines ORBYTE_FEATURE_<NAME>
 # The game only loads the plugins it was compiled with.
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.28)
 
 project(RTypeSolo VERSION 1.0 DESCRIPTION "R-Type solo game engine" LANGUAGES C CXX)
 
@@ -162,32 +162,18 @@ if("Script" IN_LIST SYSTEM_PLUGINS)
     )
 endif()
 
-# The audio library plugin is only needed by the Audio system
-if("Audio" IN_LIST SYSTEM_PLUGINS)
-    set(RTYPE_GAME_AUDIO ON)
-else()
-    set(RTYPE_GAME_AUDIO OFF)
-endif()
-
+# The SFML plugin also plays the audio (IGraphic), so it always needs SFML's audio module.
+# SFML 3 builds its audio dependencies itself (miniaudio, FLAC, Vorbis): no OpenAL DLL to ship.
 set(SFML_BUILD_GRAPHICS ON CACHE BOOL "" FORCE)
 set(SFML_BUILD_WINDOW ON CACHE BOOL "" FORCE)
-set(SFML_BUILD_AUDIO ${RTYPE_GAME_AUDIO} CACHE BOOL "" FORCE)
+set(SFML_BUILD_AUDIO ON CACHE BOOL "" FORCE)
 set(SFML_BUILD_NETWORK OFF CACHE BOOL "" FORCE)
 if(WIN32)
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 endif()
-if(CMAKE_CROSSCOMPILING AND MINGW)
-    list(APPEND CMAKE_FIND_ROOT_PATH "${FETCHCONTENT_BASE_DIR}/sfml-src")
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-        set(RTYPE_SFML_EXTLIBS "${FETCHCONTENT_BASE_DIR}/sfml-src/extlibs/libs-mingw/x64")
-    else()
-        set(RTYPE_SFML_EXTLIBS "${FETCHCONTENT_BASE_DIR}/sfml-src/extlibs/libs-mingw/x86")
-    endif()
-    set(OPENAL_LIBRARY "${RTYPE_SFML_EXTLIBS}/libopenal32.a" CACHE FILEPATH "")
-endif()
 FetchContent_Declare(sfml
     GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG 2.6.1
+    GIT_TAG 3.1.0
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(sfml)
@@ -233,24 +219,8 @@ endfunction()
 add_library(rtype_sfml MODULE "${RTYPE_ROOT}/src/plugins/SFML.cpp")
 rtype_configure_plugin(rtype_sfml "SFML" "${RTYPE_ROOT}/${GAME_PLUGINS_DIR}")
 target_include_directories(rtype_sfml PRIVATE "${RTYPE_ROOT}/include")
-target_link_libraries(rtype_sfml PRIVATE bitsery sfml-graphics sfml-window sfml-system)
+target_link_libraries(rtype_sfml PRIVATE bitsery SFML::Audio SFML::Graphics SFML::Window SFML::System)
 set(LIBRARY_TARGETS rtype_sfml)
-
-if(RTYPE_GAME_AUDIO)
-    add_library(rtype_sfml_audio MODULE "${RTYPE_ROOT}/src/plugins/SFMLAudio.cpp")
-    rtype_configure_plugin(rtype_sfml_audio "SFMLAudio" "${RTYPE_ROOT}/${GAME_PLUGINS_DIR}")
-    target_include_directories(rtype_sfml_audio PRIVATE "${RTYPE_ROOT}/include")
-    target_link_libraries(rtype_sfml_audio PRIVATE sfml-audio sfml-system)
-    # SFML's prebuilt libFLAC needs msvcrt's __iob_func, gone from the Universal CRT
-    if(MINGW)
-        include(CheckSymbolExists)
-        check_symbol_exists(_UCRT "stdio.h" RTYPE_MINGW_UCRT)
-        if(RTYPE_MINGW_UCRT)
-            target_sources(rtype_sfml_audio PRIVATE "${RTYPE_ROOT}/src/plugins/UcrtIobFunc.c")
-        endif()
-    endif()
-    list(APPEND LIBRARY_TARGETS rtype_sfml_audio)
-endif()
 
 set(SYSTEM_TARGETS)
 foreach(system IN LISTS SYSTEM_PLUGINS)
@@ -338,18 +308,4 @@ if(MINGW)
     foreach(target IN ITEMS OrByte-gameClient ${LIBRARY_TARGETS} ${SYSTEM_TARGETS} ${COMPONENT_TARGETS})
         target_link_options(${target} PRIVATE -static)
     endforeach()
-endif()
-
-if(WIN32 AND RTYPE_GAME_AUDIO)
-    # the audio plugin needs openal32.dll next to the game
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-        set(RTYPE_OPENAL_DLL "${sfml_SOURCE_DIR}/extlibs/bin/x64/openal32.dll")
-    else()
-        set(RTYPE_OPENAL_DLL "${sfml_SOURCE_DIR}/extlibs/bin/x86/openal32.dll")
-    endif()
-    add_custom_command(TARGET OrByte-gameClient POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${RTYPE_OPENAL_DLL}" "$<TARGET_FILE_DIR:OrByte-gameClient>"
-        VERBATIM
-    )
 endif()

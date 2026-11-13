@@ -21,7 +21,6 @@
 #include "GameEngine/ECS/World.hpp"
 #include "GameEngine/client/GamePlugins.hpp"
 #include "constants.hpp"
-#include "plugins/IAudio.hpp"
 #include "plugins/IGraphic.hpp"
 
 namespace {
@@ -101,29 +100,11 @@ void server::GameInstance::loadSystems(OrByte::IGraphic& graphic)
 
 OrByte::ISystem *server::GameInstance::createSystem(const std::string& name, OrByte::DynamicLibrary& loader, OrByte::IGraphic& graphic)
 {
-    if (name == "Display")
+    if (name == "Display" || name == "Audio")
         return loader.loadFunction<OrByte::ISystem* (*)(World&, OrByte::IGraphic&)>("factory")(*this->_world, graphic);
-    if (name == "Audio")
-        return this->loadAudio() ? loader.loadFunction<OrByte::ISystem* (*)(World&, OrByte::IAudio&)>("factory")(*this->_world, *this->_audio) : nullptr;
     if (name == "Script")
         this->_scriptCollisions = loader.loadFunction<decltype(_scriptCollisions)>("onCollisions");
     return loader.loadFunction<OrByte::ISystem* (*)(World&)>("factory")(*this->_world);
-}
-
-bool server::GameInstance::loadAudio()
-{
-    if (this->_audio)
-        return true;
-    try {
-        this->_audioLoader = std::make_unique<OrByte::DynamicLibrary>(
-            std::filesystem::path(OrByte::constants::PLUGINS_DIR) / OrByte::constants::pluginFile("SFMLAudio"));
-        this->_audio.reset(this->_audioLoader->loadFunction<OrByte::IAudio* (*)()>("factory")());
-    } catch (const std::exception& error) {
-        std::cerr << "[Game] audio disabled: " << error.what() << std::endl;
-        this->_audio.reset();
-        this->_audioLoader.reset();
-    }
-    return this->_audio != nullptr;
 }
 
 server::GameInstance::~GameInstance()
