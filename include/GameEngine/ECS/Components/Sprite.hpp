@@ -22,7 +22,7 @@ struct Sprite : public OrByte::AComponent<OrByte::ComponentType::Sprite>
     Sprite(const std::string& path, Vector2 size) : texturePath(path), size(size) {}
 
     std::string texturePath;
-    Vector2 size{0.0f, 0.0f};
+    Vector2 size{64.0f, 64.0f};
 
     void serialize(Serializer& serializer) const final
     {

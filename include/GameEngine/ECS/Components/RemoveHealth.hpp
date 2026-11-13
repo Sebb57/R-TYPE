@@ -19,7 +19,7 @@ struct RemoveHealth : public OrByte::AComponent<OrByte::ComponentType::RemoveHea
     RemoveHealth() = default;
     RemoveHealth(int hitDamage) : hitDamage(hitDamage) {}
 
-    int hitDamage{100};
+    int hitDamage{10};
 
     void serialize(Serializer& serializer) const final { serializer.value4b(this->hitDamage); }
     void deserialize(Deserializer& deserializer) final { deserializer.value4b(this->hitDamage); }
