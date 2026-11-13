@@ -20,7 +20,7 @@ struct Poison : public OrByte::AComponent<OrByte::ComponentType::Poison>
     Poison(int damage, float duration) : damage(damage), duration(duration) {}
     Poison(int damage, float cooldown, float duration) : damage(damage), cooldown(cooldown), duration(duration) {}
 
-    int damage{100};
+    int damage{10};
     float cooldown{1.0F};
     float duration{3.0F};
 
