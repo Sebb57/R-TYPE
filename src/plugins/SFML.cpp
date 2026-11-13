@@ -52,8 +52,65 @@ namespace {
             color.a
         );
     }
+    
+    OrByte::Event::GamepadButton toGamepadButton(unsigned button)
+    {
+        using Button = OrByte::Event::GamepadButton;
 
-}
+        switch (button) {
+            case 0:
+                return Button::A;
+            case 1:
+                return Button::B;
+            case 2:
+                return Button::X;
+            case 3:
+                return Button::Y;
+            case 4:
+                return Button::LeftBumper;
+            case 5:
+                return Button::RightBumper;
+            case 6:
+                return Button::Back;
+            case 7:
+                return Button::Start;
+            case 8:
+                return Button::LeftStick;
+            case 9:
+                return Button::RightStick;
+            default:
+                return Button::Unknown;
+        }
+    }
+
+    OrByte::Event::GamepadAxis toGamepadAxis(sf::Joystick::Axis axis)
+    {
+        using GamepadAxis = OrByte::Event::GamepadAxis;
+        using Axis = sf::Joystick::Axis;
+
+        switch (axis) {
+            case Axis::X:
+                return GamepadAxis::LeftX;
+            case Axis::Y:
+                return GamepadAxis::LeftY;
+            case Axis::U:
+                return GamepadAxis::RightX;
+            case Axis::V:
+                return GamepadAxis::RightY;
+            case Axis::Z:
+                return GamepadAxis::LeftTrigger;
+            case Axis::R:
+                return GamepadAxis::RightTrigger;
+            case Axis::PovX:
+                return GamepadAxis::DPadX;
+            case Axis::PovY:
+                return GamepadAxis::DPadY;
+            default:
+                return GamepadAxis::Unknown;
+        }
+    }
+
+} // namespace
 
 void OrByte::SFML::open(const std::size_t width, const std::size_t height, std::string title)
 {
@@ -271,6 +328,42 @@ std::queue<OrByte::Event> OrByte::SFML::listen() const
             event.type = Event::Type::MouseWheelScrolled;
             setMousePosition(mouseWheel->position.x, mouseWheel->position.y, event);
             event.wheelDelta = mouseWheel->delta;
+            events.push(event);
+        }
+        else if (const auto* connected =
+            sfmlEvent->getIf<sf::Event::JoystickConnected>()) {
+            event.type = Event::Type::JoystickConnected;
+            event.gamepadId = connected->joystickId;
+            events.push(event);
+        }
+        else if (const auto* disconnected =
+            sfmlEvent->getIf<sf::Event::JoystickDisconnected>()) {
+            event.type = Event::Type::JoystickDisconnected;
+            event.gamepadId = disconnected->joystickId;
+            events.push(event);
+        }
+        else if (const auto* buttonPressed =
+            sfmlEvent->getIf<sf::Event::JoystickButtonPressed>()) {
+            event.type = Event::Type::JoystickButtonPressed;
+            event.gamepadId = buttonPressed->joystickId;
+            event.rawButton = buttonPressed->button;
+            event.gamepadButton = toGamepadButton(buttonPressed->button);
+            events.push(event);
+        }
+        else if (const auto* buttonReleased =
+            sfmlEvent->getIf<sf::Event::JoystickButtonReleased>()) {
+            event.type = Event::Type::JoystickButtonReleased;
+            event.gamepadId = buttonReleased->joystickId;
+            event.rawButton = buttonReleased->button;
+            event.gamepadButton = toGamepadButton(buttonReleased->button);
+            events.push(event);
+        }
+        else if (const auto* joystickMoved =
+            sfmlEvent->getIf<sf::Event::JoystickMoved>()) {
+            event.type = Event::Type::JoystickMoved;
+            event.gamepadId = joystickMoved->joystickId;
+            event.gamepadAxis = toGamepadAxis(joystickMoved->axis);
+            event.axisValue = joystickMoved->position / 100.f;
             events.push(event);
         }
     }

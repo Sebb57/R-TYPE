@@ -9,6 +9,8 @@
 #ifndef EVENT_HPP_
     #define EVENT_HPP_
 
+    #include <cstdint>
+
 namespace OrByte {
 
 struct Event {
@@ -23,6 +25,11 @@ struct Event {
         MouseButtonPressed,
         MouseButtonReleased,
         Resized,
+        JoystickConnected,
+        JoystickDisconnected,
+        JoystickButtonPressed,
+        JoystickButtonReleased,
+        JoystickMoved,
     };
 
     enum class Key {
@@ -75,6 +82,32 @@ struct Event {
         Middle
     };
 
+    enum class GamepadButton : std::uint8_t {
+        Unknown,
+        A,
+        B,
+        X,
+        Y,
+        LeftBumper,
+        RightBumper,
+        Back,
+        Start,
+        LeftStick,
+        RightStick,
+    };
+
+    enum class GamepadAxis : std::uint8_t {
+        Unknown,
+        LeftX,
+        LeftY,
+        RightX,
+        RightY,
+        LeftTrigger,
+        RightTrigger,
+        DPadX,
+        DPadY,
+    };
+
     Type type = Type::None;
     Key key = Key::Unknown;
     unsigned keyChar = '\0';
@@ -86,6 +119,11 @@ struct Event {
     int height = 0;
     int windowX = 0;
     int windowY = 0;
+    unsigned gamepadId = 0;
+    GamepadButton gamepadButton = GamepadButton::Unknown;
+    GamepadAxis gamepadAxis = GamepadAxis::Unknown;
+    unsigned rawButton = 0;
+    float axisValue = 0.f;
 };
 
 }
