@@ -33,6 +33,7 @@ struct EntityDto {
     Vector2 size;
     OrByte::RGBA color;
     std::string image;
+    Rect frame;
 };
 struct SnapshotDto {
     std::uint32_t tick = 0;

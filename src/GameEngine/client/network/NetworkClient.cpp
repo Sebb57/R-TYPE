@@ -467,6 +467,12 @@ void client::NetworkClient::onSnapshot(const server::Buffer& packet)
         entity.rotation = static_cast<std::int16_t>(rotation);
         entity.size = Vector2(width, height);
         entity.image = image < images.size() ? localImage(images[image]) : "";
+        std::uint16_t frameX = 0, frameY = 0, frameWidth = 0, frameHeight = 0;
+        server::TcpProtocol::readU16(packet, offset, frameX);
+        server::TcpProtocol::readU16(packet, offset, frameY);
+        server::TcpProtocol::readU16(packet, offset, frameWidth);
+        server::TcpProtocol::readU16(packet, offset, frameHeight);
+        entity.frame = Rect(frameX, frameY, frameWidth, frameHeight);
     }
     this->assemble(tick, part, parts, std::move(entities));
 }

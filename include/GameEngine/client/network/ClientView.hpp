@@ -37,6 +37,7 @@ struct EntityView {
     Vector2 size;
     OrByte::RGBA color;
     std::string image;
+    Rect frame;
 };
 
 #ifdef ORBYTE_FEATURE_LAGOMETER

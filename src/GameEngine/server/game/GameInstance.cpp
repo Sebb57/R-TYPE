@@ -16,6 +16,7 @@
 #include <string_view>
 #include <utility>
 #include "GameEngine/ECS/Components/Controllable.hpp"
+#include "GameEngine/ECS/Components/Animator.hpp"
 #include "GameEngine/ECS/Components/Sprite.hpp"
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "GameEngine/ECS/World.hpp"
@@ -201,12 +202,33 @@ server::SnapshotDto server::GameInstance::makeSnapshot()
         const auto *transform = this->_world->getActiveComponent<OrByte::Transform>(entity);
         if (transform == nullptr)
             continue;
-        const auto id = static_cast<std::uint32_t>(entity + 1);
+        // Preserve the renderer order: animation/sprite first, controllable second.
+        const auto id = static_cast<std::uint32_t>(entity + 1) * 2U;
         const Vector2 position(transform->position.x - origin.x, transform->position.y - origin.y);
-        if (const auto *controllable = this->_world->getActiveComponent<OrByte::Controllable>(entity))
-            snapshot.entities.push_back(EntityDto(id, position, transform->rotation, controllable->size, controllable->color, controllable->image));
-        else if (const auto *sprite = this->_world->getActiveComponent<OrByte::Sprite>(entity))
-            snapshot.entities.push_back(EntityDto(id, position, transform->rotation, sprite->size, OrByte::RGBA(255, 255, 255), sprite->texturePath));
+        if (const auto* animator = this->_world->getActiveComponent<OrByte::Animator>(entity)) {
+            const auto* animation = animator->getCurrentAnimation();
+            if (animation != nullptr && animation->frameCount > 0) {
+                if (animation->isSpriteSheet && animation->columns > 0 && animation->frameSize.x > 0 && animation->frameSize.y > 0) {
+                    const auto frame = animation->firstFrame + animator->currentFrame;
+                    const Rect rect(static_cast<int>((frame % animation->columns) * animation->frameSize.x),
+                        static_cast<int>((frame / animation->columns) * animation->frameSize.y),
+                        static_cast<int>(animation->frameSize.x), static_cast<int>(animation->frameSize.y));
+                    const Vector2 size = animation->displaySize.x > 0 && animation->displaySize.y > 0
+                        ? animation->displaySize : animation->frameSize;
+                    snapshot.entities.push_back(EntityDto{id, position, transform->rotation, size,
+                        OrByte::RGBA(255, 255, 255), animation->spriteSheetPath, rect});
+                } else if (!animation->isSpriteSheet && animator->currentFrame < animation->frameCount && animator->currentFrame < animation->spritePaths.size()) {
+                    snapshot.entities.push_back(EntityDto{id, position, transform->rotation, animation->frameSize,
+                        OrByte::RGBA(255, 255, 255), animation->spritePaths[animator->currentFrame], {}});
+                }
+            }
+        } else if (const auto* sprite = this->_world->getActiveComponent<OrByte::Sprite>(entity)) {
+            snapshot.entities.push_back(EntityDto{id, position, transform->rotation, sprite->size,
+                OrByte::RGBA(255, 255, 255), sprite->texturePath, {}});
+        }
+        if (const auto* controllable = this->_world->getActiveComponent<OrByte::Controllable>(entity))
+            snapshot.entities.push_back(EntityDto{id + 1U, position, transform->rotation,
+                controllable->size, controllable->color, controllable->image, {}});
     }
     return snapshot;
 }

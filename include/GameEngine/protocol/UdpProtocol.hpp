@@ -19,10 +19,10 @@ namespace server {
 constexpr std::size_t UdpHeaderSize = 18;
 constexpr std::size_t MaxUdpDatagram = 1200;
 constexpr std::uint16_t UdpMagic = 0x6767;
-constexpr std::uint8_t UdpVersion = 2;
+constexpr std::uint8_t UdpVersion = 3;
 
 constexpr std::size_t SnapshotHeaderSize = 8;
-constexpr std::size_t SnapshotEntitySize = 19;
+constexpr std::size_t SnapshotEntitySize = 27;
 constexpr std::size_t MaxImagePath = 255;
 constexpr std::uint8_t NoImage = 0xff;
 

@@ -17,6 +17,7 @@
     #include <format>
 #endif
 #include "GameEngine/ECS/Components/Controllable.hpp"
+#include "GameEngine/ECS/Components/Animator.hpp"
 #include "GameEngine/ECS/Components/Transform.hpp"
 #include "GameEngine/ECS/Components/Velocity.hpp"
 #include "GameEngine/client/network/NetworkClient.hpp"
@@ -127,22 +128,50 @@ void client::SpectateScene::applySnapshot()
         alive.insert(remote.id);
         auto local = this->_entities.find(remote.id);
         if (local == this->_entities.end()) {
-            const int entity = this->_world.createEntity();
+            // Use host draw IDs so layers keep their order even when new objects arrive.
+            const int entity = this->_world.createEntity(static_cast<int>(remote.id));
             this->_world.addComponentToEntity<OrByte::Transform>(entity, remote.position, Vector2(1.0F, 1.0F), remote.rotation);
             this->_world.addComponentToEntity<OrByte::Velocity>(entity);
-            this->_world.addComponentToEntity<OrByte::Controllable>(entity);
             local = this->_entities.emplace(remote.id, entity).first;
         }
         auto *transform = this->_world.getComponent<OrByte::Transform>(local->second);
         auto *velocity = this->_world.getComponent<OrByte::Velocity>(local->second);
-        auto *controllable = this->_world.getComponent<OrByte::Controllable>(local->second);
-        if (transform == nullptr || velocity == nullptr || controllable == nullptr)
+        if (transform == nullptr || velocity == nullptr)
             continue;
         transform->rotation = remote.rotation;
         velocity->velocity = Vector2((remote.position.x - transform->position.x) * rate, (remote.position.y - transform->position.y) * rate);
-        controllable->size = remote.size;
-        controllable->color = remote.color;
-        controllable->image = remote.image;
+        if (remote.frame.w > 0 && remote.frame.h > 0) {
+            this->_world.removeComponentFromEntity<OrByte::Controllable>(local->second);
+            auto* animator = this->_world.getComponent<OrByte::Animator>(local->second);
+            if (animator == nullptr) {
+                this->_world.addComponentToEntity<OrByte::Animator>(local->second);
+                animator = this->_world.getComponent<OrByte::Animator>(local->second);
+            }
+            auto& animation = animator->animations["snapshot"];
+            animation.isSpriteSheet = true;
+            animation.spriteSheetPath = remote.image;
+            animation.frameSize = Vector2(remote.frame.w, remote.frame.h);
+            animation.displaySize = remote.size;
+            animation.columns = remote.frame.x / remote.frame.w + 1;
+            animation.firstFrame = (remote.frame.y / remote.frame.h) * animation.columns + remote.frame.x / remote.frame.w;
+            animation.frameCount = 1;
+            animator->currentAnimation = "snapshot";
+            animator->currentFrame = 0;
+            animator->playing = false;
+        } else {
+            this->_world.removeComponentFromEntity<OrByte::Animator>(local->second);
+            auto* controllable = this->_world.getComponent<OrByte::Controllable>(local->second);
+            if (controllable == nullptr) {
+                this->_world.addComponentToEntity<OrByte::Controllable>(local->second);
+                controllable = this->_world.getComponent<OrByte::Controllable>(local->second);
+            }
+            controllable->size = remote.size;
+            controllable->color = remote.color;
+            controllable->image = remote.image;
+            // Snapshot positions already include the host camera; keep off-screen coordinates.
+            controllable->boundX = 0.0F;
+            controllable->boundY = 0.0F;
+        }
     }
     for (auto entity = this->_entities.begin(); entity != this->_entities.end();) {
         if (alive.contains(entity->first)) {
