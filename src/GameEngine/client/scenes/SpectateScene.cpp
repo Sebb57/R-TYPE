@@ -9,7 +9,10 @@
 #include "GameEngine/client/scenes/SpectateScene.hpp"
 #include <algorithm>
 #include <unordered_set>
-#ifdef ORBYTE_METRIC_LAGOMETER
+#ifdef ORBYTE_FEATURE_CHAT
+    #include <utility>
+#endif
+#ifdef ORBYTE_FEATURE_LAGOMETER
     #include <cstddef>
     #include <format>
 #endif
@@ -26,7 +29,7 @@ namespace {
 
 constexpr double StaleSnapshot = 0.25;
 
-#ifdef ORBYTE_METRIC_LAGOMETER
+#ifdef ORBYTE_FEATURE_LAGOMETER
 namespace lagometer {
 
 constexpr float Width = 360.0F;
@@ -53,7 +56,11 @@ constexpr OrByte::RGBA Bad(230, 110, 100);
 
 } // namespace
 
-client::SpectateScene::SpectateScene(SceneContext& context) : AScene(context)
+client::SpectateScene::SpectateScene(SceneContext& context)
+    : AScene(context)
+#ifdef ORBYTE_FEATURE_CHAT
+    , _chat(context, [&context](std::string text) { context.network.say(std::move(text)); })
+#endif
 {
     this->bindAction(Action::Back, [this](bool pressed) {
         if (pressed)
@@ -62,10 +69,22 @@ client::SpectateScene::SpectateScene(SceneContext& context) : AScene(context)
     this->_view = this->_context.network.view();
 }
 
+#ifdef ORBYTE_FEATURE_CHAT
+void client::SpectateScene::onEvent(const OrByte::Event& event)
+{
+    if (!this->_chat.onEvent(event))
+        AScene::onEvent(event);
+}
+#endif
+
 void client::SpectateScene::update(double deltaTime)
 {
     AScene::update(deltaTime);
     this->_view = this->_context.network.view();
+#ifdef ORBYTE_FEATURE_CHAT
+    this->_chat.setAvailable(this->_view.chatAvailable);
+    this->_chat.update(deltaTime, this->_view.chat);
+#endif
     if (!this->_view.connected) {
         this->_context.scenes.switchTo(ServerScene::Name);
         return;
@@ -92,8 +111,11 @@ void client::SpectateScene::render()
     if (this->_tick == 0)
         this->drawText(this->_view.status, Vector2(40.0F, 75.0F), 22, theme::Muted);
     this->drawText(this->_context.controls.keyName(Action::Back) + "  leave", Vector2(40.0F, 1020.0F), 22, theme::Muted);
-#ifdef ORBYTE_METRIC_LAGOMETER
+#ifdef ORBYTE_FEATURE_LAGOMETER
     this->drawLagometer();
+#endif
+#ifdef ORBYTE_FEATURE_CHAT
+    this->_chat.render(this->_view.chat);
 #endif
 }
 
@@ -145,7 +167,7 @@ std::string client::SpectateScene::roomName() const
     return room != this->_view.rooms.end() ? room->name : "#" + std::to_string(this->_view.room);
 }
 
-#ifdef ORBYTE_METRIC_LAGOMETER
+#ifdef ORBYTE_FEATURE_LAGOMETER
 void client::SpectateScene::drawLagometer() const
 {
     namespace lag = lagometer;

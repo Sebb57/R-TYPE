@@ -86,8 +86,8 @@ void drawButton(const OrByte::IGraphic& graphic, const Rect& rect, const std::st
             return "Systems";
         case OrByte::CompileOptions::Kind::Component:
             return "Components";
-        case OrByte::CompileOptions::Kind::Metric:
-            return "Metrics";
+        case OrByte::CompileOptions::Kind::Feature:
+            return "Features";
     }
     return "";
 }
@@ -323,6 +323,6 @@ void OrByte::CompileOptionsWidget::draw(const IGraphic& graphic, Vector2u size)
     y += ROW_HEIGHT + (2 * PADDING);
     y = this->_drawSection(graphic, CompileOptions::Kind::System, y, width);
     y = this->_drawSection(graphic, CompileOptions::Kind::Component, y, width);
-    y = this->_drawSection(graphic, CompileOptions::Kind::Metric, y, width);
+    y = this->_drawSection(graphic, CompileOptions::Kind::Feature, y, width);
     this->_contentHeight = y + this->_scroll;
 }

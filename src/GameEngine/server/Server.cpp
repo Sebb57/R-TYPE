@@ -22,7 +22,16 @@ server::Server::Server(ServerConfig conf)
              this->_conf)
     , _udp(this->_io, this->_sessions, this->_conf)
     , _tcp(this->_io, this->_rooms, this->_conf)
-{}
+{
+#ifdef ORBYTE_FEATURE_CHAT
+    this->_rooms.onChat([this](RoomId room, const ChatLine& line) {
+        if (this->_hosted != room)
+            return;
+        std::scoped_lock lock(this->_chatMutex);
+        this->_chat.add(line);
+    });
+#endif
+}
 
 server::Server::~Server()
 {
@@ -73,12 +82,17 @@ void server::Server::host(std::string username, std::shared_ptr<GameInstance> ga
         if (this->_hosted)
             this->_rooms.close(*this->_hosted);
         this->_hosted.reset();
-        auto result = this->_rooms.host(std::move(username), std::move(game));
+        auto result = this->_rooms.host(username, std::move(game));
         if (!result) {
             std::cerr << "[Server] cannot host the game, error=" << static_cast<unsigned>(result.error()) << std::endl;
             return;
         }
         this->_hosted = *result;
+#ifdef ORBYTE_FEATURE_CHAT
+        this->_hostName = std::move(username);
+        std::scoped_lock lock(this->_chatMutex);
+        this->_chat = {};
+#endif
     });
 }
 
@@ -90,6 +104,24 @@ void server::Server::leave()
         this->_hosted.reset();
     });
 }
+
+#ifdef ORBYTE_FEATURE_CHAT
+void server::Server::say(std::string text)
+{
+    if (!isChatText(text))
+        return;
+    asio::post(this->_io, [this, text = std::move(text)]() mutable {
+        if (this->_hosted)
+            this->_rooms.chat(*this->_hosted, ChatLine{this->_hostName, std::move(text), true});
+    });
+}
+
+server::ChatLog server::Server::chat() const
+{
+    std::scoped_lock lock(this->_chatMutex);
+    return this->_chat;
+}
+#endif
 
 void server::Server::run()
 {

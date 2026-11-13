@@ -17,6 +17,10 @@
 #include "GameEngine/server/common/ServerMessages.hpp"
 #include "GameEngine/server/lobby/SessionRegistry.hpp"
 #include "GameEngine/server/lobby/Room.hpp"
+#ifdef ORBYTE_FEATURE_CHAT
+    #include <functional>
+    #include "GameEngine/protocol/Chat.hpp"
+#endif
 
 namespace server {
 
@@ -35,6 +39,13 @@ class RoomManager {
         void close(RoomId);
         void sweep(Clock::time_point now);
         void stopAll();
+#ifdef ORBYTE_FEATURE_CHAT
+        using ChatSink = std::function<void(RoomId, const ChatLine&)>;
+
+        void onChat(ChatSink sink) { this->_chatSink = std::move(sink); }
+        void chat(SessionToken, std::string text);
+        void chat(RoomId, ChatLine line);
+#endif
 
     private:
         std::unordered_map<RoomId, std::unique_ptr<Room>> _rooms;
@@ -42,6 +53,9 @@ class RoomManager {
         SessionRegistry& _sessions;
         OutgoingSink _sink;
         const ServerConfig& _conf;
+#ifdef ORBYTE_FEATURE_CHAT
+        ChatSink _chatSink;
+#endif
 };
 
 } // namespace server

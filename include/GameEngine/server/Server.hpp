@@ -22,6 +22,10 @@
 #include "GameEngine/server/lobby/RoomManager.hpp"
 #include "GameEngine/server/net/TcpServer.hpp"
 #include "GameEngine/server/net/UdpServer.hpp"
+#ifdef ORBYTE_FEATURE_CHAT
+    #include <mutex>
+    #include "GameEngine/protocol/Chat.hpp"
+#endif
 
 namespace server {
 
@@ -41,6 +45,10 @@ class Server {
 
         void host(std::string username, std::shared_ptr<GameInstance> game);
         void leave();
+#ifdef ORBYTE_FEATURE_CHAT
+        void say(std::string text);
+        [[nodiscard]] ChatLog chat() const;
+#endif
 
     private:
         void run();
@@ -56,6 +64,11 @@ class Server {
         UdpServer _udp;
         TcpServer _tcp;
         std::optional<RoomId> _hosted;
+#ifdef ORBYTE_FEATURE_CHAT
+        std::string _hostName;
+        mutable std::mutex _chatMutex;
+        ChatLog _chat;
+#endif
         std::atomic<bool> _stopped{false};
         std::jthread _thread;
 };

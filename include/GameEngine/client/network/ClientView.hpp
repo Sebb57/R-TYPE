@@ -15,6 +15,9 @@
 #include <vector>
 #include "GameEngine/ECS/Utils.hpp"
 #include "plugins/IGraphic.hpp"
+#ifdef ORBYTE_FEATURE_CHAT
+    #include "GameEngine/protocol/Chat.hpp"
+#endif
 
 namespace client {
 
@@ -36,7 +39,7 @@ struct EntityView {
     std::string image;
 };
 
-#ifdef ORBYTE_METRIC_LAGOMETER
+#ifdef ORBYTE_FEATURE_LAGOMETER
 struct NetworkMetrics {
     static constexpr std::size_t History = 120;
     static constexpr float Lost = -1.0F;
@@ -64,8 +67,12 @@ struct ClientView {
     std::uint64_t token = 0;
     std::uint16_t udpPort = 0;
     std::uint8_t snapshotRate = 60;
-#ifdef ORBYTE_METRIC_LAGOMETER
+#ifdef ORBYTE_FEATURE_LAGOMETER
     NetworkMetrics metrics;
+#endif
+#ifdef ORBYTE_FEATURE_CHAT
+    bool chatAvailable = false;
+    server::ChatLog chat;
 #endif
 };
 

@@ -1,6 +1,6 @@
 /**
  * @file CompileOptions.hpp
- * @brief which plugins, which metrics and which binary name the game compilation produces
+ * @brief which plugins, which features and which binary name the game compilation produces
  *
  * @author Seb
  * @date 2026-11-11
@@ -48,7 +48,7 @@ class CompileOptions {
         enum class Kind : std::uint8_t {
             System,
             Component,
-            Metric,
+            Feature,
         };
 
         static constexpr const char *DEFAULT_BINARY = "OrByte-gameClient";
@@ -79,7 +79,7 @@ class CompileOptions {
         std::vector<std::string> _components;
         std::set<std::string> _disabledSystems;
         std::set<std::string> _disabledComponents;
-        std::set<std::string> _enabledMetrics;
+        std::set<std::string> _enabledFeatures;
 
         [[nodiscard]] std::set<std::string>& _disabled(Kind kind) noexcept;
         [[nodiscard]] const std::set<std::string>& _disabled(Kind kind) const noexcept;

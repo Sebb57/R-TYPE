@@ -54,3 +54,16 @@ bool client::LocalGame::running() const
 {
     return this->_game && !this->_game->finished();
 }
+
+#ifdef ORBYTE_FEATURE_CHAT
+void client::LocalGame::say(std::string text)
+{
+    if (this->_game)
+        this->_server.say(std::move(text));
+}
+
+server::ChatLog client::LocalGame::chat() const
+{
+    return this->_server.chat();
+}
+#endif

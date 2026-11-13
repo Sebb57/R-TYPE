@@ -6,7 +6,7 @@
 #   ORBYTE_GAME_NAME    name of the game binary, written to the repository root
 #   ORBYTE_SYSTEMS      ;-list of systems to compile (Control, Display, ...), ALL for every one
 #   ORBYTE_COMPONENTS   ;-list of components to compile (Transform, Sprite, ...), ALL for every one
-#   ORBYTE_METRICS      ;-list of metrics to compile (Lagometer, ...), each one defines ORBYTE_METRIC_<NAME>
+#   ORBYTE_FEATURES     ;-list of features to compile (Lagometer, Chat, ...), each one defines ORBYTE_FEATURE_<NAME>
 # The game only loads the plugins it was compiled with.
 cmake_minimum_required(VERSION 3.23)
 
@@ -31,7 +31,7 @@ get_filename_component(RTYPE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 set(ORBYTE_GAME_NAME "OrByte-gameClient" CACHE STRING "Name of the game binary")
 set(ORBYTE_SYSTEMS "ALL" CACHE STRING "Systems compiled into the game, ALL for every one")
 set(ORBYTE_COMPONENTS "ALL" CACHE STRING "Components compiled into the game, ALL for every one")
-set(ORBYTE_METRICS "" CACHE STRING "Metrics compiled into the game")
+set(ORBYTE_FEATURES "" CACHE STRING "Features compiled into the game")
 
 if(NOT ORBYTE_GAME_NAME MATCHES "^[A-Za-z0-9_][A-Za-z0-9_.-]*$")
     message(FATAL_ERROR "Invalid ORBYTE_GAME_NAME '${ORBYTE_GAME_NAME}': use letters, digits, '_', '-' and '.'")
@@ -81,7 +81,7 @@ message(STATUS "Game binary: ${ORBYTE_GAME_NAME}")
 message(STATUS "Game plugins: ${RTYPE_ROOT}/${GAME_PLUGINS_DIR}")
 message(STATUS "Game systems: ${SYSTEM_PLUGINS}")
 message(STATUS "Game components: ${COMPONENT_PLUGINS}")
-message(STATUS "Game metrics: ${ORBYTE_METRICS}")
+message(STATUS "Game features: ${ORBYTE_FEATURES}")
 
 # ---------------------------------------------------------------------------
 # Dependencies
@@ -301,12 +301,12 @@ set_target_properties(OrByte-gameClient PROPERTIES
     OUTPUT_NAME "${ORBYTE_GAME_NAME}"
     RUNTIME_OUTPUT_DIRECTORY "$<1:${RTYPE_ROOT}>"
 )
-foreach(metric IN LISTS ORBYTE_METRICS)
-    if(NOT metric MATCHES "^[A-Za-z0-9_]+$")
-        message(FATAL_ERROR "Invalid metric '${metric}': use letters, digits and '_'")
+foreach(feature IN LISTS ORBYTE_FEATURES)
+    if(NOT feature MATCHES "^[A-Za-z0-9_]+$")
+        message(FATAL_ERROR "Invalid feature '${feature}': use letters, digits and '_'")
     endif()
-    string(TOUPPER "${metric}" metric_define)
-    target_compile_definitions(OrByte-gameClient PRIVATE "ORBYTE_METRIC_${metric_define}")
+    string(TOUPPER "${feature}" feature_define)
+    target_compile_definitions(OrByte-gameClient PRIVATE "ORBYTE_FEATURE_${feature_define}")
 endforeach()
 
 # Only GamePlugins.cpp sees the plugin lists, so changing them rebuilds a single file
