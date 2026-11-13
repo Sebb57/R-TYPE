@@ -32,13 +32,13 @@ namespace OrByte {
         mutable std::unordered_map<std::string, sf::Texture> _textures;
         mutable std::vector<Rect> _regions;
 
-        const sf::Cursor _cursorArrow = sf::Cursor(sf::Cursor::Type::Arrow);
-        const sf::Cursor _cursorHorizontal = sf::Cursor(sf::Cursor::Type::SizeHorizontal);
-        const sf::Cursor _cursorVertical = sf::Cursor(sf::Cursor::Type::SizeVertical);
-        const sf::Cursor _cursorMove = sf::Cursor(sf::Cursor::Type::SizeAll);
-        const sf::Cursor _cursorClick = sf::Cursor(sf::Cursor::Type::Hand);
-        const sf::Cursor _cursorDiagonalNWSE = sf::Cursor(sf::Cursor::Type::SizeTopLeftBottomRight);
-        const sf::Cursor _cursorDiagonalNESW = sf::Cursor(sf::Cursor::Type::SizeBottomLeftTopRight);
+        const std::optional<sf::Cursor> _cursorArrow = sf::Cursor::createFromSystem(sf::Cursor::Type::Arrow);
+        const std::optional<sf::Cursor> _cursorHorizontal = sf::Cursor::createFromSystem(sf::Cursor::Type::SizeHorizontal);
+        const std::optional<sf::Cursor> _cursorVertical = sf::Cursor::createFromSystem(sf::Cursor::Type::SizeVertical);
+        const std::optional<sf::Cursor> _cursorMove = sf::Cursor::createFromSystem(sf::Cursor::Type::SizeAll);
+        const std::optional<sf::Cursor> _cursorClick = sf::Cursor::createFromSystem(sf::Cursor::Type::Hand);
+        const std::optional<sf::Cursor> _cursorDiagonalNWSE = sf::Cursor::createFromSystem(sf::Cursor::Type::SizeTopLeftBottomRight);
+        const std::optional<sf::Cursor> _cursorDiagonalNESW = sf::Cursor::createFromSystem(sf::Cursor::Type::SizeBottomLeftTopRight);
         CursorType _currentCursor = CursorType::Arrow;
 
         const sf::Font *getFont(const std::filesystem::path& path) const;

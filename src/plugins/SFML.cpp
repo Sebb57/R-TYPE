@@ -571,30 +571,39 @@ void OrByte::SFML::setCursor(CursorType type)
     if (!this->_isOpen || !this->_window || type == this->_currentCursor)
         return;
 
+    const sf::Cursor* cursor = nullptr;
+
     switch (type) {
         case CursorType::ResizeHorizontal:
-            this->_window->setMouseCursor(this->_cursorHorizontal);
+            cursor = this->_cursorHorizontal ? &*this->_cursorHorizontal : nullptr;
             break;
         case CursorType::ResizeVertical:
-            this->_window->setMouseCursor(this->_cursorVertical);
+            cursor = this->_cursorVertical ? &*this->_cursorVertical : nullptr;
             break;
         case CursorType::Move:
-            this->_window->setMouseCursor(this->_cursorMove);
+            cursor = this->_cursorMove ? &*this->_cursorMove : nullptr;
             break;
         case CursorType::Click:
-            this->_window->setMouseCursor(this->_cursorClick);
+            cursor = this->_cursorClick ? &*this->_cursorClick : nullptr;
             break;
         case CursorType::ResizeDiagonalNWSE:
-            this->_window->setMouseCursor(this->_cursorDiagonalNWSE);
+            cursor = this->_cursorDiagonalNWSE ? &*this->_cursorDiagonalNWSE : nullptr;
             break;
         case CursorType::ResizeDiagonalNESW:
-            this->_window->setMouseCursor(this->_cursorDiagonalNESW);
+            cursor = this->_cursorDiagonalNESW ? &*this->_cursorDiagonalNESW : nullptr;
             break;
         default:
-            this->_window->setMouseCursor(this->_cursorArrow);
+            cursor = this->_cursorArrow ? &*this->_cursorArrow : nullptr;
             break;
     }
-    this->_currentCursor = type;
+
+    if (!cursor)
+        cursor = this->_cursorArrow ? &*this->_cursorArrow : nullptr;
+
+    if (cursor) {
+        this->_window->setMouseCursor(*cursor);
+        this->_currentCursor = type;
+    }
 }
 
 extern "C" {
