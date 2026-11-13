@@ -24,7 +24,7 @@ cmake -S . -B build
 cmake --build build --config Release --parallel
 ```
 
-This produces `r-type_server.exe`, `r-type_client.exe`, and `openal32.dll` (needed by the client). SFML is linked statically, so no other DLL is needed.
+This produces `r-type_server.exe` and `r-type_client.exe`. SFML is linked statically, so no DLL has to be shipped with them.
 
 ### Windows (cross-compiled from Linux)
 
@@ -43,7 +43,7 @@ docker build -t rtype-windows-cross -f docker/windows-cross.Dockerfile docker
 docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src rtype-windows-cross
 ```
 
-To ship the Windows build, copy `r-type_server.exe`, `r-type_client.exe`, `openal32.dll`, and the `assets/` folder.
+To ship the Windows build, copy `r-type_server.exe`, `r-type_client.exe`, and the `assets/` folder.
 
 ## Run
 
