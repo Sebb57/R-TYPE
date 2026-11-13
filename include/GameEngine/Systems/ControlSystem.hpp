@@ -13,14 +13,19 @@
     #include "GameEngine/Event.hpp"
     #include "plugins/ASystem.hpp"
     #include <unordered_set>
+    #include <unordered_map>
 
 namespace OrByte {
 
 class ControlSystem : public ASystem {
     World& _world;
-    std::unordered_set<Event::Key> _heldKeys;
 
-    float _axis(Event::Key positive, Event::Key negative) const;
+    std::unordered_set<Event::Key> _heldKeys;
+    std::unordered_set<Event::GamepadButton> _heldButtons;
+    std::unordered_map<Event::GamepadAxis, float> _gamepadAxes;
+
+    float _inputValue(const Keybind& input) const;
+    float _axis(const Keybind& positive, const Keybind& negative) const;
 
     public:
         ControlSystem(World& world);
